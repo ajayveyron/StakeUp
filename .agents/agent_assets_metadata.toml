@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "-eQhIMYX78gyddWVbicaL"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "stakeup app icon"
