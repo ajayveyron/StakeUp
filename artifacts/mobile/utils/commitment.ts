@@ -13,6 +13,11 @@ export function formatDate(dateStr: string): string {
   });
 }
 
+export function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+}
+
 export function formatCurrency(amount: number, currency = "INR"): string {
   const rounded = Math.round(amount * 100) / 100;
   if (currency === "INR") {
@@ -55,6 +60,84 @@ export function getDayNameFull(day: number): string {
   return DAY_NAMES_FULL[day];
 }
 
+// Duration types — months use actual calendar months
+export type DurationType = "week" | "2weeks" | "month" | "3months";
+
+export function getEndDateForDuration(
+  startDate: string,
+  durationType: DurationType
+): string {
+  const start = new Date(startDate + "T00:00:00");
+  switch (durationType) {
+    case "week":
+      return addDays(startDate, 6);
+    case "2weeks":
+      return addDays(startDate, 13);
+    case "month": {
+      // e.g. Jun 1 → Jun 30; May 15 → Jun 14
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(end.getDate() - 1);
+      return end.toISOString().split("T")[0];
+    }
+    case "3months": {
+      const end = new Date(start);
+      end.setMonth(end.getMonth() + 3);
+      end.setDate(end.getDate() - 1);
+      return end.toISOString().split("T")[0];
+    }
+  }
+}
+
+export function getDurationLabel(durationType: DurationType): string {
+  switch (durationType) {
+    case "week":
+      return "1 Week";
+    case "2weeks":
+      return "2 Weeks";
+    case "month":
+      return "1 Month";
+    case "3months":
+      return "3 Months";
+  }
+}
+
+// Build list of selectable start dates (today + next N days)
+export function getStartDateOptions(count = 30): string[] {
+  const options: string[] = [];
+  const today = getTodayStr();
+  for (let i = 0; i < count; i++) {
+    options.push(addDays(today, i));
+  }
+  return options;
+}
+
+export function formatStartDateOption(dateStr: string): {
+  line1: string;
+  line2: string;
+} {
+  const today = getTodayStr();
+  const tomorrow = addDays(today, 1);
+  const d = new Date(dateStr + "T00:00:00");
+
+  if (dateStr === today) {
+    return {
+      line1: "Today",
+      line2: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+    };
+  }
+  if (dateStr === tomorrow) {
+    return {
+      line1: "Tmrw",
+      line2: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+    };
+  }
+  return {
+    line1: d.toLocaleDateString("en-IN", { weekday: "short" }),
+    line2: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
+  };
+}
+
 /** All calendar days in the commitment range that fall on committed daysOfWeek */
 export function getScheduledDates(c: Commitment): string[] {
   const result: string[] = [];
@@ -71,16 +154,16 @@ export function getScheduledDates(c: Commitment): string[] {
   return result;
 }
 
-/** Scheduled dates that have already passed (strictly before today) */
+/** First scheduled day of the commitment */
+export function getFirstScheduledDate(c: Commitment): string | null {
+  const dates = getScheduledDates(c);
+  return dates.length > 0 ? dates[0] : null;
+}
+
+/** Scheduled dates strictly before today */
 export function getPastScheduledDates(c: Commitment): string[] {
   const today = getTodayStr();
   return getScheduledDates(c).filter((d) => d < today);
-}
-
-/** Scheduled dates that are still pending (today or future) */
-export function getFutureScheduledDates(c: Commitment): string[] {
-  const today = getTodayStr();
-  return getScheduledDates(c).filter((d) => d >= today);
 }
 
 export function isTodayScheduled(c: Commitment): boolean {
@@ -107,9 +190,7 @@ export function getTotalRefunded(c: Commitment): number {
 }
 
 export function getAmountAtRisk(c: Commitment): number {
-  const total = c.stakeAmount;
-  const refunded = getTotalRefunded(c);
-  return Math.max(0, total - refunded);
+  return Math.max(0, c.stakeAmount - getTotalRefunded(c));
 }
 
 export function getMissedDates(c: Commitment): string[] {
@@ -158,14 +239,20 @@ export function getSuccessRate(c: Commitment): number {
 export function getPeriodLabel(days: number): string {
   if (days <= 7) return "1 Week";
   if (days <= 14) return "2 Weeks";
-  if (days <= 31) return "1 Month";
-  return "3 Months";
+  if (days <= 31) return "~1 Month";
+  return "~3 Months";
 }
 
 export function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
+}
+
+export function daysBetween(startDate: string, endDate: string): number {
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 }
 
 /** Returns ms until 11:59:59 PM today local time */
@@ -189,9 +276,9 @@ export function formatCountdown(ms: number): string {
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
   const s = totalSec % 60;
-  if (h > 0) return `${h}h ${m}m left today`;
-  if (m > 0) return `${m}m ${s}s left today`;
-  return `${s}s left today`;
+  if (h > 0) return `${h}h ${m}m left`;
+  if (m > 0) return `${m}m ${s}s left`;
+  return `${s}s left`;
 }
 
 export function isDeadlinePassed(): boolean {

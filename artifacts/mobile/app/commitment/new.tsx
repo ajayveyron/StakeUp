@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,59 +17,67 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { GoalType, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
+  DurationType,
   addDays,
+  daysBetween,
   formatCurrency,
+  formatDate,
+  formatDateShort,
   formatDaysOfWeek,
+  formatStartDateOption,
   getDayName,
-  getRefundPerDay,
-  getTodayStr,
-  getTotalCommittedDays,
+  getDurationLabel,
+  getEndDateForDuration,
+  getFirstScheduledDate,
   getScheduledDates,
-  getPeriodLabel,
+  getStartDateOptions,
+  getTodayStr,
 } from "@/utils/commitment";
 import { Commitment } from "@/contexts/CommitmentsContext";
 
-const DURATION_OPTIONS = [
-  { label: "1 Week", days: 7 },
-  { label: "2 Weeks", days: 14 },
-  { label: "1 Month", days: 30 },
-  { label: "3 Months", days: 90 },
+const DURATION_OPTIONS: { label: string; type: DurationType }[] = [
+  { label: "1 Week", type: "week" },
+  { label: "2 Weeks", type: "2weeks" },
+  { label: "1 Month", type: "month" },
+  { label: "3 Months", type: "3months" },
 ];
 
 const STEP_PRESETS = [5000, 7500, 10000, 15000];
 const CURRENCY_OPTIONS = ["INR", "USD"];
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
-type Step = 0 | 1 | 2 | 3;
+type FormStep = 0 | 1 | 2 | 3;
 
 interface FormData {
   name: string;
   goalType: GoalType;
+  startDate: string;
   daysOfWeek: number[];
+  durationType: DurationType;
   targetPerDay: number;
   customSteps: string;
-  durationDays: number;
   stakeAmount: string;
   currency: string;
   friendName: string;
   friendContact: string;
 }
 
-const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
-
 export default function NewCommitmentScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { addCommitment } = useCommitments();
+  const dateScrollRef = useRef<ScrollView>(null);
 
-  const [step, setStep] = useState<Step>(0);
+  const [step, setStep] = useState<FormStep>(0);
   const [form, setForm] = useState<FormData>({
     name: "",
     goalType: "content",
-    daysOfWeek: [1, 2, 3, 4, 5], // Mon-Fri default
+    startDate: getTodayStr(),
+    daysOfWeek: [1, 2, 3, 4, 5],
+    durationType: "month",
     targetPerDay: 1,
     customSteps: "",
-    durationDays: 30,
     stakeAmount: "1000",
     currency: "INR",
     friendName: "",
@@ -82,7 +90,7 @@ export default function NewCommitmentScreen() {
 
   function toggleDay(day: number) {
     const has = form.daysOfWeek.includes(day);
-    if (has && form.daysOfWeek.length === 1) return; // keep at least 1
+    if (has && form.daysOfWeek.length === 1) return;
     update(
       "daysOfWeek",
       has
@@ -91,16 +99,35 @@ export default function NewCommitmentScreen() {
     );
   }
 
+  const endDate = getEndDateForDuration(form.startDate, form.durationType);
+
+  const mockCommitment = {
+    daysOfWeek: form.daysOfWeek,
+    durationDays: daysBetween(form.startDate, endDate),
+    startDate: form.startDate,
+    endDate,
+    stakeAmount: parseFloat(form.stakeAmount) || 0,
+    currency: form.currency,
+    checkIns: [],
+  } as unknown as Commitment;
+
+  const scheduledDates = getScheduledDates(mockCommitment);
+  const scheduledDays = scheduledDates.length;
+  const perDay =
+    scheduledDays > 0 ? (parseFloat(form.stakeAmount) || 0) / scheduledDays : 0;
+  const firstSubmissionDate = scheduledDates[0] ?? null;
+  const stepGoalFinal = form.customSteps.trim()
+    ? parseInt(form.customSteps) || 0
+    : form.targetPerDay;
+
   function canNext(): boolean {
-    if (step === 0) return form.name.trim().length > 0 && form.daysOfWeek.length > 0;
+    if (step === 0)
+      return form.name.trim().length > 0 && form.startDate.length > 0;
     if (step === 1) {
       if (form.goalType === "steps") {
-        const s = form.customSteps.trim()
-          ? parseInt(form.customSteps)
-          : form.targetPerDay;
-        return s > 0;
+        return stepGoalFinal > 0;
       }
-      return form.targetPerDay > 0;
+      return form.targetPerDay > 0 && form.daysOfWeek.length > 0;
     }
     if (step === 2) return parseFloat(form.stakeAmount) > 0;
     return true;
@@ -110,35 +137,28 @@ export default function NewCommitmentScreen() {
     if (!canNext()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (step < 3) {
-      setStep((s) => (s + 1) as Step);
+      setStep((s) => (s + 1) as FormStep);
     } else {
       handleCreate();
     }
   }
 
   function handleBack() {
-    if (step === 0) {
-      router.back();
-    } else {
-      setStep((s) => (s - 1) as Step);
-    }
+    if (step === 0) router.back();
+    else setStep((s) => (s - 1) as FormStep);
   }
 
   function handleCreate() {
-    const today = getTodayStr();
-    const endDate = addDays(today, form.durationDays - 1);
-    const stepGoal = form.customSteps.trim()
-      ? parseInt(form.customSteps)
-      : form.targetPerDay;
     addCommitment({
       name: form.name.trim(),
       goalType: form.goalType,
       daysOfWeek: form.daysOfWeek,
-      targetPerDay: form.goalType === "steps" ? stepGoal : form.targetPerDay,
-      durationDays: form.durationDays,
+      targetPerDay:
+        form.goalType === "steps" ? stepGoalFinal : form.targetPerDay,
+      durationDays: daysBetween(form.startDate, endDate),
       stakeAmount: parseFloat(form.stakeAmount) || 0,
       currency: form.currency,
-      startDate: today,
+      startDate: form.startDate,
       endDate,
       friendName: form.friendName.trim() || undefined,
       friendContact: form.friendContact.trim() || undefined,
@@ -147,27 +167,9 @@ export default function NewCommitmentScreen() {
     router.replace("/(tabs)");
   }
 
-  // Preview calculation
-  const mockCommitment = {
-    daysOfWeek: form.daysOfWeek,
-    durationDays: form.durationDays,
-    startDate: getTodayStr(),
-    endDate: addDays(getTodayStr(), form.durationDays - 1),
-    stakeAmount: parseFloat(form.stakeAmount) || 0,
-    currency: form.currency,
-  } as unknown as Commitment;
-
-  const scheduledDays = getScheduledDates(mockCommitment).length;
-  const perDay =
-    scheduledDays > 0
-      ? (parseFloat(form.stakeAmount) || 0) / scheduledDays
-      : 0;
-  const stepGoalFinal = form.customSteps.trim()
-    ? parseInt(form.customSteps) || 0
-    : form.targetPerDay;
-
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
-  const STEPS = ["Goal", "Schedule", "Stake", "Review"];
+  const STEP_LABELS = ["Goal", "Schedule", "Stake", "Review"];
+  const startDateOptions = getStartDateOptions(30);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -179,15 +181,12 @@ export default function NewCommitmentScreen() {
         <View
           style={[
             styles.header,
-            {
-              paddingTop: topPadding + 8,
-              borderBottomColor: colors.border,
-            },
+            { paddingTop: topPadding + 8, borderBottomColor: colors.border },
           ]}
         >
           <TouchableOpacity
             onPress={handleBack}
-            style={styles.backBtn}
+            style={styles.headerBtn}
             activeOpacity={0.7}
           >
             <Feather name="arrow-left" size={22} color={colors.foreground} />
@@ -195,20 +194,19 @@ export default function NewCommitmentScreen() {
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
             New Stake
           </Text>
-          <View style={styles.backBtn} />
+          <View style={styles.headerBtn} />
         </View>
 
         {/* Step indicator */}
         <View style={styles.stepsRow}>
-          {STEPS.map((s, i) => (
+          {STEP_LABELS.map((s, i) => (
             <View key={s} style={styles.stepItem}>
               <View
                 style={[
                   styles.stepDot,
                   {
-                    backgroundColor:
-                      i <= step ? colors.primary : colors.border,
-                    opacity: i > step ? 0.4 : 1,
+                    backgroundColor: i <= step ? colors.primary : colors.border,
+                    opacity: i > step ? 0.35 : 1,
                   },
                 ]}
               >
@@ -240,23 +238,23 @@ export default function NewCommitmentScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* STEP 0 — Goal type + name */}
+          {/* ── STEP 0: Goal type + Name + Start date ── */}
           {step === 0 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
                 What are you committing to?
               </Text>
-              <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Choose a type and give your stake a name.
-              </Text>
 
-              {/* Goal type */}
+              {/* Goal type cards */}
               <View style={styles.goalTypeRow}>
                 <TouchableOpacity
-                  onPress={() => update("goalType", "content")}
+                  onPress={() => {
+                    update("goalType", "content");
+                    update("targetPerDay", 1);
+                  }}
                   activeOpacity={0.8}
                   style={[
-                    styles.goalTypeCard,
+                    styles.goalCard,
                     {
                       backgroundColor:
                         form.goalType === "content"
@@ -272,7 +270,7 @@ export default function NewCommitmentScreen() {
                 >
                   <View
                     style={[
-                      styles.goalTypeIconBox,
+                      styles.goalCardIcon,
                       {
                         backgroundColor:
                           form.goalType === "content"
@@ -293,7 +291,7 @@ export default function NewCommitmentScreen() {
                   </View>
                   <Text
                     style={[
-                      styles.goalTypeTitle,
+                      styles.goalCardTitle,
                       {
                         color:
                           form.goalType === "content"
@@ -305,10 +303,13 @@ export default function NewCommitmentScreen() {
                     Content Creation
                   </Text>
                   <Text
-                    style={[styles.goalTypeDesc, { color: colors.mutedForeground }]}
+                    style={[
+                      styles.goalCardProof,
+                      { color: colors.mutedForeground },
+                    ]}
                   >
-                    Post reels, videos, or any public content. Share the link to
-                    claim.
+                    Proof required: paste the public URL of your published post
+                    (Instagram, YouTube, TikTok, etc.) before 11:59 PM.
                   </Text>
                 </TouchableOpacity>
 
@@ -319,7 +320,7 @@ export default function NewCommitmentScreen() {
                   }}
                   activeOpacity={0.8}
                   style={[
-                    styles.goalTypeCard,
+                    styles.goalCard,
                     {
                       backgroundColor:
                         form.goalType === "steps"
@@ -335,7 +336,7 @@ export default function NewCommitmentScreen() {
                 >
                   <View
                     style={[
-                      styles.goalTypeIconBox,
+                      styles.goalCardIcon,
                       {
                         backgroundColor:
                           form.goalType === "steps"
@@ -356,7 +357,7 @@ export default function NewCommitmentScreen() {
                   </View>
                   <Text
                     style={[
-                      styles.goalTypeTitle,
+                      styles.goalCardTitle,
                       {
                         color:
                           form.goalType === "steps"
@@ -368,9 +369,13 @@ export default function NewCommitmentScreen() {
                     Daily Step Count
                   </Text>
                   <Text
-                    style={[styles.goalTypeDesc, { color: colors.mutedForeground }]}
+                    style={[
+                      styles.goalCardProof,
+                      { color: colors.mutedForeground },
+                    ]}
                   >
-                    Hit your daily step goal. Log steps or sync your health app.
+                    Proof required: log your step count before 11:59 PM. You
+                    must hit your daily goal to qualify for a refund.
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -390,35 +395,88 @@ export default function NewCommitmentScreen() {
                 ]}
                 placeholder={
                   form.goalType === "content"
-                    ? "e.g. Post daily reels in June"
+                    ? "e.g. Post reels every weekday in June"
                     : "e.g. Walk 10k steps every day"
                 }
                 placeholderTextColor={colors.mutedForeground}
                 value={form.name}
                 onChangeText={(v) => update("name", v)}
                 maxLength={80}
-                returnKeyType="next"
+                returnKeyType="done"
               />
+
+              {/* Start date */}
+              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+                Start date
+              </Text>
+              <ScrollView
+                ref={dateScrollRef}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.datePillsRow}
+              >
+                {startDateOptions.map((dateStr) => {
+                  const selected = form.startDate === dateStr;
+                  const opt = formatStartDateOption(dateStr);
+                  return (
+                    <TouchableOpacity
+                      key={dateStr}
+                      onPress={() => update("startDate", dateStr)}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.datePill,
+                        {
+                          backgroundColor: selected
+                            ? colors.primary
+                            : colors.card,
+                          borderColor: selected
+                            ? colors.primary
+                            : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.datePillTop,
+                          {
+                            color: selected ? "#000" : colors.mutedForeground,
+                          },
+                        ]}
+                      >
+                        {opt.line1}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.datePillBottom,
+                          { color: selected ? "#000" : colors.foreground },
+                        ]}
+                      >
+                        {opt.line2}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
           )}
 
-          {/* STEP 1 — Schedule */}
+          {/* ── STEP 1: Schedule ── */}
           {step === 1 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
                 Set your schedule
               </Text>
               <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Which days will you do this, and what's your daily target?
+                Pick which days and how long your challenge runs.
               </Text>
 
               {/* Days of week */}
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Days of the week
+                Active days
               </Text>
               <View style={styles.daysRow}>
                 {ALL_DAYS.map((d) => {
-                  const selected = form.daysOfWeek.includes(d);
+                  const sel = form.daysOfWeek.includes(d);
                   return (
                     <TouchableOpacity
                       key={d}
@@ -427,19 +485,15 @@ export default function NewCommitmentScreen() {
                       style={[
                         styles.dayChip,
                         {
-                          backgroundColor: selected
-                            ? colors.primary
-                            : colors.card,
-                          borderColor: selected ? colors.primary : colors.border,
+                          backgroundColor: sel ? colors.primary : colors.card,
+                          borderColor: sel ? colors.primary : colors.border,
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.dayChipText,
-                          {
-                            color: selected ? "#000" : colors.mutedForeground,
-                          },
+                          { color: sel ? "#000" : colors.mutedForeground },
                         ]}
                       >
                         {getDayName(d)}
@@ -454,51 +508,62 @@ export default function NewCommitmentScreen() {
                 Challenge duration
               </Text>
               <View style={styles.durationGrid}>
-                {DURATION_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.days}
-                    onPress={() => update("durationDays", opt.days)}
-                    activeOpacity={0.8}
-                    style={[
-                      styles.durationBtn,
-                      {
-                        backgroundColor:
-                          form.durationDays === opt.days
+                {DURATION_OPTIONS.map((opt) => {
+                  const sel = form.durationType === opt.type;
+                  const previewEnd = getEndDateForDuration(
+                    form.startDate,
+                    opt.type
+                  );
+                  const actualDays = daysBetween(form.startDate, previewEnd);
+                  return (
+                    <TouchableOpacity
+                      key={opt.type}
+                      onPress={() => update("durationType", opt.type)}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.durationBtn,
+                        {
+                          backgroundColor: sel
                             ? colors.primary + "22"
                             : colors.card,
-                        borderColor:
-                          form.durationDays === opt.days
-                            ? colors.primary
-                            : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.durationText,
-                        {
-                          color:
-                            form.durationDays === opt.days
-                              ? colors.primary
-                              : colors.mutedForeground,
-                          fontFamily:
-                            form.durationDays === opt.days
-                              ? "Inter_600SemiBold"
-                              : "Inter_400Regular",
+                          borderColor: sel ? colors.primary : colors.border,
+                          borderWidth: sel ? 2 : 1,
                         },
                       ]}
                     >
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.durationLabel,
+                          {
+                            color: sel ? colors.primary : colors.foreground,
+                            fontFamily: sel
+                              ? "Inter_600SemiBold"
+                              : "Inter_500Medium",
+                          },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.durationSub,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {actualDays} days
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Daily target */}
               {form.goalType === "content" && (
                 <>
-                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                    Posts per committed day
+                  <Text
+                    style={[styles.fieldLabel, { color: colors.mutedForeground }]}
+                  >
+                    Posts per active day
                   </Text>
                   <View style={styles.countRow}>
                     {[1, 2, 3].map((n) => (
@@ -517,6 +582,7 @@ export default function NewCommitmentScreen() {
                               form.targetPerDay === n
                                 ? colors.primary
                                 : colors.border,
+                            borderWidth: form.targetPerDay === n ? 2 : 1,
                           },
                         ]}
                       >
@@ -541,50 +607,49 @@ export default function NewCommitmentScreen() {
 
               {form.goalType === "steps" && (
                 <>
-                  <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+                  <Text
+                    style={[styles.fieldLabel, { color: colors.mutedForeground }]}
+                  >
                     Daily step goal
                   </Text>
                   <View style={styles.stepPresetsGrid}>
-                    {STEP_PRESETS.map((n) => (
-                      <TouchableOpacity
-                        key={n}
-                        onPress={() => {
-                          update("targetPerDay", n);
-                          update("customSteps", "");
-                        }}
-                        activeOpacity={0.8}
-                        style={[
-                          styles.stepPresetBtn,
-                          {
-                            backgroundColor:
-                              form.targetPerDay === n &&
-                              !form.customSteps.trim()
+                    {STEP_PRESETS.map((n) => {
+                      const sel =
+                        form.targetPerDay === n && !form.customSteps.trim();
+                      return (
+                        <TouchableOpacity
+                          key={n}
+                          onPress={() => {
+                            update("targetPerDay", n);
+                            update("customSteps", "");
+                          }}
+                          activeOpacity={0.8}
+                          style={[
+                            styles.stepPresetBtn,
+                            {
+                              backgroundColor: sel
                                 ? colors.primary + "22"
                                 : colors.card,
-                            borderColor:
-                              form.targetPerDay === n &&
-                              !form.customSteps.trim()
-                                ? colors.primary
-                                : colors.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.stepPresetText,
-                            {
-                              color:
-                                form.targetPerDay === n &&
-                                !form.customSteps.trim()
-                                  ? colors.primary
-                                  : colors.mutedForeground,
+                              borderColor: sel ? colors.primary : colors.border,
+                              borderWidth: sel ? 2 : 1,
                             },
                           ]}
                         >
-                          {n.toLocaleString("en-IN")}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.stepPresetText,
+                              {
+                                color: sel
+                                  ? colors.primary
+                                  : colors.mutedForeground,
+                              },
+                            ]}
+                          >
+                            {n.toLocaleString("en-IN")}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                   <TextInput
                     style={[
@@ -597,48 +662,153 @@ export default function NewCommitmentScreen() {
                         color: colors.foreground,
                       },
                     ]}
-                    placeholder="Custom step count"
+                    placeholder="Or enter a custom step count"
                     placeholderTextColor={colors.mutedForeground}
                     value={form.customSteps}
-                    onChangeText={(v) => update("customSteps", v.replace(/[^0-9]/g, ""))}
+                    onChangeText={(v) =>
+                      update("customSteps", v.replace(/[^0-9]/g, ""))
+                    }
                     keyboardType="number-pad"
                     returnKeyType="done"
                   />
                 </>
               )}
 
-              {/* Schedule preview */}
+              {/* Schedule summary */}
               {form.daysOfWeek.length > 0 && (
                 <View
                   style={[
-                    styles.schedulePreview,
-                    { backgroundColor: colors.secondary, borderColor: colors.border },
+                    styles.scheduleSummary,
+                    { backgroundColor: colors.card, borderColor: colors.border },
                   ]}
                 >
-                  <Feather name="calendar" size={14} color={colors.mutedForeground} />
-                  <Text style={[styles.schedulePreviewText, { color: colors.mutedForeground }]}>
-                    <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
-                      {scheduledDays}
-                    </Text>{" "}
-                    committed days over{" "}
-                    <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
-                      {getPeriodLabel(form.durationDays)}
-                    </Text>{" "}
-                    ({formatDaysOfWeek(form.daysOfWeek)})
-                  </Text>
+                  <View style={styles.scheduleSummaryRow}>
+                    <Feather
+                      name="calendar"
+                      size={14}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.scheduleSummaryLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Starts
+                    </Text>
+                    <Text
+                      style={[
+                        styles.scheduleSummaryVal,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {formatDate(form.startDate)}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.scheduleSummaryDivider,
+                      { backgroundColor: colors.border },
+                    ]}
+                  />
+                  <View style={styles.scheduleSummaryRow}>
+                    <Feather
+                      name="flag"
+                      size={14}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.scheduleSummaryLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Ends
+                    </Text>
+                    <Text
+                      style={[
+                        styles.scheduleSummaryVal,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {formatDate(endDate)}
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.scheduleSummaryDivider,
+                      { backgroundColor: colors.border },
+                    ]}
+                  />
+                  <View style={styles.scheduleSummaryRow}>
+                    <Feather
+                      name="check-square"
+                      size={14}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.scheduleSummaryLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Committed days
+                    </Text>
+                    <Text
+                      style={[
+                        styles.scheduleSummaryVal,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      {scheduledDays} days ({formatDaysOfWeek(form.daysOfWeek)})
+                    </Text>
+                  </View>
+                  {firstSubmissionDate && (
+                    <>
+                      <View
+                        style={[
+                          styles.scheduleSummaryDivider,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
+                      <View style={styles.scheduleSummaryRow}>
+                        <Feather
+                          name="clock"
+                          size={14}
+                          color={colors.accent}
+                        />
+                        <Text
+                          style={[
+                            styles.scheduleSummaryLabel,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          First submission
+                        </Text>
+                        <Text
+                          style={[
+                            styles.scheduleSummaryVal,
+                            { color: colors.accent },
+                          ]}
+                        >
+                          {formatDate(firstSubmissionDate)} by 11:59 PM
+                        </Text>
+                      </View>
+                    </>
+                  )}
                 </View>
               )}
             </View>
           )}
 
-          {/* STEP 2 — Stake */}
+          {/* ── STEP 2: Stake ── */}
           {step === 2 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
                 Put your money down
               </Text>
               <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Show up and get it back, one day at a time.
+                Show up, submit proof, and get it back day by day.
               </Text>
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
@@ -658,9 +828,8 @@ export default function NewCommitmentScreen() {
                             ? colors.primary + "22"
                             : colors.card,
                         borderColor:
-                          form.currency === cur
-                            ? colors.primary
-                            : colors.border,
+                          form.currency === cur ? colors.primary : colors.border,
+                        borderWidth: form.currency === cur ? 2 : 1,
                       },
                     ]}
                   >
@@ -704,38 +873,44 @@ export default function NewCommitmentScreen() {
                 returnKeyType="done"
               />
 
-              {scheduledDays > 0 &&
-                parseFloat(form.stakeAmount) > 0 && (
-                  <View
-                    style={[
-                      styles.refundPreview,
-                      {
-                        backgroundColor: colors.primary + "14",
-                        borderColor: colors.primary + "33",
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name="rotate-ccw"
-                      size={15}
-                      color={colors.primary}
-                    />
-                    <View style={styles.refundPreviewText}>
-                      <Text style={[styles.refundAmount, { color: colors.primary }]}>
-                        {formatCurrency(perDay, form.currency)} refunded per day
-                      </Text>
-                      <Text style={[styles.refundSub, { color: colors.mutedForeground }]}>
-                        across {scheduledDays} committed days
-                      </Text>
-                    </View>
+              {scheduledDays > 0 && parseFloat(form.stakeAmount) > 0 && (
+                <View
+                  style={[
+                    styles.refundChip,
+                    {
+                      backgroundColor: colors.primary + "14",
+                      borderColor: colors.primary + "33",
+                    },
+                  ]}
+                >
+                  <Feather name="rotate-ccw" size={15} color={colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.refundChipMain,
+                        { color: colors.primary },
+                      ]}
+                    >
+                      {formatCurrency(perDay, form.currency)} refunded per day
+                    </Text>
+                    <Text
+                      style={[
+                        styles.refundChipSub,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      {formatCurrency(parseFloat(form.stakeAmount), form.currency)}{" "}
+                      ÷ {scheduledDays} committed days
+                    </Text>
                   </View>
-                )}
+                </View>
+              )}
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
                 Forfeit to a friend (optional)
               </Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Missed days go to them instead of being lost.
+                Missed days are sent to them instead of being lost.
               </Text>
               <TextInput
                 style={[
@@ -771,29 +946,73 @@ export default function NewCommitmentScreen() {
             </View>
           )}
 
-          {/* STEP 3 — Review */}
+          {/* ── STEP 3: Review ── */}
           {step === 3 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
                 Review your stake
               </Text>
-              <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Everything look right? Let's lock it in.
-              </Text>
 
+              {/* Date range banner */}
+              <View
+                style={[
+                  styles.dateBanner,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <View style={styles.dateBannerSide}>
+                  <Text
+                    style={[
+                      styles.dateBannerLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Starts
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dateBannerDate,
+                      { color: colors.foreground },
+                    ]}
+                  >
+                    {formatDate(form.startDate)}
+                  </Text>
+                </View>
+                <Feather
+                  name="arrow-right"
+                  size={16}
+                  color={colors.mutedForeground}
+                />
+                <View style={styles.dateBannerSide}>
+                  <Text
+                    style={[
+                      styles.dateBannerLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Ends
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dateBannerDate,
+                      { color: colors.foreground },
+                    ]}
+                  >
+                    {formatDate(endDate)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Review rows */}
               <View
                 style={[
                   styles.reviewCard,
                   { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
-                <ReviewRow
-                  label="Commitment"
-                  value={form.name}
-                  colors={colors}
-                />
-                <Divider colors={colors} />
-                <ReviewRow
+                <RRow label="Commitment" value={form.name} colors={colors} />
+                <RDiv colors={colors} />
+                <RRow
                   label="Type"
                   value={
                     form.goalType === "content"
@@ -802,52 +1021,45 @@ export default function NewCommitmentScreen() {
                   }
                   colors={colors}
                 />
-                <Divider colors={colors} />
-                <ReviewRow
-                  label="Days"
+                <RDiv colors={colors} />
+                <RRow
+                  label="Schedule"
                   value={formatDaysOfWeek(form.daysOfWeek)}
                   colors={colors}
                 />
-                <Divider colors={colors} />
-                <ReviewRow
+                <RDiv colors={colors} />
+                <RRow
                   label="Duration"
-                  value={getPeriodLabel(form.durationDays)}
+                  value={`${getDurationLabel(form.durationType)} (${daysBetween(form.startDate, endDate)} calendar days)`}
                   colors={colors}
                 />
-                <Divider colors={colors} />
-                <ReviewRow
-                  label="Total days"
-                  value={`${scheduledDays} committed days`}
+                <RDiv colors={colors} />
+                <RRow
+                  label="Committed days"
+                  value={`${scheduledDays} days`}
                   colors={colors}
                 />
-                <Divider colors={colors} />
-                {form.goalType === "steps" && (
+                <RDiv colors={colors} />
+                {form.goalType === "steps" ? (
                   <>
-                    <ReviewRow
-                      label="Daily goal"
+                    <RRow
+                      label="Daily step goal"
                       value={`${stepGoalFinal.toLocaleString("en-IN")} steps`}
                       colors={colors}
                     />
-                    <Divider colors={colors} />
+                    <RDiv colors={colors} />
                   </>
-                )}
-                {form.goalType === "content" && (
+                ) : (
                   <>
-                    <ReviewRow
-                      label="Daily posts"
+                    <RRow
+                      label="Posts per day"
                       value={`${form.targetPerDay} post${form.targetPerDay > 1 ? "s" : ""}`}
                       colors={colors}
                     />
-                    <Divider colors={colors} />
-                    <ReviewRow
-                      label="Proof required"
-                      value="Public post URL"
-                      colors={colors}
-                    />
-                    <Divider colors={colors} />
+                    <RDiv colors={colors} />
                   </>
                 )}
-                <ReviewRow
+                <RRow
                   label="Total staked"
                   value={formatCurrency(
                     parseFloat(form.stakeAmount) || 0,
@@ -856,8 +1068,8 @@ export default function NewCommitmentScreen() {
                   colors={colors}
                   valueColor={colors.accent}
                 />
-                <Divider colors={colors} />
-                <ReviewRow
+                <RDiv colors={colors} />
+                <RRow
                   label="Refund per day"
                   value={formatCurrency(perDay, form.currency)}
                   colors={colors}
@@ -865,8 +1077,8 @@ export default function NewCommitmentScreen() {
                 />
                 {form.friendName ? (
                   <>
-                    <Divider colors={colors} />
-                    <ReviewRow
+                    <RDiv colors={colors} />
+                    <RRow
                       label="Forfeit to"
                       value={`${form.friendName}${form.friendContact ? ` · ${form.friendContact}` : ""}`}
                       colors={colors}
@@ -875,23 +1087,107 @@ export default function NewCommitmentScreen() {
                 ) : null}
               </View>
 
+              {/* First submission callout */}
+              {firstSubmissionDate && (
+                <View
+                  style={[
+                    styles.firstSubmitBox,
+                    {
+                      backgroundColor: colors.accent + "14",
+                      borderColor: colors.accent + "55",
+                    },
+                  ]}
+                >
+                  <Feather name="clock" size={16} color={colors.accent} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.firstSubmitTitle,
+                        { color: colors.accent },
+                      ]}
+                    >
+                      First submission due
+                    </Text>
+                    <Text
+                      style={[
+                        styles.firstSubmitDate,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {formatDate(firstSubmissionDate)} by 11:59 PM
+                    </Text>
+                    <Text
+                      style={[
+                        styles.firstSubmitWhat,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      {form.goalType === "content"
+                        ? "Paste the public URL of your published post (Instagram reel, YouTube Short, TikTok, etc.)"
+                        : `Log at least ${stepGoalFinal.toLocaleString("en-IN")} steps from your health app or manually`}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Proof rules box */}
               <View
                 style={[
-                  styles.infoBox,
-                  {
-                    backgroundColor: colors.accent + "14",
-                    borderColor: colors.accent + "33",
-                  },
+                  styles.proofRulesBox,
+                  { backgroundColor: colors.secondary, borderColor: colors.border },
                 ]}
               >
-                <Feather name="info" size={14} color={colors.accent} />
                 <Text
-                  style={[styles.infoText, { color: colors.mutedForeground }]}
+                  style={[
+                    styles.proofRulesTitle,
+                    { color: colors.foreground },
+                  ]}
                 >
-                  {form.goalType === "content"
-                    ? "After posting, submit your public link before 11:59 PM to claim your refund. No link = no refund for that day."
-                    : "Log your steps before 11:59 PM. You must hit your daily goal to qualify for the refund."}
+                  How refunds work
                 </Text>
+                {form.goalType === "content" ? (
+                  <>
+                    <ProofRule
+                      icon="check-circle"
+                      color={colors.primary}
+                      text={`Submit a valid public post URL on each active day → get back ${formatCurrency(perDay, form.currency)}`}
+                      colors={colors}
+                    />
+                    <ProofRule
+                      icon="x-circle"
+                      color={colors.danger}
+                      text={`Miss a day or no valid link by 11:59 PM → ${formatCurrency(perDay, form.currency)} forfeited${form.friendName ? ` to ${form.friendName}` : ""}`}
+                      colors={colors}
+                    />
+                    <ProofRule
+                      icon="info"
+                      color={colors.mutedForeground}
+                      text="The link must be publicly accessible (not private/stories)"
+                      colors={colors}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <ProofRule
+                      icon="check-circle"
+                      color={colors.primary}
+                      text={`Log ${stepGoalFinal.toLocaleString("en-IN")}+ steps by 11:59 PM → get back ${formatCurrency(perDay, form.currency)}`}
+                      colors={colors}
+                    />
+                    <ProofRule
+                      icon="x-circle"
+                      color={colors.danger}
+                      text={`Steps below goal or no log by 11:59 PM → ${formatCurrency(perDay, form.currency)} forfeited${form.friendName ? ` to ${form.friendName}` : ""}`}
+                      colors={colors}
+                    />
+                    <ProofRule
+                      icon="smartphone"
+                      color={colors.mutedForeground}
+                      text="Health app auto-sync available in full build — manual entry for now"
+                      colors={colors}
+                    />
+                  </>
+                )}
               </View>
             </View>
           )}
@@ -903,8 +1199,7 @@ export default function NewCommitmentScreen() {
             styles.footer,
             {
               borderTopColor: colors.border,
-              paddingBottom:
-                Platform.OS === "web" ? 34 : insets.bottom + 16,
+              paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 16,
             },
           ]}
         >
@@ -914,9 +1209,7 @@ export default function NewCommitmentScreen() {
             style={[
               styles.nextBtn,
               {
-                backgroundColor: canNext()
-                  ? colors.primary
-                  : colors.secondary,
+                backgroundColor: canNext() ? colors.primary : colors.secondary,
                 opacity: canNext() ? 1 : 0.5,
               },
             ]}
@@ -925,9 +1218,7 @@ export default function NewCommitmentScreen() {
             <Text
               style={[
                 styles.nextBtnText,
-                {
-                  color: canNext() ? "#000" : colors.mutedForeground,
-                },
+                { color: canNext() ? "#000" : colors.mutedForeground },
               ]}
             >
               {step === 3 ? "Start Stake" : "Continue"}
@@ -944,7 +1235,7 @@ export default function NewCommitmentScreen() {
   );
 }
 
-function ReviewRow({
+function RRow({
   label,
   value,
   colors,
@@ -956,16 +1247,11 @@ function ReviewRow({
   valueColor?: string;
 }) {
   return (
-    <View style={rrStyles.row}>
-      <Text style={[rrStyles.label, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
+    <View style={rrS.row}>
+      <Text style={[rrS.label, { color: colors.mutedForeground }]}>{label}</Text>
       <Text
-        style={[
-          rrStyles.value,
-          { color: valueColor ?? colors.foreground },
-        ]}
-        numberOfLines={2}
+        style={[rrS.value, { color: valueColor ?? colors.foreground }]}
+        numberOfLines={3}
       >
         {value}
       </Text>
@@ -973,13 +1259,30 @@ function ReviewRow({
   );
 }
 
-function Divider({ colors }: { colors: any }) {
+function RDiv({ colors }: { colors: any }) {
+  return <View style={[rrS.div, { backgroundColor: colors.border }]} />;
+}
+
+function ProofRule({
+  icon,
+  color,
+  text,
+  colors,
+}: {
+  icon: string;
+  color: string;
+  text: string;
+  colors: any;
+}) {
   return (
-    <View style={[rrStyles.divider, { backgroundColor: colors.border }]} />
+    <View style={prS.row}>
+      <Feather name={icon as any} size={13} color={color} style={prS.icon} />
+      <Text style={[prS.text, { color: colors.mutedForeground }]}>{text}</Text>
+    </View>
   );
 }
 
-const rrStyles = StyleSheet.create({
+const rrS = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -987,14 +1290,25 @@ const rrStyles = StyleSheet.create({
     paddingVertical: 11,
     gap: 16,
   },
-  label: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  label: { fontSize: 13, fontFamily: "Inter_400Regular", flexShrink: 0 },
   value: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
     textAlign: "right",
     flex: 1,
   },
-  divider: { height: 1 },
+  div: { height: 1 },
+});
+
+const prS = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  icon: { marginTop: 1 },
+  text: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1, lineHeight: 18 },
 });
 
 const styles = StyleSheet.create({
@@ -1008,12 +1322,12 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  backBtn: { width: 40, alignItems: "center" },
+  headerBtn: { width: 40, alignItems: "center" },
   headerTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   stepsRow: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
   },
   stepItem: { flex: 1, alignItems: "center", gap: 4 },
   stepDot: {
@@ -1025,27 +1339,23 @@ const styles = StyleSheet.create({
   },
   stepNum: { fontSize: 11, color: "#000", fontFamily: "Inter_600SemiBold" },
   stepLabel: { fontSize: 10 },
-  scroll: { paddingHorizontal: 20, paddingBottom: 24 },
+  scroll: { paddingHorizontal: 20, paddingBottom: 32 },
   stepContent: { gap: 12, paddingTop: 8 },
   stepTitle: { fontSize: 22, fontFamily: "Inter_700Bold", marginBottom: 2 },
   stepSub: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
     lineHeight: 19,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   fieldLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    marginTop: 4,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  fieldHint: {
     fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    marginTop: -6,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: 4,
   },
+  fieldHint: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: -6 },
   input: {
     borderWidth: 1,
     borderRadius: 12,
@@ -1060,33 +1370,43 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     textAlign: "center",
   },
-  goalTypeRow: { gap: 12 },
-  goalTypeCard: {
-    borderRadius: 14,
-    padding: 16,
-    gap: 8,
-  },
-  goalTypeIconBox: {
+  // Goal type
+  goalTypeRow: { gap: 10 },
+  goalCard: { borderRadius: 14, padding: 16, gap: 8 },
+  goalCardIcon: {
     width: 44,
     height: 44,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  goalTypeTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
-  goalTypeDesc: {
+  goalCardTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  goalCardProof: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 17,
   },
-  daysRow: {
-    flexDirection: "row",
-    gap: 6,
-    flexWrap: "wrap",
+  // Start date
+  datePillsRow: { gap: 8, paddingVertical: 4 },
+  datePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    minWidth: 62,
   },
+  datePillTop: {
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+  },
+  datePillBottom: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginTop: 2,
+  },
+  // Days of week
+  daysRow: { flexDirection: "row", gap: 6, flexWrap: "wrap" },
   dayChip: {
     paddingHorizontal: 12,
     paddingVertical: 9,
@@ -1094,96 +1414,121 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dayChipText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  // Duration
   durationGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   durationBtn: {
-    paddingHorizontal: 18,
+    paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    borderWidth: 1,
+    alignItems: "center",
+    minWidth: "45%",
   },
-  durationText: { fontSize: 13 },
+  durationLabel: { fontSize: 14 },
+  durationSub: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 2,
+  },
+  // Posts per day
   countRow: { flexDirection: "row", gap: 10 },
   countBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    borderWidth: 1,
     alignItems: "center",
   },
   countBtnText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  stepPresetsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
+  // Step presets
+  stepPresetsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   stepPresetBtn: {
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 10,
-    borderWidth: 1,
   },
   stepPresetText: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  schedulePreview: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    borderRadius: 10,
+  // Schedule summary
+  scheduleSummary: {
+    borderRadius: 12,
     borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    gap: 0,
   },
-  schedulePreviewText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-    lineHeight: 18,
+  scheduleSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
   },
+  scheduleSummaryLabel: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
+  scheduleSummaryVal: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  scheduleSummaryDivider: { height: 1 },
+  // Currency
   currencyRow: { flexDirection: "row", gap: 10 },
   currencyBtn: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: 10,
-    borderWidth: 1,
     alignItems: "center",
   },
   currencyText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  refundPreview: {
+  // Refund chip
+  refundChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    marginTop: -2,
   },
-  refundPreviewText: { flex: 1 },
-  refundAmount: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-  refundSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 1 },
+  refundChipMain: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  refundChipSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  // Review
+  dateBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+  },
+  dateBannerSide: { flex: 1, alignItems: "center", gap: 4 },
+  dateBannerLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  dateBannerDate: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   reviewCard: {
     borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 4,
-    marginBottom: 12,
   },
-  infoBox: {
+  firstSubmitBox: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 10,
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  infoText: {
+  firstSubmitTitle: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  firstSubmitDate: { fontSize: 15, fontFamily: "Inter_700Bold", marginTop: 2 },
+  firstSubmitWhat: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
-    flex: 1,
-    lineHeight: 18,
+    lineHeight: 17,
+    marginTop: 4,
   },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
+  proofRulesBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    gap: 8,
   },
+  proofRulesTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 4,
+  },
+  footer: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
   nextBtn: {
     flexDirection: "row",
     alignItems: "center",
