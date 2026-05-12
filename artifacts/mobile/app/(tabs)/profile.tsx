@@ -13,12 +13,17 @@ import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCurrency,
-  getTotalEarned,
-  isExpired,
-  getSuccessRate,
-  goalTypeLabel,
-  getPeriodLabel,
   formatDate,
+  formatDaysOfWeek,
+  getAmountAtRisk,
+  getPeriodLabel,
+  getRefundPerDay,
+  getSuccessRate,
+  getTotalCommittedDays,
+  getTotalRefunded,
+  getVerifiedCheckIns,
+  goalTypeLabel,
+  isExpired,
 } from "@/utils/commitment";
 
 export default function ProfileScreen() {
@@ -27,9 +32,13 @@ export default function ProfileScreen() {
   const { commitments } = useCommitments();
 
   const totalStaked = commitments.reduce((s, c) => s + c.stakeAmount, 0);
-  const totalEarned = commitments.reduce((s, c) => s + getTotalEarned(c), 0);
-  const totalLost = totalStaked - totalEarned;
-  const successRate =
+  const totalRefunded = commitments.reduce((s, c) => s + getTotalRefunded(c), 0);
+  const totalAtRisk = commitments.reduce((s, c) => s + getAmountAtRisk(c), 0);
+  const totalCheckIns = commitments.reduce(
+    (s, c) => s + getVerifiedCheckIns(c).length,
+    0
+  );
+  const avgRate =
     commitments.length > 0
       ? Math.round(
           commitments.reduce((s, c) => s + getSuccessRate(c), 0) /
@@ -37,8 +46,7 @@ export default function ProfileScreen() {
         )
       : 0;
 
-  const pastCommitments = commitments.filter(isExpired);
-
+  const past = commitments.filter(isExpired);
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
   return (
@@ -57,47 +65,57 @@ export default function ProfileScreen() {
 
         {commitments.length === 0 ? (
           <View style={styles.empty}>
-            <Feather name="bar-chart-2" size={36} color={colors.mutedForeground} />
+            <Feather
+              name="bar-chart-2"
+              size={36}
+              color={colors.mutedForeground}
+            />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              No data yet
+              Nothing yet
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Your earnings and stats will appear here once you create commitments.
+              Create a stake and your stats will appear here.
             </Text>
           </View>
         ) : (
           <>
-            {/* Big stats */}
-            <View style={styles.bigStats}>
+            {/* Hero stats */}
+            <View style={styles.heroRow}>
               <View
                 style={[
-                  styles.bigStat,
-                  { backgroundColor: colors.primary + "14", borderColor: colors.primary + "33" },
+                  styles.heroCard,
+                  {
+                    backgroundColor: colors.primary + "14",
+                    borderColor: colors.primary + "33",
+                  },
                 ]}
               >
-                <Text style={[styles.bigStatValue, { color: colors.primary }]}>
-                  {formatCurrency(totalEarned)}
+                <Text style={[styles.heroValue, { color: colors.primary }]}>
+                  {formatCurrency(totalRefunded)}
                 </Text>
-                <Text style={[styles.bigStatLabel, { color: colors.mutedForeground }]}>
-                  Total Earned
+                <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
+                  Total Refunded
                 </Text>
               </View>
               <View
                 style={[
-                  styles.bigStat,
-                  { backgroundColor: colors.accent + "14", borderColor: colors.accent + "33" },
+                  styles.heroCard,
+                  {
+                    backgroundColor: colors.accent + "14",
+                    borderColor: colors.accent + "33",
+                  },
                 ]}
               >
-                <Text style={[styles.bigStatValue, { color: colors.accent }]}>
-                  {formatCurrency(totalStaked)}
+                <Text style={[styles.heroValue, { color: colors.accent }]}>
+                  {formatCurrency(totalAtRisk)}
                 </Text>
-                <Text style={[styles.bigStatLabel, { color: colors.mutedForeground }]}>
-                  Total Staked
+                <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
+                  At Risk
                 </Text>
               </View>
             </View>
 
-            {/* Secondary stats */}
+            {/* Detail stats */}
             <View
               style={[
                 styles.statsCard,
@@ -105,63 +123,104 @@ export default function ProfileScreen() {
               ]}
             >
               <StatRow
-                label="Total check-ins"
-                value={commitments.reduce((s, c) => s + c.checkIns.length, 0).toString()}
+                icon="layers"
+                label="Total staked"
+                value={formatCurrency(totalStaked)}
                 colors={colors}
-                icon="check-circle"
               />
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Div colors={colors} />
               <StatRow
+                icon="check-circle"
+                label="Total check-ins"
+                value={totalCheckIns.toString()}
+                colors={colors}
+              />
+              <Div colors={colors} />
+              <StatRow
+                icon="target"
                 label="Commitments"
                 value={commitments.length.toString()}
                 colors={colors}
-                icon="target"
               />
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <Div colors={colors} />
               <StatRow
-                label="Success rate"
-                value={`${successRate}%`}
-                colors={colors}
                 icon="trending-up"
-                valueColor={successRate >= 70 ? colors.primary : colors.accent}
-              />
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <StatRow
-                label="Amount at risk"
-                value={formatCurrency(Math.max(0, totalLost))}
+                label="Avg success rate"
+                value={`${avgRate}%`}
                 colors={colors}
-                icon="alert-circle"
-                valueColor={totalLost > 0 ? colors.danger : colors.primary}
+                valueColor={
+                  avgRate >= 70 ? colors.primary : colors.accent
+                }
               />
             </View>
 
             {/* History */}
-            {pastCommitments.length > 0 && (
+            {past.length > 0 && (
               <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                <Text
+                  style={[styles.sectionTitle, { color: colors.foreground }]}
+                >
                   History
                 </Text>
-                {pastCommitments.map((c) => {
-                  const earned = getTotalEarned(c);
+                {past.map((c) => {
+                  const refunded = getTotalRefunded(c);
+                  const total = getTotalCommittedDays(c);
+                  const verified = getVerifiedCheckIns(c).length;
                   const rate = getSuccessRate(c);
+                  const perDay = getRefundPerDay(c);
+
                   return (
                     <View
                       key={c.id}
                       style={[
                         styles.historyCard,
-                        { backgroundColor: colors.card, borderColor: colors.border },
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
                       ]}
                     >
-                      <View style={styles.historyHeader}>
-                        <Text
-                          style={[styles.historyName, { color: colors.foreground }]}
-                          numberOfLines={1}
-                        >
-                          {c.name}
-                        </Text>
+                      <View style={styles.historyTop}>
+                        <View style={styles.historyLeft}>
+                          <View
+                            style={[
+                              styles.historyIcon,
+                              { backgroundColor: colors.secondary },
+                            ]}
+                          >
+                            <Feather
+                              name={
+                                c.goalType === "content" ? "video" : "activity"
+                              }
+                              size={14}
+                              color={colors.mutedForeground}
+                            />
+                          </View>
+                          <View>
+                            <Text
+                              style={[
+                                styles.historyName,
+                                { color: colors.foreground },
+                              ]}
+                              numberOfLines={1}
+                            >
+                              {c.name}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.historyMeta,
+                                { color: colors.mutedForeground },
+                              ]}
+                            >
+                              {goalTypeLabel(c.goalType)} ·{" "}
+                              {formatDaysOfWeek(c.daysOfWeek)} ·{" "}
+                              {getPeriodLabel(c.durationDays)}
+                            </Text>
+                          </View>
+                        </View>
                         <Text
                           style={[
-                            styles.historyEarned,
+                            styles.historyRefund,
                             {
                               color:
                                 rate >= 100
@@ -172,14 +231,36 @@ export default function ProfileScreen() {
                             },
                           ]}
                         >
-                          {formatCurrency(earned)}
+                          {formatCurrency(refunded, c.currency)}
                         </Text>
                       </View>
-                      <Text style={[styles.historyMeta, { color: colors.mutedForeground }]}>
-                        {goalTypeLabel(c.goalType)} · {getPeriodLabel(c.startDate, c.endDate)} ·{" "}
-                        {c.checkIns.length}/{c.targetCount} check-ins · {rate}%
-                      </Text>
-                      <Text style={[styles.historyDate, { color: colors.border }]}>
+
+                      <View
+                        style={[
+                          styles.historyProgress,
+                          { backgroundColor: colors.border },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.historyProgressFill,
+                            {
+                              width: `${Math.min((verified / total) * 100, 100)}%` as any,
+                              backgroundColor:
+                                rate >= 70 ? colors.primary : colors.accent,
+                            },
+                          ]}
+                        />
+                      </View>
+
+                      <Text
+                        style={[
+                          styles.historyStats,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {verified}/{total} days · {rate}% success ·{" "}
+                        {formatCurrency(perDay, c.currency)}/day ·{" "}
                         {formatDate(c.startDate)} – {formatDate(c.endDate)}
                       </Text>
                     </View>
@@ -195,97 +276,72 @@ export default function ProfileScreen() {
 }
 
 function StatRow({
+  icon,
   label,
   value,
   colors,
-  icon,
   valueColor,
 }: {
+  icon: string;
   label: string;
   value: string;
   colors: any;
-  icon: string;
   valueColor?: string;
 }) {
   return (
-    <View style={styles.statRow}>
-      <View style={styles.statRowLeft}>
+    <View style={srStyles.row}>
+      <View style={srStyles.left}>
         <Feather name={icon as any} size={14} color={colors.mutedForeground} />
-        <Text style={[styles.statRowLabel, { color: colors.mutedForeground }]}>
+        <Text style={[srStyles.label, { color: colors.mutedForeground }]}>
           {label}
         </Text>
       </View>
-      <Text
-        style={[
-          styles.statRowValue,
-          { color: valueColor ?? colors.foreground },
-        ]}
-      >
+      <Text style={[srStyles.value, { color: valueColor ?? colors.foreground }]}>
         {value}
       </Text>
     </View>
   );
 }
 
+function Div({ colors }: { colors: any }) {
+  return <View style={[srStyles.divider, { backgroundColor: colors.border }]} />;
+}
+
+const srStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+  },
+  left: { flexDirection: "row", alignItems: "center", gap: 8 },
+  label: { fontSize: 13, fontFamily: "Inter_400Regular" },
+  value: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  divider: { height: 1 },
+});
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    marginBottom: 20,
-  },
-  bigStats: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  bigStat: {
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", marginBottom: 20 },
+  heroRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
+  heroCard: {
     flex: 1,
     borderRadius: 14,
     borderWidth: 1,
     padding: 16,
     gap: 4,
   },
-  bigStatValue: {
-    fontSize: 20,
-    fontFamily: "Inter_700Bold",
-  },
-  bigStatLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
+  heroValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
+  heroLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   statsCard: {
     borderRadius: 14,
     borderWidth: 1,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
     marginBottom: 24,
-    gap: 12,
   },
-  statRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  statRowLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  statRowLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  statRowValue: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  divider: {
-    height: 1,
-  },
-  section: {
-    gap: 10,
-  },
+  section: { gap: 10 },
   sectionTitle: {
     fontSize: 17,
     fontFamily: "Inter_600SemiBold",
@@ -295,31 +351,41 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    gap: 4,
+    gap: 8,
   },
-  historyHeader: {
+  historyTop: {
     flexDirection: "row",
+    alignItems: "flex-start",
     justifyContent: "space-between",
+    gap: 10,
+  },
+  historyLeft: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    flex: 1,
+  },
+  historyIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     alignItems: "center",
+    justifyContent: "center",
   },
   historyName: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    flex: 1,
-    marginRight: 8,
+    maxWidth: 170,
   },
-  historyEarned: {
-    fontSize: 14,
-    fontFamily: "Inter_700Bold",
+  historyMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  historyRefund: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  historyProgress: {
+    height: 3,
+    borderRadius: 2,
+    overflow: "hidden",
   },
-  historyMeta: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  historyDate: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-  },
+  historyProgressFill: { height: "100%", borderRadius: 2 },
+  historyStats: { fontSize: 11, fontFamily: "Inter_400Regular" },
   empty: {
     alignItems: "center",
     paddingTop: 80,

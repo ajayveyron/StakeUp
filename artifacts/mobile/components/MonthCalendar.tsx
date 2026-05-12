@@ -3,7 +3,11 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
-import { getTodayStr, hasCheckedInOnDate } from "@/utils/commitment";
+import {
+  getCheckInForDate,
+  getScheduledDates,
+  getTodayStr,
+} from "@/utils/commitment";
 
 interface Props {
   commitment: Commitment;
@@ -33,6 +37,8 @@ export function MonthCalendar({ commitment, year, month }: Props) {
     year: "numeric",
   });
 
+  const scheduledSet = new Set(getScheduledDates(commitment));
+
   function pad(n: number) {
     return n.toString().padStart(2, "0");
   }
@@ -40,17 +46,63 @@ export function MonthCalendar({ commitment, year, month }: Props) {
   function getCellStyle(day: number) {
     const dateStr = `${y}-${pad(m + 1)}-${pad(day)}`;
     const isToday = dateStr === today;
-    const isInRange =
-      dateStr >= commitment.startDate && dateStr <= commitment.endDate;
-    const checked = hasCheckedInOnDate(commitment, dateStr);
+    const isScheduled = scheduledSet.has(dateStr);
+    const checkIn = getCheckInForDate(commitment, dateStr);
     const isPast = dateStr < today;
-    const isFuture = dateStr > today;
 
-    if (!isInRange) return { bg: "transparent", textColor: colors.border, dot: null };
-    if (checked) return { bg: colors.primary + "22", textColor: colors.primary, dot: colors.primary };
-    if (isToday) return { bg: colors.accent + "22", textColor: colors.accent, dot: null };
-    if (isPast) return { bg: colors.danger + "11", textColor: colors.danger, dot: colors.danger };
-    return { bg: "transparent", textColor: colors.mutedForeground, dot: null };
+    if (!isScheduled) {
+      return {
+        bg: "transparent",
+        textColor: colors.border,
+        dot: null,
+        opacity: 0.4,
+      };
+    }
+
+    if (checkIn?.verified) {
+      return {
+        bg: colors.primary + "22",
+        textColor: colors.primary,
+        dot: colors.primary,
+        opacity: 1,
+      };
+    }
+
+    if (checkIn && !checkIn.verified) {
+      // Logged but didn't meet goal (steps short)
+      return {
+        bg: colors.warning + "15",
+        textColor: colors.warning,
+        dot: colors.warning,
+        opacity: 1,
+      };
+    }
+
+    if (isToday) {
+      return {
+        bg: colors.accent + "22",
+        textColor: colors.accent,
+        dot: null,
+        opacity: 1,
+      };
+    }
+
+    if (isPast) {
+      return {
+        bg: colors.danger + "11",
+        textColor: colors.danger,
+        dot: colors.danger,
+        opacity: 1,
+      };
+    }
+
+    // Future scheduled
+    return {
+      bg: colors.secondary,
+      textColor: colors.mutedForeground,
+      dot: null,
+      opacity: 0.6,
+    };
   }
 
   return (
@@ -60,7 +112,10 @@ export function MonthCalendar({ commitment, year, month }: Props) {
       </Text>
       <View style={styles.dayLabels}>
         {DAY_LABELS.map((d) => (
-          <Text key={d} style={[styles.dayLabel, { color: colors.mutedForeground }]}>
+          <Text
+            key={d}
+            style={[styles.dayLabel, { color: colors.mutedForeground }]}
+          >
             {d}
           </Text>
         ))}
@@ -68,9 +123,15 @@ export function MonthCalendar({ commitment, year, month }: Props) {
       <View style={styles.grid}>
         {cells.map((day, i) => {
           if (!day) return <View key={`empty-${i}`} style={styles.cell} />;
-          const { bg, textColor, dot } = getCellStyle(day);
+          const { bg, textColor, dot, opacity } = getCellStyle(day);
           return (
-            <View key={day} style={[styles.cell, { backgroundColor: bg, borderRadius: 8 }]}>
+            <View
+              key={day}
+              style={[
+                styles.cell,
+                { backgroundColor: bg, borderRadius: 8, opacity },
+              ]}
+            >
               <Text style={[styles.dayNum, { color: textColor }]}>{day}</Text>
               {dot && (
                 <View style={[styles.dot, { backgroundColor: dot }]} />
@@ -80,47 +141,56 @@ export function MonthCalendar({ commitment, year, month }: Props) {
         })}
       </View>
       <View style={styles.legend}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.primary }]} />
-          <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Done</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.danger }]} />
-          <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Missed</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: colors.accent }]} />
-          <Text style={[styles.legendText, { color: colors.mutedForeground }]}>Today</Text>
-        </View>
+        <LegendItem color={colors.primary} label="Refunded" colors={colors} />
+        <LegendItem color={colors.danger} label="Missed" colors={colors} />
+        <LegendItem color={colors.accent} label="Today" colors={colors} />
+        <LegendItem color={colors.warning} label="Logged" colors={colors} />
       </View>
     </View>
   );
 }
 
+function LegendItem({
+  color,
+  label,
+  colors,
+}: {
+  color: string;
+  label: string;
+  colors: any;
+}) {
+  return (
+    <View style={legendStyles.item}>
+      <View style={[legendStyles.dot, { backgroundColor: color }]} />
+      <Text style={[legendStyles.text, { color: colors.mutedForeground }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+const legendStyles = StyleSheet.create({
+  item: { flexDirection: "row", alignItems: "center", gap: 4 },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  text: { fontSize: 10, fontFamily: "Inter_400Regular" },
+});
+
 const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 8,
-  },
+  container: { paddingVertical: 4 },
   monthLabel: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     marginBottom: 12,
     textAlign: "center",
   },
-  dayLabels: {
-    flexDirection: "row",
-    marginBottom: 4,
-  },
+  dayLabels: { flexDirection: "row", marginBottom: 4 },
   dayLabel: {
     flex: 1,
     textAlign: "center",
     fontSize: 11,
     fontFamily: "Inter_500Medium",
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
+  grid: { flexDirection: "row", flexWrap: "wrap" },
   cell: {
     width: `${100 / 7}%`,
     aspectRatio: 1,
@@ -128,33 +198,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 2,
   },
-  dayNum: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-  },
+  dayNum: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  dot: { width: 4, height: 4, borderRadius: 2 },
   legend: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 20,
+    flexWrap: "wrap",
+    gap: 14,
     marginTop: 12,
-  },
-  legendItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
   },
 });

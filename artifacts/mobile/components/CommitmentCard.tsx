@@ -2,65 +2,61 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React from "react";
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCurrency,
-  getEarningsPerCheckIn,
-  getTotalEarned,
+  formatDaysOfWeek,
+  getDaysRemaining,
+  getRefundPerDay,
+  getTotalCommittedDays,
+  getTotalRefunded,
   goalTypeLabel,
-  hasCheckedInToday,
+  hasTodayCheckIn,
   isActive,
   isExpired,
-  getDaysRemaining,
+  isTodayScheduled,
+  getVerifiedCheckIns,
 } from "@/utils/commitment";
 
 interface Props {
   commitment: Commitment;
-  onCheckIn?: (id: string) => void;
+  onCheckIn?: (commitment: Commitment) => void;
   compact?: boolean;
 }
 
 const GOAL_ICONS: Record<string, string> = {
   content: "video",
   steps: "activity",
-  exercise: "zap",
-  reading: "book-open",
-  custom: "target",
 };
 
 export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
   const colors = useColors();
   const router = useRouter();
-  const earned = getTotalEarned(c);
-  const perCheckIn = getEarningsPerCheckIn(c);
-  const checkedToday = hasCheckedInToday(c);
+  const refunded = getTotalRefunded(c);
+  const perDay = getRefundPerDay(c);
+  const totalDays = getTotalCommittedDays(c);
+  const verified = getVerifiedCheckIns(c).length;
+  const checkedToday = hasTodayCheckIn(c);
+  const todayScheduled = isTodayScheduled(c);
   const active = isActive(c);
   const expired = isExpired(c);
   const daysLeft = getDaysRemaining(c);
-  const progress = Math.min(c.checkIns.length / c.targetCount, 1);
-
-  function handleCheckIn() {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onCheckIn?.(c.id);
-  }
+  const progress = totalDays > 0 ? Math.min(verified / totalDays, 1) : 0;
 
   function handlePress() {
     router.push(`/commitment/${c.id}`);
   }
 
-  const statusColor = expired
-    ? colors.mutedForeground
-    : active
-    ? colors.primary
-    : colors.mutedForeground;
+  function handleCheckIn() {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onCheckIn?.(c);
+  }
+
+  const showCheckInBtn = active && todayScheduled && !checkedToday;
+  const showDoneState = active && todayScheduled && checkedToday;
 
   return (
     <TouchableOpacity
@@ -72,7 +68,11 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
         <View
           style={[
             styles.iconBox,
-            { backgroundColor: active ? colors.primary + "1A" : colors.secondary },
+            {
+              backgroundColor: active
+                ? colors.primary + "1A"
+                : colors.secondary,
+            },
           ]}
         >
           <Feather
@@ -81,57 +81,70 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
             color={active ? colors.primary : colors.mutedForeground}
           />
         </View>
+
         <View style={styles.titleBlock}>
-          <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
+          <Text
+            style={[styles.name, { color: colors.foreground }]}
+            numberOfLines={1}
+          >
             {c.name}
           </Text>
-          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            {c.targetCount} {c.goalUnit} · {formatCurrency(c.stakeAmount, c.currency)}
+          <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+            {goalTypeLabel(c.goalType)} · {formatDaysOfWeek(c.daysOfWeek)}
           </Text>
         </View>
-        {active && !checkedToday && (
+
+        {showCheckInBtn && (
           <TouchableOpacity
             onPress={handleCheckIn}
-            style={[styles.checkBtn, { backgroundColor: colors.primary }]}
+            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.8}
           >
-            <Feather name="check" size={16} color="#000" />
+            <Feather
+              name={c.goalType === "content" ? "link" : "activity"}
+              size={15}
+              color="#000"
+            />
           </TouchableOpacity>
         )}
-        {active && checkedToday && (
-          <View style={[styles.checkBtn, { backgroundColor: colors.primary + "22" }]}>
-            <Feather name="check-circle" size={16} color={colors.primary} />
+        {showDoneState && (
+          <View
+            style={[
+              styles.actionBtn,
+              { backgroundColor: colors.primary + "22" },
+            ]}
+          >
+            <Feather name="check-circle" size={15} color={colors.primary} />
           </View>
         )}
-        {!active && (
-          <View style={[styles.checkBtn, { backgroundColor: colors.secondary }]}>
+        {(!active || !todayScheduled) && (
+          <View
+            style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+          >
             <Feather
-              name={expired ? "flag" : "clock"}
-              size={16}
+              name={expired ? "flag" : "calendar"}
+              size={15}
               color={colors.mutedForeground}
             />
           </View>
         )}
       </View>
 
+      {/* Progress */}
       <View style={styles.progressRow}>
-        <View
-          style={[styles.progressBg, { backgroundColor: colors.border }]}
-        >
+        <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
           <View
             style={[
               styles.progressFill,
               {
                 width: `${progress * 100}%` as any,
-                backgroundColor: expired
-                  ? colors.mutedForeground
-                  : colors.primary,
+                backgroundColor: expired ? colors.mutedForeground : colors.primary,
               },
             ]}
           />
         </View>
         <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
-          {c.checkIns.length}/{c.targetCount}
+          {verified}/{totalDays}
         </Text>
       </View>
 
@@ -139,19 +152,19 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.primary }]}>
-              {formatCurrency(earned, c.currency)}
+              {formatCurrency(refunded, c.currency)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Earned
+              Refunded
             </Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.accent }]}>
-              {formatCurrency(perCheckIn, c.currency)}
+              {formatCurrency(perDay, c.currency)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Per check-in
+              Per day
             </Text>
           </View>
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -159,7 +172,11 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
             <Text
               style={[
                 styles.statValue,
-                { color: expired ? colors.mutedForeground : colors.foreground },
+                {
+                  color: expired
+                    ? colors.mutedForeground
+                    : colors.foreground,
+                },
               ]}
             >
               {expired ? "Done" : `${daysLeft}d left`}
@@ -202,11 +219,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
-  subtitle: {
+  meta: {
     fontSize: 12,
     fontFamily: "Inter_400Regular",
   },
-  checkBtn: {
+  actionBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,

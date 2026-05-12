@@ -7,29 +7,28 @@ import React, {
   useState,
 } from "react";
 
-export type GoalType =
-  | "content"
-  | "steps"
-  | "exercise"
-  | "reading"
-  | "custom";
+export type GoalType = "content" | "steps";
 
 export interface CheckIn {
   id: string;
-  date: string;
-  note?: string;
+  date: string; // YYYY-MM-DD
+  proofUrl?: string; // content: public post URL
+  stepCount?: number; // steps: step count logged
+  verified: boolean; // true = qualifies for refund
+  submittedAt: string; // ISO timestamp
 }
 
 export interface Commitment {
   id: string;
   name: string;
   goalType: GoalType;
-  goalUnit: string;
-  targetCount: number;
+  daysOfWeek: number[]; // 0=Sun 1=Mon ... 6=Sat
+  targetPerDay: number; // steps: step goal; content: posts per day
+  durationDays: number; // 7, 14, 30, 90
   stakeAmount: number;
   currency: string;
-  startDate: string;
-  endDate: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string; // YYYY-MM-DD
   friendName?: string;
   friendContact?: string;
   checkIns: CheckIn[];
@@ -42,12 +41,21 @@ interface CommitmentsContextType {
     c: Omit<Commitment, "id" | "checkIns" | "createdAt">
   ) => void;
   deleteCommitment: (id: string) => void;
-  checkIn: (commitmentId: string, date: string, note?: string) => void;
+  submitContentCheckIn: (
+    commitmentId: string,
+    date: string,
+    proofUrl: string
+  ) => void;
+  submitStepsCheckIn: (
+    commitmentId: string,
+    date: string,
+    stepCount: number
+  ) => void;
   removeCheckIn: (commitmentId: string, date: string) => void;
   getCommitment: (id: string) => Commitment | undefined;
 }
 
-const STORAGE_KEY = "@stakeup_commitments_v1";
+const STORAGE_KEY = "@stakeup_v2_commitments";
 
 function genId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -97,18 +105,49 @@ export function CommitmentsProvider({
     [commitments, save]
   );
 
-  const checkIn = useCallback(
-    (commitmentId: string, date: string, note?: string) => {
+  const submitContentCheckIn = useCallback(
+    (commitmentId: string, date: string, proofUrl: string) => {
       save(
         commitments.map((c) => {
           if (c.id !== commitmentId) return c;
-          if (c.checkIns.some((ci) => ci.date === date)) return c;
+          const existing = c.checkIns.find((ci) => ci.date === date);
+          const entry: CheckIn = {
+            id: existing?.id ?? genId(),
+            date,
+            proofUrl,
+            verified: proofUrl.trim().startsWith("http"),
+            submittedAt: new Date().toISOString(),
+          };
           return {
             ...c,
-            checkIns: [
-              ...c.checkIns,
-              { id: genId(), date, note },
-            ],
+            checkIns: existing
+              ? c.checkIns.map((ci) => (ci.date === date ? entry : ci))
+              : [...c.checkIns, entry],
+          };
+        })
+      );
+    },
+    [commitments, save]
+  );
+
+  const submitStepsCheckIn = useCallback(
+    (commitmentId: string, date: string, stepCount: number) => {
+      save(
+        commitments.map((c) => {
+          if (c.id !== commitmentId) return c;
+          const existing = c.checkIns.find((ci) => ci.date === date);
+          const entry: CheckIn = {
+            id: existing?.id ?? genId(),
+            date,
+            stepCount,
+            verified: stepCount >= c.targetPerDay,
+            submittedAt: new Date().toISOString(),
+          };
+          return {
+            ...c,
+            checkIns: existing
+              ? c.checkIns.map((ci) => (ci.date === date ? entry : ci))
+              : [...c.checkIns, entry],
           };
         })
       );
@@ -142,7 +181,8 @@ export function CommitmentsProvider({
         commitments,
         addCommitment,
         deleteCommitment,
-        checkIn,
+        submitContentCheckIn,
+        submitStepsCheckIn,
         removeCheckIn,
         getCommitment,
       }}

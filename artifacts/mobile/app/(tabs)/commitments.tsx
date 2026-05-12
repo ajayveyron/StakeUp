@@ -28,7 +28,6 @@ export default function CommitmentsScreen() {
   const active = commitments.filter(isActive);
   const past = commitments.filter(isExpired);
   const displayed = tab === "active" ? active : past;
-
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
   return (
@@ -56,9 +55,12 @@ export default function CommitmentsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Tab selector */}
+        {/* Tab bar */}
         <View
-          style={[styles.tabBar, { backgroundColor: colors.card, borderColor: colors.border }]}
+          style={[
+            styles.tabBar,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
         >
           {(["active", "past"] as Tab[]).map((t) => (
             <TouchableOpacity
@@ -73,10 +75,16 @@ export default function CommitmentsScreen() {
               <Text
                 style={[
                   styles.tabText,
-                  { color: tab === t ? "#000" : colors.mutedForeground },
+                  {
+                    color: tab === t ? "#000" : colors.mutedForeground,
+                    fontFamily:
+                      tab === t ? "Inter_600SemiBold" : "Inter_400Regular",
+                  },
                 ]}
               >
-                {t === "active" ? `Active (${active.length})` : `Past (${past.length})`}
+                {t === "active"
+                  ? `Active (${active.length})`
+                  : `Past (${past.length})`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -94,8 +102,8 @@ export default function CommitmentsScreen() {
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {tab === "active"
-                ? "Create a commitment and start earning money back."
-                : "Completed commitments will appear here."}
+                ? "Create a commitment and start getting refunds for every day you show up."
+                : "Completed stakes will appear here."}
             </Text>
             {tab === "active" && (
               <TouchableOpacity
@@ -108,7 +116,7 @@ export default function CommitmentsScreen() {
             )}
           </View>
         ) : (
-          <View style={styles.list}>
+          <View>
             {displayed.map((c) => (
               <CommitmentCard key={c.id} commitment={c} />
             ))}
@@ -128,10 +136,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
   },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-  },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   addBtn: {
     width: 42,
     height: 42,
@@ -152,13 +157,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
   },
-  tabText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-  },
-  list: {
-    gap: 0,
-  },
+  tabText: { fontSize: 13 },
   empty: {
     alignItems: "center",
     paddingTop: 60,

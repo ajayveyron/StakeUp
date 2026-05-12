@@ -1,4 +1,4 @@
-import { Commitment, GoalType } from "@/contexts/CommitmentsContext";
+import { CheckIn, Commitment, GoalType } from "@/contexts/CommitmentsContext";
 
 export function getTodayStr(): string {
   return new Date().toISOString().split("T")[0];
@@ -14,23 +14,121 @@ export function formatDate(dateStr: string): string {
 }
 
 export function formatCurrency(amount: number, currency = "INR"): string {
+  const rounded = Math.round(amount * 100) / 100;
   if (currency === "INR") {
-    return `₹${amount.toLocaleString("en-IN")}`;
+    return `₹${rounded.toLocaleString("en-IN")}`;
   }
-  return `$${amount.toLocaleString("en-US")}`;
+  return `$${rounded.toLocaleString("en-US")}`;
 }
 
-export function getEarningsPerCheckIn(c: Commitment): number {
-  if (c.targetCount <= 0) return 0;
-  return Math.round((c.stakeAmount / c.targetCount) * 100) / 100;
+export function goalTypeLabel(type: GoalType): string {
+  return type === "content" ? "Content Creation" : "Step Count";
 }
 
-export function getTotalEarned(c: Commitment): number {
-  return c.checkIns.length * getEarningsPerCheckIn(c);
+export function goalTypeUnit(type: GoalType): string {
+  return type === "content" ? "post" : "steps";
 }
 
-export function getTotalAtRisk(c: Commitment): number {
-  return c.stakeAmount - getTotalEarned(c);
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES_FULL = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+export function formatDaysOfWeek(days: number[]): string {
+  if (days.length === 7) return "Every day";
+  if (days.length === 0) return "No days";
+  const sorted = [...days].sort((a, b) => a - b);
+  return sorted.map((d) => DAY_NAMES[d]).join(", ");
+}
+
+export function getDayName(day: number): string {
+  return DAY_NAMES[day];
+}
+
+export function getDayNameFull(day: number): string {
+  return DAY_NAMES_FULL[day];
+}
+
+/** All calendar days in the commitment range that fall on committed daysOfWeek */
+export function getScheduledDates(c: Commitment): string[] {
+  const result: string[] = [];
+  const start = new Date(c.startDate + "T00:00:00");
+  const end = new Date(c.endDate + "T00:00:00");
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const dow = cursor.getDay();
+    if (c.daysOfWeek.includes(dow)) {
+      result.push(cursor.toISOString().split("T")[0]);
+    }
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return result;
+}
+
+/** Scheduled dates that have already passed (strictly before today) */
+export function getPastScheduledDates(c: Commitment): string[] {
+  const today = getTodayStr();
+  return getScheduledDates(c).filter((d) => d < today);
+}
+
+/** Scheduled dates that are still pending (today or future) */
+export function getFutureScheduledDates(c: Commitment): string[] {
+  const today = getTodayStr();
+  return getScheduledDates(c).filter((d) => d >= today);
+}
+
+export function isTodayScheduled(c: Commitment): boolean {
+  const today = getTodayStr();
+  return getScheduledDates(c).includes(today);
+}
+
+export function getTotalCommittedDays(c: Commitment): number {
+  return getScheduledDates(c).length;
+}
+
+export function getRefundPerDay(c: Commitment): number {
+  const total = getTotalCommittedDays(c);
+  if (total <= 0) return 0;
+  return Math.round((c.stakeAmount / total) * 100) / 100;
+}
+
+export function getVerifiedCheckIns(c: Commitment): CheckIn[] {
+  return c.checkIns.filter((ci) => ci.verified);
+}
+
+export function getTotalRefunded(c: Commitment): number {
+  return getVerifiedCheckIns(c).length * getRefundPerDay(c);
+}
+
+export function getAmountAtRisk(c: Commitment): number {
+  const total = c.stakeAmount;
+  const refunded = getTotalRefunded(c);
+  return Math.max(0, total - refunded);
+}
+
+export function getMissedDates(c: Commitment): string[] {
+  const today = getTodayStr();
+  return getPastScheduledDates(c).filter(
+    (d) => !c.checkIns.some((ci) => ci.date === d && ci.verified)
+  );
+}
+
+export function getCheckInForDate(
+  c: Commitment,
+  date: string
+): CheckIn | undefined {
+  return c.checkIns.find((ci) => ci.date === date);
+}
+
+export function hasTodayCheckIn(c: Commitment): boolean {
+  const today = getTodayStr();
+  return c.checkIns.some((ci) => ci.date === today && ci.verified);
 }
 
 export function isActive(c: Commitment): boolean {
@@ -42,101 +140,60 @@ export function isExpired(c: Commitment): boolean {
   return c.endDate < getTodayStr();
 }
 
-export function hasCheckedInToday(c: Commitment): boolean {
-  return c.checkIns.some((ci) => ci.date === getTodayStr());
-}
-
-export function hasCheckedInOnDate(c: Commitment, date: string): boolean {
-  return c.checkIns.some((ci) => ci.date === date);
-}
-
-export function getDaysInPeriod(c: Commitment): number {
-  const start = new Date(c.startDate + "T00:00:00");
-  const end = new Date(c.endDate + "T00:00:00");
-  return (
-    Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
-  );
-}
-
 export function getDaysRemaining(c: Commitment): number {
   const today = new Date(getTodayStr() + "T00:00:00");
   const end = new Date(c.endDate + "T00:00:00");
-  const diff = Math.round(
-    (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+  return Math.max(
+    0,
+    Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
   );
-  return Math.max(0, diff);
-}
-
-export function getMissedDays(c: Commitment): number {
-  const today = getTodayStr();
-  const start = new Date(c.startDate + "T00:00:00");
-  const end = new Date(
-    (today < c.endDate ? today : c.endDate) + "T00:00:00"
-  );
-
-  let missed = 0;
-  const cursor = new Date(start);
-  while (cursor <= end) {
-    const dateStr = cursor.toISOString().split("T")[0];
-    if (dateStr !== today && !hasCheckedInOnDate(c, dateStr)) {
-      missed++;
-    }
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return missed;
 }
 
 export function getSuccessRate(c: Commitment): number {
-  const total = getDaysInPeriod(c);
-  if (total <= 0) return 0;
-  return Math.round((c.checkIns.length / Math.min(c.targetCount, total)) * 100);
+  const past = getPastScheduledDates(c).length;
+  if (past === 0) return 0;
+  return Math.round((getVerifiedCheckIns(c).length / past) * 100);
 }
 
-export function goalTypeLabel(type: GoalType): string {
-  switch (type) {
-    case "content":
-      return "Content Creation";
-    case "steps":
-      return "Daily Steps";
-    case "exercise":
-      return "Exercise";
-    case "reading":
-      return "Reading";
-    case "custom":
-      return "Custom";
-  }
-}
-
-export function goalTypeDefaultUnit(type: GoalType): string {
-  switch (type) {
-    case "content":
-      return "posts";
-    case "steps":
-      return "sessions";
-    case "exercise":
-      return "workouts";
-    case "reading":
-      return "sessions";
-    case "custom":
-      return "check-ins";
-  }
-}
-
-export function getPeriodLabel(startDate: string, endDate: string): string {
-  const days = Math.round(
-    (new Date(endDate + "T00:00:00").getTime() -
-      new Date(startDate + "T00:00:00").getTime()) /
-      (1000 * 60 * 60 * 24)
-  );
+export function getPeriodLabel(days: number): string {
   if (days <= 7) return "1 Week";
   if (days <= 14) return "2 Weeks";
   if (days <= 31) return "1 Month";
-  if (days <= 93) return "3 Months";
-  return `${days} Days`;
+  return "3 Months";
 }
 
 export function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
+}
+
+/** Returns ms until 11:59:59 PM today local time */
+export function getMsUntilDeadline(): number {
+  const now = new Date();
+  const deadline = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    0
+  );
+  return Math.max(0, deadline.getTime() - now.getTime());
+}
+
+export function formatCountdown(ms: number): string {
+  if (ms <= 0) return "Deadline passed";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h ${m}m left today`;
+  if (m > 0) return `${m}m ${s}s left today`;
+  return `${s}s left today`;
+}
+
+export function isDeadlinePassed(): boolean {
+  return getMsUntilDeadline() === 0;
 }

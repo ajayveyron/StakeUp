@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -12,47 +12,78 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentCard } from "@/components/CommitmentCard";
-import { useCommitments } from "@/contexts/CommitmentsContext";
+import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
+  formatCountdown,
   formatCurrency,
+  getMsUntilDeadline,
   getTodayStr,
-  getTotalEarned,
-  hasCheckedInToday,
+  getTotalRefunded,
+  hasTodayCheckIn,
   isActive,
+  isTodayScheduled,
+  getTotalCommittedDays,
+  getVerifiedCheckIns,
 } from "@/utils/commitment";
 
 export default function HomeScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { commitments, checkIn } = useCommitments();
+  const { commitments, submitContentCheckIn, submitStepsCheckIn } =
+    useCommitments();
+
+  const [selectedCommitment, setSelectedCommitment] =
+    useState<Commitment | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [countdown, setCountdown] = useState(getMsUntilDeadline());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(getMsUntilDeadline());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const today = getTodayStr();
   const activeCommitments = commitments.filter(isActive);
-  const todayPending = activeCommitments.filter((c) => !hasCheckedInToday(c));
-  const todayDone = activeCommitments.filter(hasCheckedInToday);
+  const todayPending = activeCommitments.filter(
+    (c) => isTodayScheduled(c) && !hasTodayCheckIn(c)
+  );
+  const todayDone = activeCommitments.filter(
+    (c) => isTodayScheduled(c) && hasTodayCheckIn(c)
+  );
+  const todayNotScheduled = activeCommitments.filter(
+    (c) => !isTodayScheduled(c)
+  );
 
   const totalStaked = commitments.reduce((s, c) => s + c.stakeAmount, 0);
-  const totalEarned = commitments.reduce((s, c) => s + getTotalEarned(c), 0);
-  const todayEarnings = todayDone.length > 0
-    ? todayDone.reduce((s, c) => {
-        const perCheckIn = c.stakeAmount / c.targetCount;
-        return s + (hasCheckedInToday(c) ? perCheckIn : 0);
-      }, 0)
-    : 0;
+  const totalRefunded = commitments.reduce((s, c) => s + getTotalRefunded(c), 0);
 
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  function handleCheckIn(id: string) {
-    checkIn(id, today);
+  function openCheckIn(commitment: Commitment) {
+    setSelectedCommitment(commitment);
+    setModalVisible(true);
+  }
+
+  function handleSubmitContent(id: string, date: string, url: string) {
+    submitContentCheckIn(id, date, url);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  function handleSubmitSteps(id: string, date: string, steps: number) {
+    submitStepsCheckIn(id, date, steps);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const isUrgent = countdown < 3600000; // less than 1 hour
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -85,7 +116,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Summary Card */}
+        {/* Summary */}
         {commitments.length > 0 && (
           <View
             style={[
@@ -96,87 +127,154 @@ export default function HomeScreen() {
             <View style={styles.summaryRow}>
               <View style={styles.summaryStat}>
                 <Text style={[styles.summaryValue, { color: colors.primary }]}>
-                  {formatCurrency(totalEarned)}
+                  {formatCurrency(totalRefunded)}
                 </Text>
-                <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-                  Total Earned
+                <Text
+                  style={[styles.summaryLabel, { color: colors.mutedForeground }]}
+                >
+                  Refunded
                 </Text>
               </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[
+                  styles.summaryDivider,
+                  { backgroundColor: colors.border },
+                ]}
+              />
               <View style={styles.summaryStat}>
                 <Text style={[styles.summaryValue, { color: colors.accent }]}>
-                  {formatCurrency(totalStaked)}
+                  {formatCurrency(totalStaked - totalRefunded)}
                 </Text>
-                <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-                  Total Staked
+                <Text
+                  style={[styles.summaryLabel, { color: colors.mutedForeground }]}
+                >
+                  At risk
                 </Text>
               </View>
-              <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+              <View
+                style={[
+                  styles.summaryDivider,
+                  { backgroundColor: colors.border },
+                ]}
+              />
               <View style={styles.summaryStat}>
-                <Text style={[styles.summaryValue, { color: colors.foreground }]}>
-                  {activeCommitments.length}
+                <Text
+                  style={[styles.summaryValue, { color: colors.foreground }]}
+                >
+                  {todayPending.length}
                 </Text>
-                <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-                  Active
+                <Text
+                  style={[styles.summaryLabel, { color: colors.mutedForeground }]}
+                >
+                  Due today
                 </Text>
               </View>
             </View>
           </View>
         )}
 
-        {/* Today's Check-ins */}
+        {/* Deadline banner when pending */}
+        {todayPending.length > 0 && (
+          <View
+            style={[
+              styles.deadlineBanner,
+              {
+                backgroundColor: isUrgent
+                  ? colors.danger + "22"
+                  : colors.secondary,
+                borderColor: isUrgent
+                  ? colors.danger + "55"
+                  : colors.border,
+              },
+            ]}
+          >
+            <Feather
+              name="clock"
+              size={13}
+              color={isUrgent ? colors.danger : colors.mutedForeground}
+            />
+            <Text
+              style={[
+                styles.deadlineText,
+                {
+                  color: isUrgent ? colors.danger : colors.mutedForeground,
+                },
+              ]}
+            >
+              {formatCountdown(countdown)} · Submit by 11:59 PM
+            </Text>
+          </View>
+        )}
+
+        {/* Today pending */}
         {todayPending.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Check in today
+              Submit today
             </Text>
-            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+            <Text style={[styles.sectionSub, { color: colors.danger }]}>
               {todayPending.length} pending
             </Text>
             {todayPending.map((c) => (
               <CommitmentCard
                 key={c.id}
                 commitment={c}
-                onCheckIn={handleCheckIn}
-                compact={false}
+                onCheckIn={openCheckIn}
               />
             ))}
           </View>
         )}
 
+        {/* Today done */}
         {todayDone.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Done today
             </Text>
             <Text style={[styles.sectionSub, { color: colors.primary }]}>
-              +{formatCurrency(todayEarnings)} earned
+              {todayDone.length} submitted
             </Text>
             {todayDone.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                compact={true}
-              />
+              <CommitmentCard key={c.id} commitment={c} compact />
             ))}
           </View>
         )}
 
+        {/* Not scheduled today */}
+        {todayNotScheduled.length > 0 && todayPending.length === 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Rest day
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              These commitments don't run today
+            </Text>
+            {todayNotScheduled.map((c) => (
+              <CommitmentCard key={c.id} commitment={c} compact />
+            ))}
+          </View>
+        )}
+
+        {/* Empty state */}
         {commitments.length === 0 && (
           <View style={styles.empty}>
             <View
               style={[
                 styles.emptyIcon,
-                { backgroundColor: colors.card, borderColor: colors.border },
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
               ]}
             >
               <Feather name="target" size={32} color={colors.primary} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              No commitments yet
+              No stakes yet
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Put real money on your goals and earn it back each day you show up.
+              Put real money on your goals. Show up, post your proof, and get
+              your money back.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
@@ -188,6 +286,15 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+
+      <CheckInModal
+        visible={modalVisible}
+        commitment={selectedCommitment}
+        date={today}
+        onClose={() => setModalVisible(false)}
+        onSubmitContent={handleSubmitContent}
+        onSubmitSteps={handleSubmitSteps}
+      />
     </View>
   );
 }
@@ -221,7 +328,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    marginBottom: 24,
+    marginBottom: 14,
   },
   summaryRow: {
     flexDirection: "row",
@@ -244,9 +351,21 @@ const styles = StyleSheet.create({
     width: 1,
     height: 32,
   },
-  section: {
-    marginBottom: 24,
+  deadlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 18,
   },
+  deadlineText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+  },
+  section: { marginBottom: 24 },
   sectionTitle: {
     fontSize: 17,
     fontFamily: "Inter_600SemiBold",

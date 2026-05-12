@@ -1,45 +1,57 @@
-# [Project name]
+# StakeUp
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Put real money on your goals. Show up every day, submit proof, and get your money back — one day at a time.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- `pnpm --filter @workspace/mobile run dev` — run the Expo app
+- `pnpm --filter @workspace/mobile run typecheck` — typecheck mobile app
+- Required env: none (local AsyncStorage, no backend)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Mobile: Expo (React Native) with expo-router
+- State: AsyncStorage (local, no server)
+- Fonts: Inter (400, 500, 600, 700)
+- Icons: @expo/vector-icons (Feather)
+- Haptics: expo-haptics
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/mobile/` — Expo app
+  - `app/(tabs)/` — Home, Commitments, Stats screens
+  - `app/commitment/new.tsx` — 4-step stake creation form
+  - `app/commitment/[id].tsx` — detail view + check-in action
+  - `contexts/CommitmentsContext.tsx` — all state + AsyncStorage
+  - `utils/commitment.ts` — calculation helpers (refund, schedule, etc.)
+  - `components/CheckInModal.tsx` — bottom sheet for submitting proof/steps
+  - `components/CommitmentCard.tsx` — card used in list views
+  - `components/MonthCalendar.tsx` — calendar with scheduled vs missed days
+  - `constants/colors.ts` — dark financial theme (green/amber/red)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Local-only storage** (AsyncStorage): no backend needed for v1. All data lives on device.
+- **Schedule-based commitments**: users pick days of week + daily target + duration. Refund is stakeAmount ÷ total committed days.
+- **Verified check-ins only earn refunds**: content requires a public HTTP URL; steps require hitting the daily step goal. Partial/unverified entries are recorded but earn nothing.
+- **11:59 PM local deadline**: shown via a live countdown on all pending check-ins.
+- **Two goal types only (v1)**: Content Creation (link proof) and Step Count (manual + future health app sync).
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Users create a "stake" — they lock in an amount of money against a goal (e.g. post reels every Mon/Wed/Fri for 1 month, ₹3000 staked). Each day they complete their goal, they submit proof and get a proportional refund. Days they miss, the money stays forfeited (optionally to a named friend).
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Language: "Refund" not "Earning" — money comes back to you, not earned
+- Only Content Creation and Step Count for v1
+- Content check-ins require a public share link
+- Steps check-ins require hitting the daily goal (health app sync = future)
+- 11:59 PM local deadline per committed day
+- Dark financial theme (Coinbase/Robinhood-inspired)
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Health app integration (Apple Health / Google Fit) requires a development build — currently shows manual entry + "Coming soon" note
+- The restart_workflow tool times out for Expo (Metro takes ~90s to start) but the app IS running — check the preview pane

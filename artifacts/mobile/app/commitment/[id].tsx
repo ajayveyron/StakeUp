@@ -13,21 +13,28 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { CheckInModal } from "@/components/CheckInModal";
 import { MonthCalendar } from "@/components/MonthCalendar";
-import { useCommitments } from "@/contexts/CommitmentsContext";
+import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCurrency,
   formatDate,
+  formatDaysOfWeek,
+  getAmountAtRisk,
   getDaysRemaining,
-  getEarningsPerCheckIn,
-  getMissedDays,
+  getMissedDates,
+  getRefundPerDay,
+  getScheduledDates,
   getSuccessRate,
   getTodayStr,
-  getTotalEarned,
-  hasCheckedInToday,
+  getTotalCommittedDays,
+  getTotalRefunded,
+  getVerifiedCheckIns,
+  hasTodayCheckIn,
   isActive,
   isExpired,
+  isTodayScheduled,
 } from "@/utils/commitment";
 
 export default function CommitmentDetailScreen() {
@@ -35,8 +42,15 @@ export default function CommitmentDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getCommitment, checkIn, removeCheckIn, deleteCommitment } =
-    useCommitments();
+  const {
+    getCommitment,
+    submitContentCheckIn,
+    submitStepsCheckIn,
+    removeCheckIn,
+    deleteCommitment,
+  } = useCommitments();
+
+  const [modalVisible, setModalVisible] = useState(false);
 
   const commitment = getCommitment(id ?? "");
   const today = getTodayStr();
@@ -45,13 +59,12 @@ export default function CommitmentDetailScreen() {
   if (!commitment) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <View style={[styles.headerBar, { paddingTop: topPadding + 8 }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <View style={[styles.headerBar, { paddingTop: topPadding + 8, borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
         </View>
         <View style={styles.notFound}>
-          <Feather name="alert-circle" size={32} color={colors.mutedForeground} />
           <Text style={[styles.notFoundText, { color: colors.mutedForeground }]}>
             Commitment not found
           </Text>
@@ -60,31 +73,25 @@ export default function CommitmentDetailScreen() {
     );
   }
 
-  const earned = getTotalEarned(commitment);
-  const perCheckIn = getEarningsPerCheckIn(commitment);
-  const atRisk = commitment.stakeAmount - earned;
-  const missedDays = getMissedDays(commitment);
-  const missedAmount = missedDays * perCheckIn;
-  const successRate = getSuccessRate(commitment);
+  const refunded = getTotalRefunded(commitment);
+  const perDay = getRefundPerDay(commitment);
+  const atRisk = getAmountAtRisk(commitment);
+  const totalDays = getTotalCommittedDays(commitment);
+  const verified = getVerifiedCheckIns(commitment).length;
+  const missed = getMissedDates(commitment).length;
+  const missedAmount = missed * perDay;
+  const rate = getSuccessRate(commitment);
   const daysLeft = getDaysRemaining(commitment);
-  const checkedToday = hasCheckedInToday(commitment);
   const active = isActive(commitment);
   const expired = isExpired(commitment);
-
-  function handleCheckIn() {
-    checkIn(commitment!.id, today);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }
-
-  function handleUndo() {
-    removeCheckIn(commitment!.id, today);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }
+  const todayScheduled = isTodayScheduled(commitment);
+  const checkedToday = hasTodayCheckIn(commitment);
+  const showCheckIn = active && todayScheduled && !checkedToday;
 
   function handleDelete() {
     Alert.alert(
       "Delete commitment",
-      "This will permanently remove this stake and all check-in history.",
+      "This permanently removes all check-in history.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -99,9 +106,24 @@ export default function CommitmentDetailScreen() {
     );
   }
 
+  function handleSubmitContent(cId: string, date: string, url: string) {
+    submitContentCheckIn(cId, date, url);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  function handleSubmitSteps(cId: string, date: string, steps: number) {
+    submitStepsCheckIn(cId, date, steps);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  function handleUndoToday() {
+    removeCheckIn(commitment!.id, today);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* Custom header */}
+      {/* Header */}
       <View
         style={[
           styles.headerBar,
@@ -111,13 +133,24 @@ export default function CommitmentDetailScreen() {
           },
         ]}
       >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.iconBtn}
+          activeOpacity={0.7}
+        >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]} numberOfLines={1}>
+        <Text
+          style={[styles.headerTitle, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
           {commitment.name}
         </Text>
-        <TouchableOpacity onPress={handleDelete} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={handleDelete}
+          style={styles.iconBtn}
+          activeOpacity={0.7}
+        >
           <Feather name="trash-2" size={18} color={colors.danger} />
         </TouchableOpacity>
       </View>
@@ -125,40 +158,32 @@ export default function CommitmentDetailScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
-          { paddingBottom: Platform.OS === "web" ? 34 + 40 : 120 },
+          { paddingBottom: Platform.OS === "web" ? 60 : insets.bottom + 120 },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status badge */}
+        {/* Status + meta */}
         <View style={styles.statusRow}>
           <View
             style={[
               styles.statusBadge,
               {
-                backgroundColor: expired
-                  ? colors.muted
-                  : active
+                backgroundColor: active
                   ? colors.primary + "22"
-                  : colors.muted,
+                  : colors.secondary,
               },
             ]}
           >
             <View
               style={[
                 styles.statusDot,
-                {
-                  backgroundColor: expired
-                    ? colors.mutedForeground
-                    : colors.primary,
-                },
+                { backgroundColor: active ? colors.primary : colors.mutedForeground },
               ]}
             />
             <Text
               style={[
                 styles.statusText,
-                {
-                  color: expired ? colors.mutedForeground : colors.primary,
-                },
+                { color: active ? colors.primary : colors.mutedForeground },
               ]}
             >
               {expired ? "Completed" : active ? "Active" : "Upcoming"}
@@ -169,55 +194,52 @@ export default function CommitmentDetailScreen() {
           </Text>
         </View>
 
-        {/* Main earnings card */}
+        {/* Refund card */}
         <View
           style={[
-            styles.earningsCard,
+            styles.refundCard,
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          <Text style={[styles.earningsLabel, { color: colors.mutedForeground }]}>
-            Earned back
+          <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
+            Refunded
           </Text>
-          <Text style={[styles.earningsValue, { color: colors.primary }]}>
-            {formatCurrency(earned, commitment.currency)}
+          <Text style={[styles.refundValue, { color: colors.primary }]}>
+            {formatCurrency(refunded, commitment.currency)}
           </Text>
-          <Text style={[styles.earningsOf, { color: colors.mutedForeground }]}>
+          <Text style={[styles.refundOf, { color: colors.mutedForeground }]}>
             of {formatCurrency(commitment.stakeAmount, commitment.currency)} staked
           </Text>
-
-          {/* Progress bar */}
           <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
             <View
               style={[
                 styles.progressFill,
                 {
-                  width: `${Math.min((commitment.checkIns.length / commitment.targetCount) * 100, 100)}%` as any,
+                  width: `${totalDays > 0 ? Math.min((verified / totalDays) * 100, 100) : 0}%` as any,
                   backgroundColor: colors.primary,
                 },
               ]}
             />
           </View>
-
           <View style={styles.statsRow}>
             <StatCol
-              value={`${commitment.checkIns.length}/${commitment.targetCount}`}
-              label="Check-ins"
+              value={`${verified}/${totalDays}`}
+              label="Days done"
               colors={colors}
             />
             <StatCol
-              value={formatCurrency(perCheckIn, commitment.currency)}
-              label="Per check-in"
+              value={formatCurrency(perDay, commitment.currency)}
+              label="Per day"
               colors={colors}
               valueColor={colors.primary}
             />
             <StatCol
-              value={expired ? `${successRate}%` : `${daysLeft}d left`}
-              label={expired ? "Success rate" : "Remaining"}
+              value={expired ? `${rate}%` : `${daysLeft}d left`}
+              label={expired ? "Success" : "Remaining"}
               colors={colors}
               valueColor={
                 expired
-                  ? successRate >= 70
+                  ? rate >= 70
                     ? colors.primary
                     : colors.accent
                   : colors.foreground
@@ -226,18 +248,80 @@ export default function CommitmentDetailScreen() {
           </View>
         </View>
 
-        {/* Missed / At risk */}
-        {missedDays > 0 && (
+        {/* Goal info */}
+        <View
+          style={[
+            styles.infoCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <InfoRow
+            icon={commitment.goalType === "content" ? "video" : "activity"}
+            label="Type"
+            value={
+              commitment.goalType === "content"
+                ? "Content Creation"
+                : "Step Count"
+            }
+            colors={colors}
+          />
+          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          <InfoRow
+            icon="calendar"
+            label="Schedule"
+            value={formatDaysOfWeek(commitment.daysOfWeek)}
+            colors={colors}
+          />
+          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          <InfoRow
+            icon="target"
+            label="Daily target"
+            value={
+              commitment.goalType === "steps"
+                ? `${commitment.targetPerDay.toLocaleString("en-IN")} steps`
+                : `${commitment.targetPerDay} post${commitment.targetPerDay > 1 ? "s" : ""} + public link`
+            }
+            colors={colors}
+          />
+          {commitment.goalType === "content" && (
+            <>
+              <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+              <InfoRow
+                icon="link"
+                label="Proof required"
+                value="Public post URL (submitted by 11:59 PM)"
+                colors={colors}
+              />
+            </>
+          )}
+          {commitment.goalType === "steps" && (
+            <>
+              <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+              <InfoRow
+                icon="clock"
+                label="Deadline"
+                value="Log steps by 11:59 PM each committed day"
+                colors={colors}
+              />
+            </>
+          )}
+        </View>
+
+        {/* Missed */}
+        {missed > 0 && (
           <View
             style={[
-              styles.missedCard,
-              { backgroundColor: colors.danger + "11", borderColor: colors.danger + "33" },
+              styles.missedBanner,
+              {
+                backgroundColor: colors.danger + "11",
+                borderColor: colors.danger + "33",
+              },
             ]}
           >
             <Feather name="alert-circle" size={14} color={colors.danger} />
             <Text style={[styles.missedText, { color: colors.danger }]}>
-              {missedDays} missed day{missedDays > 1 ? "s" : ""} ·{" "}
-              {formatCurrency(missedAmount, commitment.currency)} at risk
+              {missed} missed day{missed > 1 ? "s" : ""} ·{" "}
+              {formatCurrency(missedAmount, commitment.currency)} forfeited
               {commitment.friendName ? ` → ${commitment.friendName}` : ""}
             </Text>
           </View>
@@ -253,7 +337,86 @@ export default function CommitmentDetailScreen() {
           <MonthCalendar commitment={commitment} />
         </View>
 
-        {/* Friend info */}
+        {/* Recent check-ins */}
+        {commitment.checkIns.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Recent activity
+            </Text>
+            {[...commitment.checkIns]
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .slice(0, 5)
+              .map((ci) => (
+                <View
+                  key={ci.id}
+                  style={[
+                    styles.activityRow,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.activityDot,
+                      {
+                        backgroundColor: ci.verified
+                          ? colors.primary
+                          : colors.warning,
+                      },
+                    ]}
+                  />
+                  <View style={styles.activityInfo}>
+                    <Text
+                      style={[
+                        styles.activityDate,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {formatDate(ci.date)}
+                    </Text>
+                    {ci.proofUrl && (
+                      <Text
+                        style={[
+                          styles.activityMeta,
+                          { color: colors.mutedForeground },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {ci.proofUrl}
+                      </Text>
+                    )}
+                    {ci.stepCount !== undefined && (
+                      <Text
+                        style={[
+                          styles.activityMeta,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {ci.stepCount.toLocaleString("en-IN")} steps
+                        {ci.verified ? " ✓ goal met" : " — goal not met"}
+                      </Text>
+                    )}
+                  </View>
+                  <Text
+                    style={[
+                      styles.activityAmount,
+                      {
+                        color: ci.verified ? colors.primary : colors.mutedForeground,
+                      },
+                    ]}
+                  >
+                    {ci.verified
+                      ? `+${formatCurrency(perDay, commitment.currency)}`
+                      : "—"}
+                  </Text>
+                </View>
+              ))}
+          </View>
+        )}
+
+        {/* Friend */}
         {commitment.friendName && (
           <View
             style={[
@@ -268,56 +431,90 @@ export default function CommitmentDetailScreen() {
               </Text>
               <Text style={[styles.friendName, { color: colors.foreground }]}>
                 {commitment.friendName}
-                {commitment.friendContact ? ` · ${commitment.friendContact}` : ""}
+                {commitment.friendContact
+                  ? ` · ${commitment.friendContact}`
+                  : ""}
               </Text>
             </View>
           </View>
         )}
       </ScrollView>
 
-      {/* Check-in FAB */}
-      {active && (
+      {/* Action area */}
+      {active && todayScheduled && (
         <View
           style={[
             styles.fabArea,
-            { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 12 },
+            {
+              paddingBottom:
+                Platform.OS === "web" ? 34 : insets.bottom + 12,
+              borderTopColor: colors.border,
+            },
           ]}
         >
           {checkedToday ? (
             <View style={styles.fabRow}>
               <View
                 style={[
-                  styles.doneChip,
-                  { backgroundColor: colors.primary + "22", borderColor: colors.primary + "44" },
+                  styles.donePill,
+                  {
+                    backgroundColor: colors.primary + "22",
+                    borderColor: colors.primary + "44",
+                  },
                 ]}
               >
                 <Feather name="check-circle" size={16} color={colors.primary} />
-                <Text style={[styles.doneText, { color: colors.primary }]}>
-                  Checked in · +{formatCurrency(perCheckIn, commitment.currency)}
+                <Text style={[styles.donePillText, { color: colors.primary }]}>
+                  Submitted · +{formatCurrency(perDay, commitment.currency)}{" "}
+                  refunded
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={handleUndo}
-                style={[styles.undoBtn, { backgroundColor: colors.secondary }]}
+                onPress={handleUndoToday}
+                style={[
+                  styles.undoBtn,
+                  { backgroundColor: colors.secondary },
+                ]}
                 activeOpacity={0.75}
               >
-                <Feather name="rotate-ccw" size={16} color={colors.mutedForeground} />
+                <Feather
+                  name="rotate-ccw"
+                  size={16}
+                  color={colors.mutedForeground}
+                />
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
-              onPress={handleCheckIn}
+              onPress={() => setModalVisible(true)}
               style={[styles.fab, { backgroundColor: colors.primary }]}
               activeOpacity={0.85}
             >
-              <Feather name="check" size={20} color="#000" />
+              <Feather
+                name={commitment.goalType === "content" ? "link" : "activity"}
+                size={18}
+                color="#000"
+              />
               <Text style={styles.fabText}>
-                Check in · Earn {formatCurrency(perCheckIn, commitment.currency)}
+                {commitment.goalType === "content"
+                  ? "Submit post link"
+                  : "Log today's steps"}{" "}
+                · Get back{" "}
+                {formatCurrency(perDay, commitment.currency)}
               </Text>
             </TouchableOpacity>
           )}
         </View>
       )}
+
+      <CheckInModal
+        visible={modalVisible}
+        commitment={commitment}
+        date={today}
+        onClose={() => setModalVisible(false)}
+        onSubmitContent={handleSubmitContent}
+        onSubmitSteps={handleSubmitSteps}
+      />
     </View>
   );
 }
@@ -334,19 +531,68 @@ function StatCol({
   valueColor?: string;
 }) {
   return (
-    <View style={statStyles.col}>
-      <Text style={[statStyles.value, { color: valueColor ?? colors.foreground }]}>
+    <View style={scStyles.col}>
+      <Text style={[scStyles.value, { color: valueColor ?? colors.foreground }]}>
         {value}
       </Text>
-      <Text style={[statStyles.label, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[scStyles.label, { color: colors.mutedForeground }]}>
+        {label}
+      </Text>
     </View>
   );
 }
 
-const statStyles = StyleSheet.create({
+function InfoRow({
+  icon,
+  label,
+  value,
+  colors,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  colors: any;
+}) {
+  return (
+    <View style={irStyles.row}>
+      <View style={irStyles.left}>
+        <Feather name={icon as any} size={14} color={colors.mutedForeground} />
+        <Text style={[irStyles.label, { color: colors.mutedForeground }]}>
+          {label}
+        </Text>
+      </View>
+      <Text
+        style={[irStyles.value, { color: colors.foreground }]}
+        numberOfLines={2}
+      >
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+const scStyles = StyleSheet.create({
   col: { flex: 1, alignItems: "center", gap: 2 },
   value: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   label: { fontSize: 10, fontFamily: "Inter_400Regular" },
+});
+
+const irStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    gap: 12,
+  },
+  left: { flexDirection: "row", alignItems: "center", gap: 8, minWidth: 90 },
+  label: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  value: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+    textAlign: "right",
+  },
 });
 
 const styles = StyleSheet.create({
@@ -359,7 +605,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
   },
-  backBtn: {
+  iconBtn: {
     width: 40,
     height: 40,
     alignItems: "center",
@@ -371,11 +617,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    gap: 14,
-  },
+  scroll: { paddingHorizontal: 20, paddingTop: 16, gap: 14 },
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -389,56 +631,39 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
   },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 12,
-    fontFamily: "Inter_600SemiBold",
-  },
-  dateRange: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  earningsCard: {
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
+  dateRange: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  refundCard: {
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     gap: 4,
   },
-  earningsLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  earningsValue: {
+  refundLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
+  refundValue: {
     fontSize: 36,
     fontFamily: "Inter_700Bold",
     lineHeight: 42,
   },
-  earningsOf: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 14,
-  },
+  refundOf: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 14 },
   progressBg: {
     height: 6,
     borderRadius: 3,
     overflow: "hidden",
     marginBottom: 16,
   },
-  progressFill: {
-    height: "100%",
-    borderRadius: 3,
+  progressFill: { height: "100%", borderRadius: 3 },
+  statsRow: { flexDirection: "row", alignItems: "center" },
+  infoCard: {
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
   },
-  statsRow: {
+  infoDivider: { height: 1 },
+  missedBanner: {
     flexDirection: "row",
-    alignItems: "center",
-  },
-  missedCard: {
-    flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: 8,
     padding: 12,
     borderRadius: 10,
@@ -448,12 +673,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_500Medium",
     flex: 1,
+    lineHeight: 17,
   },
   calendarCard: {
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
   },
+  section: { gap: 8 },
+  sectionTitle: {
+    fontSize: 15,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 2,
+  },
+  activityRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  activityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  activityInfo: { flex: 1, gap: 2 },
+  activityDate: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  activityMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  activityAmount: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   friendCard: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -462,28 +712,16 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  friendInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  friendLabel: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  friendName: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
+  friendInfo: { flex: 1, gap: 2 },
+  friendLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  friendName: { fontSize: 13, fontFamily: "Inter_500Medium" },
   fabArea: {
     paddingHorizontal: 20,
     paddingTop: 12,
+    borderTopWidth: 1,
   },
-  fabRow: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-  },
-  doneChip: {
+  fabRow: { flexDirection: "row", gap: 10, alignItems: "center" },
+  donePill: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
@@ -493,10 +731,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
   },
-  doneText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+  donePillText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   undoBtn: {
     width: 48,
     height: 48,
@@ -513,7 +748,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   fabText: {
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: "Inter_600SemiBold",
     color: "#000",
   },
@@ -521,10 +756,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
   },
-  notFoundText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
+  notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
 });
