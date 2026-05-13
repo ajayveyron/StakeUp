@@ -1,6 +1,6 @@
-# StakeUp
+# Pact Raven
 
-Put real money on your goals. Show up every day, submit proof, and get your money back — one day at a time.
+Make a pact with yourself. Show up every day, submit proof, and get your money back — one day at a time.
 
 ## Run & Operate
 
@@ -21,7 +21,7 @@ Put real money on your goals. Show up every day, submit proof, and get your mone
 
 - `artifacts/mobile/` — Expo app
   - `app/(tabs)/` — Home, Commitments, Stats screens
-  - `app/commitment/new.tsx` — 4-step stake creation form
+  - `app/commitment/new.tsx` — 4-step pact creation form
   - `app/commitment/[id].tsx` — detail view + check-in action
   - `contexts/CommitmentsContext.tsx` — all state + AsyncStorage
   - `utils/commitment.ts` — calculation helpers (refund, schedule, etc.)
@@ -33,15 +33,15 @@ Put real money on your goals. Show up every day, submit proof, and get your mone
 ## Architecture decisions
 
 - **Local-only storage** (AsyncStorage): no backend needed for v1. All data lives on device.
-- **Schedule-based commitments**: users pick days of week + daily target + duration. Refund is stakeAmount ÷ total committed days.
+- **Schedule-based commitments**: users pick days of week + daily target + duration. Refund is pactAmount ÷ total committed days.
 - **Manual proof review**: submitted proof counts as submitted while under review. Approved days add refunds to the user's in-app wallet; rejected days are forfeited with a reason.
-- **Forfeit destinations**: users choose a friend beneficiary or the reward pool. Friend-beneficiary stakes are not eligible for reward-pool benefits.
+- **Forfeit destinations**: users choose a friend beneficiary or the reward pool. Friend-beneficiary pacts are not eligible for reward-pool benefits.
 - **11:59 PM local deadline**: shown via a live countdown on all pending check-ins.
 - **Two goal types only (v1)**: Content Creation (link proof) and Step Count (manual + future health app sync).
 
 ## Product
 
-Users create a "stake" — they lock in an amount of money against a goal (e.g. post reels every Mon/Wed/Fri for 1 month, ₹3000 staked). Each day they complete their goal, they submit proof for review. Approved days add a proportional refund to their in-app wallet. Missed or rejected days are forfeited to a named friend or the reward pool.
+Users create a pact — they lock in an amount of money against a goal (e.g. post reels every Mon/Wed/Fri for 1 month, ₹3000 committed). Each day they complete their goal, they submit proof for review. Approved days add a proportional refund to their in-app wallet. Missed or rejected days are forfeited to a named friend or the reward pool.
 
 ## User preferences
 

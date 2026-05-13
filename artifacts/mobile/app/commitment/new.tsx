@@ -33,7 +33,7 @@ import {
   getDurationLabel,
   getEndDateForDuration,
   getScheduledDates,
-  getStakePresets,
+  getPactAmountPresets,
   getStartDateOptions,
   getTodayStr,
 } from "@/utils/commitment";
@@ -59,7 +59,7 @@ interface FormData {
   durationType: DurationType;
   targetPerDay: number;
   customSteps: string;
-  stakeAmount: string;
+  pactAmount: string;
   currency: string;
   forfeitDestination: ForfeitDestination;
   friendName: string;
@@ -82,7 +82,7 @@ export default function NewCommitmentScreen() {
     durationType: "month",
     targetPerDay: 1,
     customSteps: "",
-    stakeAmount: "1000",
+    pactAmount: "1000",
     currency: "INR",
     forfeitDestination: "reward_pool",
     friendName: "",
@@ -111,7 +111,7 @@ export default function NewCommitmentScreen() {
     durationDays: daysBetween(form.startDate, endDate),
     startDate: form.startDate,
     endDate,
-    stakeAmount: parseFloat(form.stakeAmount) || 0,
+    pactAmount: parseFloat(form.pactAmount) || 0,
     currency: form.currency,
     checkIns: [],
   } as unknown as Commitment;
@@ -119,7 +119,7 @@ export default function NewCommitmentScreen() {
   const scheduledDates = getScheduledDates(mockCommitment);
   const scheduledDays = scheduledDates.length;
   const perDay =
-    scheduledDays > 0 ? (parseFloat(form.stakeAmount) || 0) / scheduledDays : 0;
+    scheduledDays > 0 ? (parseFloat(form.pactAmount) || 0) / scheduledDays : 0;
   const firstSubmissionDate = scheduledDates[0] ?? null;
   const stepGoalFinal = form.customSteps.trim()
     ? parseInt(form.customSteps) || 0
@@ -139,7 +139,7 @@ export default function NewCommitmentScreen() {
       return form.targetPerDay > 0 && form.daysOfWeek.length > 0;
     }
     if (step === 2) {
-      if (parseFloat(form.stakeAmount) <= 0) return false;
+      if (parseFloat(form.pactAmount) <= 0) return false;
       if (form.forfeitDestination === "friend") {
         return (
           form.friendName.trim().length > 0 &&
@@ -174,7 +174,7 @@ export default function NewCommitmentScreen() {
       targetPerDay:
         form.goalType === "steps" ? stepGoalFinal : form.targetPerDay,
       durationDays: daysBetween(form.startDate, endDate),
-      stakeAmount: parseFloat(form.stakeAmount) || 0,
+      pactAmount: parseFloat(form.pactAmount) || 0,
       currency: form.currency,
       forfeitDestination: form.forfeitDestination,
       startDate: form.startDate,
@@ -193,7 +193,7 @@ export default function NewCommitmentScreen() {
   }
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
-  const STEP_LABELS = ["Goal", "Schedule", "Stake", "Review"];
+  const STEP_LABELS = ["Goal", "Schedule", "Pact", "Review"];
   const startDateOptions = getStartDateOptions(30);
 
   return (
@@ -217,7 +217,7 @@ export default function NewCommitmentScreen() {
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-            New Stake
+            New Pact
           </Text>
           <View style={styles.headerBtn} />
         </View>
@@ -776,14 +776,14 @@ export default function NewCommitmentScreen() {
             </View>
           )}
 
-          {/* ── STEP 2: Stake ── */}
+          {/* ── STEP 2: Pact ── */}
           {step === 2 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
                 Put your money down
               </Text>
               <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Approved days go to your StakeUp wallet. Missed or rejected days are forfeited.
+                Approved days go to your Pact Raven wallet. Missed or rejected days are forfeited.
               </Text>
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
@@ -826,20 +826,20 @@ export default function NewCommitmentScreen() {
               </View>
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Total stake amount
+                Total pact amount
               </Text>
               {/* Dynamic presets: each gives a per-day refund that's a multiple of ₹50 / $0.50 */}
               {scheduledDays > 0 && (
                 <View style={styles.presetRow}>
-                  {getStakePresets(scheduledDays, form.currency).map((preset) => {
+                  {getPactAmountPresets(scheduledDays, form.currency).map((preset) => {
                     const perDayPreset = preset / scheduledDays;
                     const sel =
-                      parseFloat(form.stakeAmount) === preset &&
-                      !form.stakeAmount.includes(".");
+                      parseFloat(form.pactAmount) === preset &&
+                      !form.pactAmount.includes(".");
                     return (
                       <TouchableOpacity
                         key={preset}
-                        onPress={() => update("stakeAmount", String(preset))}
+                        onPress={() => update("pactAmount", String(preset))}
                         activeOpacity={0.8}
                         style={[
                           styles.presetBtn,
@@ -885,15 +885,15 @@ export default function NewCommitmentScreen() {
                 ]}
                 placeholder={form.currency === "INR" ? "e.g. 3000" : "e.g. 50"}
                 placeholderTextColor={colors.mutedForeground}
-                value={form.stakeAmount}
+                value={form.pactAmount}
                 onChangeText={(v) =>
-                  update("stakeAmount", v.replace(/[^0-9.]/g, ""))
+                  update("pactAmount", v.replace(/[^0-9.]/g, ""))
                 }
                 keyboardType="decimal-pad"
                 returnKeyType="done"
               />
 
-              {scheduledDays > 0 && parseFloat(form.stakeAmount) > 0 && (
+              {scheduledDays > 0 && parseFloat(form.pactAmount) > 0 && (
                 <View
                   style={[
                     styles.refundChip,
@@ -919,7 +919,7 @@ export default function NewCommitmentScreen() {
                         { color: colors.mutedForeground },
                       ]}
                     >
-                      {formatCurrency(parseFloat(form.stakeAmount), form.currency)}{" "}
+                      {formatCurrency(parseFloat(form.pactAmount), form.currency)}{" "}
                       ÷ {scheduledDays} committed days
                     </Text>
                   </View>
@@ -937,14 +937,14 @@ export default function NewCommitmentScreen() {
                       icon: "award",
                       title: "Reward pool",
                       body:
-                        "Funds rewards for consistent users and keeps StakeUp running.",
+                        "Funds rewards for consistent users and keeps Pact Raven running.",
                     },
                     {
                       value: "friend" as const,
                       icon: "user",
                       title: "Friend wallet",
                       body:
-                        "Goes to a friend's StakeUp wallet. No reward-pool eligibility.",
+                        "Goes to a friend's Pact Raven wallet. No reward-pool eligibility.",
                     },
                   ] as const
                 ).map((opt) => {
@@ -1049,7 +1049,7 @@ export default function NewCommitmentScreen() {
           {step === 3 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
-                Review your stake
+                Review your pact
               </Text>
 
               {/* Date range banner */}
@@ -1159,9 +1159,9 @@ export default function NewCommitmentScreen() {
                   </>
                 )}
                 <RRow
-                  label="Total staked"
+                  label="Total committed"
                   value={formatCurrency(
-                    parseFloat(form.stakeAmount) || 0,
+                    parseFloat(form.pactAmount) || 0,
                     form.currency
                   )}
                   colors={colors}
@@ -1328,7 +1328,7 @@ export default function NewCommitmentScreen() {
                 style={styles.nextBtn}
               >
                 <Text style={[styles.nextBtnText, { color: "#000" }]}>
-                  {step === 3 ? "Start Stake" : "Continue"}
+                  {step === 3 ? "Start Pact" : "Continue"}
                 </Text>
                 <Feather
                   name={step === 3 ? "check" : "arrow-right"}
@@ -1349,7 +1349,7 @@ export default function NewCommitmentScreen() {
                     { color: colors.mutedForeground },
                   ]}
                 >
-                  {step === 3 ? "Start Stake" : "Continue"}
+                  {step === 3 ? "Start Pact" : "Continue"}
                 </Text>
                 <Feather
                   name={step === 3 ? "check" : "arrow-right"}
@@ -1593,7 +1593,7 @@ const styles = StyleSheet.create({
   scheduleSummaryLabel: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   scheduleSummaryVal: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   scheduleSummaryDivider: { height: 1 },
-  // Stake presets
+  // Pact amount presets
   presetRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   presetBtn: {
     flex: 1,

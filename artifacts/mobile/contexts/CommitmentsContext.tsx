@@ -30,7 +30,7 @@ export interface Commitment {
   daysOfWeek: number[]; // 0=Sun 1=Mon ... 6=Sat
   targetPerDay: number; // steps: step goal; content: posts per day
   durationDays: number; // 7, 14, 30, 90
-  stakeAmount: number;
+  pactAmount: number;
   currency: string;
   forfeitDestination?: ForfeitDestination;
   startDate: string; // YYYY-MM-DD
@@ -67,7 +67,7 @@ interface CommitmentsContextType {
   getCommitment: (id: string) => Commitment | undefined;
 }
 
-const STORAGE_KEY = "@stakeup_v2_commitments";
+const STORAGE_KEY = "@pactraven_v1_commitments";
 
 function genId() {
   return Date.now().toString() + Math.random().toString(36).substr(2, 9);

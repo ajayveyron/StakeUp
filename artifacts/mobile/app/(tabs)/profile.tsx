@@ -31,7 +31,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { commitments } = useCommitments();
 
-  const totalStaked = commitments.reduce((s, c) => s + c.stakeAmount, 0);
+  const totalCommitted = commitments.reduce((s, c) => s + c.pactAmount, 0);
   const totalRefunded = commitments.reduce((s, c) => s + getTotalRefunded(c), 0);
   const totalAtRisk = commitments.reduce((s, c) => s + getAmountAtRisk(c), 0);
   const totalCheckIns = commitments.reduce(
@@ -74,7 +74,7 @@ export default function ProfileScreen() {
               Nothing yet
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Create a stake and your stats will appear here.
+              Create a pact and your stats will appear here.
             </Text>
           </View>
         ) : (
@@ -124,8 +124,8 @@ export default function ProfileScreen() {
             >
               <StatRow
                 icon="layers"
-                label="Total staked"
-                value={formatCurrency(totalStaked)}
+                label="Total committed"
+                value={formatCurrency(totalCommitted)}
                 colors={colors}
               />
               <Div colors={colors} />

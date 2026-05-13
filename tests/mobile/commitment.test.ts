@@ -20,7 +20,7 @@ function makeCommitment(overrides: Partial<Commitment> = {}): Commitment {
     daysOfWeek: [1, 3, 5],
     targetPerDay: 1,
     durationDays: 30,
-    stakeAmount: 3900,
+    pactAmount: 3900,
     currency: "INR",
     startDate: "2026-06-01",
     endDate: "2026-06-30",
@@ -62,7 +62,7 @@ describe("commitment schedule helpers", () => {
 });
 
 describe("commitment refund helpers", () => {
-  it("splits stake amount across scheduled days", () => {
+  it("splits the committed amount across scheduled days", () => {
     const commitment = makeCommitment();
 
     assert.equal(getRefundPerDay(commitment), 300);

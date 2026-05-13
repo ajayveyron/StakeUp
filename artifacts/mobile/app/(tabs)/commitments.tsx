@@ -110,12 +110,12 @@ export default function CommitmentsScreen() {
               color={colors.mutedForeground}
             />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {tab === "active" ? "No active stakes" : "No past stakes"}
+              {tab === "active" ? "No active pacts" : "No past pacts"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {tab === "active"
-                ? "Create a commitment and start getting refunds for every day you show up."
-                : "Completed stakes will appear here."}
+                ? "Create a pact and start getting refunds for every day you show up."
+                : "Completed pacts will appear here."}
             </Text>
             {tab === "active" && (
               <TouchableOpacity
@@ -128,7 +128,7 @@ export default function CommitmentsScreen() {
                   end={{ x: 1, y: 0 }}
                   style={styles.createBtn}
                 >
-                  <Text style={styles.createBtnText}>New Stake</Text>
+                  <Text style={styles.createBtnText}>New Pact</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}

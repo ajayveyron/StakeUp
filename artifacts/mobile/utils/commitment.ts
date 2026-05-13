@@ -151,9 +151,9 @@ export function formatStartDateOption(dateStr: string): {
   };
 }
 
-// ── Stake presets ─────────────────────────────────────────────────────────
+// ── Pact amount presets ───────────────────────────────────────────────────
 // Presets give daily refund amounts that are multiples of ₹50 or $0.50.
-export function getStakePresets(
+export function getPactAmountPresets(
   scheduledDays: number,
   currency: string
 ): number[] {
@@ -201,7 +201,7 @@ export function getTotalCommittedDays(c: Commitment): number {
 export function getRefundPerDay(c: Commitment): number {
   const total = getTotalCommittedDays(c);
   if (total <= 0) return 0;
-  return Math.round((c.stakeAmount / total) * 100) / 100;
+  return Math.round((c.pactAmount / total) * 100) / 100;
 }
 
 export function getVerifiedCheckIns(c: Commitment): CheckIn[] {
@@ -232,7 +232,7 @@ export function getTotalRefunded(c: Commitment): number {
 }
 
 export function getAmountAtRisk(c: Commitment): number {
-  return Math.max(0, c.stakeAmount - getTotalRefunded(c));
+  return Math.max(0, c.pactAmount - getTotalRefunded(c));
 }
 
 export function getMissedDates(c: Commitment): string[] {

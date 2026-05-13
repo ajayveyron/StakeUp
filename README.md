@@ -1,6 +1,6 @@
-# StakeUp
+# Pact Raven
 
-StakeUp is a mobile app for goal commitments with money at stake. Users create a commitment, submit proof on scheduled days, and receive proportional wallet refunds for manually approved check-ins.
+Pact Raven is a mobile app for goal commitments at pactraven.com. Users create a pact, submit proof on scheduled days, and receive proportional wallet refunds for manually approved check-ins.
 
 ## Quick Start
 
@@ -60,7 +60,7 @@ Key files:
 - Step check-ins require meeting or exceeding the daily target.
 - Approved refunds are credited to the user's in-app wallet.
 - Rejected or missed days are forfeited to the chosen friend beneficiary or the reward pool.
-- Refund language is intentional: users get their own stake back for approved days.
+- Refund language is intentional: users get their own pact amount back for approved days.
 - Scheduled-day deadlines are local time.
 - Product rules are captured in `docs/product-decisions.md`.
 

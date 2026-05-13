@@ -65,7 +65,7 @@ export default function HomeScreen() {
     (c) => !isTodayScheduled(c)
   );
 
-  const totalStaked = commitments.reduce((s, c) => s + c.stakeAmount, 0);
+  const totalCommitted = commitments.reduce((s, c) => s + c.pactAmount, 0);
   const totalRefunded = commitments.reduce((s, c) => s + getTotalRefunded(c), 0);
 
   const hour = new Date().getHours();
@@ -114,7 +114,7 @@ export default function HomeScreen() {
               {greeting}
             </Text>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              Your Stakes
+              Your Pacts
             </Text>
           </View>
           <TouchableOpacity
@@ -148,7 +148,7 @@ export default function HomeScreen() {
             />
             <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
             <SumStat
-              value={formatCurrency(totalStaked - totalRefunded)}
+              value={formatCurrency(totalCommitted - totalRefunded)}
               label="At risk"
               color={colors.accent}
               colors={colors}
@@ -262,11 +262,11 @@ export default function HomeScreen() {
               <Feather name="target" size={32} color={colors.primary} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              No stakes yet
+              No pacts yet
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Put real money on your goals. Show up, post your proof, and get
-              your money back.
+              Make a pact with yourself. Show up, submit proof, and get your
+              money back.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
@@ -278,7 +278,7 @@ export default function HomeScreen() {
                 end={{ x: 1, y: 0 }}
                 style={styles.createBtn}
               >
-                <Text style={styles.createBtnText}>Create your first stake</Text>
+                <Text style={styles.createBtnText}>Create your first pact</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

@@ -257,7 +257,7 @@ export default function CommitmentDetailScreen() {
             {formatCurrency(refunded, commitment.currency)}
           </Text>
           <Text style={[styles.refundOf, { color: colors.mutedForeground }]}>
-            of {formatCurrency(commitment.stakeAmount, commitment.currency)} staked
+            of {formatCurrency(commitment.pactAmount, commitment.currency)} committed
           </Text>
           <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
             <View

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "StakeUp",
-    "slug": "mobile",
+    "name": "Pact Raven",
+    "slug": "pactraven",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "pactraven",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -24,7 +24,7 @@
       [
         "expo-router",
         {
-          "origin": "https://replit.com/"
+          "origin": "https://pactraven.com"
         }
       ],
       "expo-font",

@@ -1,10 +1,10 @@
-# StakeUp Product Decisions
+# Pact Raven Product Decisions
 
 ## Core Product Model
 
-StakeUp is a commitment wallet with manual proof review.
+Pact Raven is a commitment wallet with manual proof review.
 
-Users create a stake, deposit money, submit proof by the daily deadline, and wait for review. Approved submissions move that day's refund into the user's in-app wallet. Rejected or missed days are forfeited based on the beneficiary option chosen when the stake was created.
+Users create a pact, deposit money, submit proof by the daily deadline, and wait for review. Approved submissions move that day's refund into the user's in-app wallet. Rejected or missed days are forfeited based on the beneficiary option chosen when the pact was created.
 
 ## Submission States
 
@@ -30,27 +30,27 @@ This avoids unnecessary transaction volume, transaction costs, failed payout han
 
 ## Forfeit Destinations
 
-Users choose one forfeit destination when creating a stake.
+Users choose one forfeit destination when creating a pact.
 
 ### Friend Beneficiary
 
-If the user misses or gets rejected, that day's amount goes to the chosen friend's StakeUp wallet. The friend must sign up to receive and withdraw it.
+If the user misses or gets rejected, that day's amount goes to the chosen friend's Pact Raven wallet. The friend must sign up to receive and withdraw it.
 
 Users who choose friend forfeits are not eligible for rewards funded by the community reward pool.
 
 ### Reward Pool
 
-If the user misses or gets rejected, that day's amount funds rewards for consistent users and helps maintain StakeUp.
+If the user misses or gets rejected, that day's amount funds rewards for consistent users and helps maintain Pact Raven.
 
 Reward-pool eligibility should only apply to users who also route forfeits into the reward pool and meet the program rules.
 
 ## Fee Positioning
 
-During beta, StakeUp should not charge a platform fee.
+During beta, Pact Raven should not charge a platform fee.
 
 Recommended copy:
 
-"StakeUp does not charge a platform fee during beta. Withdrawal provider fees may apply in the future, and we will show them before withdrawal."
+"Pact Raven does not charge a platform fee during beta. Withdrawal provider fees may apply in the future, and we will show them before withdrawal."
 
 Later, consider minimum withdrawal thresholds to keep payout costs under control.
 
