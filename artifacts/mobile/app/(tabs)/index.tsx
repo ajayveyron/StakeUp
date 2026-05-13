@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Platform,
   ScrollView,
@@ -19,14 +19,16 @@ import { useColors } from "@/hooks/useColors";
 import {
   formatCountdown,
   formatCurrency,
+  getDaysRemaining,
   getMsUntilDeadline,
+  getRefundPerDay,
   getTodayStr,
+  getTotalCommittedDays,
   getTotalRefunded,
+  getVerifiedCheckIns,
   hasTodayCheckIn,
   isActive,
   isTodayScheduled,
-  getTotalCommittedDays,
-  getVerifiedCheckIns,
 } from "@/utils/commitment";
 
 export default function HomeScreen() {
@@ -67,6 +69,9 @@ export default function HomeScreen() {
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
+  // The "featured" commitment — pending today first, otherwise first active
+  const featuredCommitment = todayPending[0] ?? activeCommitments[0] ?? null;
+
   function openCheckIn(commitment: Commitment) {
     setSelectedCommitment(commitment);
     setModalVisible(true);
@@ -75,15 +80,17 @@ export default function HomeScreen() {
   function handleSubmitContent(id: string, date: string, url: string) {
     submitContentCheckIn(id, date, url);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setModalVisible(false);
   }
 
   function handleSubmitSteps(id: string, date: string, steps: number) {
     submitStepsCheckIn(id, date, steps);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setModalVisible(false);
   }
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
-  const isUrgent = countdown < 3600000; // less than 1 hour
+  const isUrgent = countdown < 3600000;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -116,7 +123,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Summary */}
+        {/* Summary strip */}
         {commitments.length > 0 && (
           <View
             style={[
@@ -124,56 +131,46 @@ export default function HomeScreen() {
               { backgroundColor: colors.card, borderColor: colors.border },
             ]}
           >
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryStat}>
-                <Text style={[styles.summaryValue, { color: colors.primary }]}>
-                  {formatCurrency(totalRefunded)}
-                </Text>
-                <Text
-                  style={[styles.summaryLabel, { color: colors.mutedForeground }]}
-                >
-                  Refunded
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.summaryDivider,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-              <View style={styles.summaryStat}>
-                <Text style={[styles.summaryValue, { color: colors.accent }]}>
-                  {formatCurrency(totalStaked - totalRefunded)}
-                </Text>
-                <Text
-                  style={[styles.summaryLabel, { color: colors.mutedForeground }]}
-                >
-                  At risk
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.summaryDivider,
-                  { backgroundColor: colors.border },
-                ]}
-              />
-              <View style={styles.summaryStat}>
-                <Text
-                  style={[styles.summaryValue, { color: colors.foreground }]}
-                >
-                  {todayPending.length}
-                </Text>
-                <Text
-                  style={[styles.summaryLabel, { color: colors.mutedForeground }]}
-                >
-                  Due today
-                </Text>
-              </View>
-            </View>
+            <SumStat
+              value={formatCurrency(totalRefunded)}
+              label="Refunded"
+              color={colors.primary}
+              colors={colors}
+            />
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <SumStat
+              value={formatCurrency(totalStaked - totalRefunded)}
+              label="At risk"
+              color={colors.accent}
+              colors={colors}
+            />
+            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <SumStat
+              value={String(todayPending.length)}
+              label="Due today"
+              color={
+                todayPending.length > 0 ? colors.foreground : colors.mutedForeground
+              }
+              colors={colors}
+            />
           </View>
         )}
 
-        {/* Deadline banner when pending */}
+        {/* ── BIG ACTIVE COMMITMENT WIDGET ── */}
+        {featuredCommitment && (
+          <ActiveWidget
+            commitment={featuredCommitment}
+            countdown={countdown}
+            isUrgent={isUrgent}
+            colors={colors}
+            onCheckIn={() => openCheckIn(featuredCommitment)}
+            onViewDetails={() =>
+              router.push(`/commitment/${featuredCommitment.id}`)
+            }
+          />
+        )}
+
+        {/* Deadline banner (when there are pending) */}
         {todayPending.length > 0 && (
           <View
             style={[
@@ -182,9 +179,7 @@ export default function HomeScreen() {
                 backgroundColor: isUrgent
                   ? colors.danger + "22"
                   : colors.secondary,
-                borderColor: isUrgent
-                  ? colors.danger + "55"
-                  : colors.border,
+                borderColor: isUrgent ? colors.danger + "55" : colors.border,
               },
             ]}
           >
@@ -196,9 +191,7 @@ export default function HomeScreen() {
             <Text
               style={[
                 styles.deadlineText,
-                {
-                  color: isUrgent ? colors.danger : colors.mutedForeground,
-                },
+                { color: isUrgent ? colors.danger : colors.mutedForeground },
               ]}
             >
               {formatCountdown(countdown)} · Submit by 11:59 PM
@@ -206,26 +199,19 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Today pending */}
-        {todayPending.length > 0 && (
+        {/* Today pending (excluding the featured one shown in widget) */}
+        {todayPending.length > 1 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Submit today
+              Also due today
             </Text>
-            <Text style={[styles.sectionSub, { color: colors.danger }]}>
-              {todayPending.length} pending
-            </Text>
-            {todayPending.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                onCheckIn={openCheckIn}
-              />
+            {todayPending.slice(1).map((c) => (
+              <CommitmentCard key={c.id} commitment={c} onCheckIn={openCheckIn} />
             ))}
           </View>
         )}
 
-        {/* Today done */}
+        {/* Done today */}
         {todayDone.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -240,7 +226,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Not scheduled today */}
+        {/* Rest days */}
         {todayNotScheduled.length > 0 && todayPending.length === 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -261,10 +247,7 @@ export default function HomeScreen() {
             <View
               style={[
                 styles.emptyIcon,
-                {
-                  backgroundColor: colors.card,
-                  borderColor: colors.border,
-                },
+                { backgroundColor: colors.card, borderColor: colors.border },
               ]}
             >
               <Feather name="target" size={32} color={colors.primary} />
@@ -299,6 +282,310 @@ export default function HomeScreen() {
   );
 }
 
+// ── Active commitment widget ───────────────────────────────────────────────
+function ActiveWidget({
+  commitment,
+  countdown,
+  isUrgent,
+  colors,
+  onCheckIn,
+  onViewDetails,
+}: {
+  commitment: Commitment;
+  countdown: number;
+  isUrgent: boolean;
+  colors: any;
+  onCheckIn: () => void;
+  onViewDetails: () => void;
+}) {
+  const today = getTodayStr();
+  const perDay = getRefundPerDay(commitment);
+  const totalDays = getTotalCommittedDays(commitment);
+  const verified = getVerifiedCheckIns(commitment).length;
+  const daysLeft = getDaysRemaining(commitment);
+  const hasPending = isTodayScheduled(commitment) && !hasTodayCheckIn(commitment);
+  const donToday = hasTodayCheckIn(commitment);
+  const progress = totalDays > 0 ? verified / totalDays : 0;
+  const totalRefunded = getTotalRefunded(commitment);
+
+  return (
+    <TouchableOpacity
+      onPress={onViewDetails}
+      activeOpacity={0.9}
+      style={[
+        wStyles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: hasPending && isUrgent ? colors.danger + "66" : colors.border,
+          borderWidth: hasPending && isUrgent ? 1.5 : 1,
+        },
+      ]}
+    >
+      {/* Top row */}
+      <View style={wStyles.topRow}>
+        <View
+          style={[
+            wStyles.typeChip,
+            {
+              backgroundColor:
+                commitment.goalType === "content"
+                  ? colors.primary + "18"
+                  : colors.accent + "18",
+            },
+          ]}
+        >
+          <Feather
+            name={commitment.goalType === "content" ? "video" : "activity"}
+            size={11}
+            color={
+              commitment.goalType === "content" ? colors.primary : colors.accent
+            }
+          />
+          <Text
+            style={[
+              wStyles.typeChipTxt,
+              {
+                color:
+                  commitment.goalType === "content"
+                    ? colors.primary
+                    : colors.accent,
+              },
+            ]}
+          >
+            {commitment.goalType === "content" ? "Content" : "Steps"}
+          </Text>
+        </View>
+        <View style={wStyles.topRight}>
+          {hasPending ? (
+            <View style={wStyles.countdownRow}>
+              <Feather
+                name="clock"
+                size={11}
+                color={isUrgent ? colors.danger : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  wStyles.countdown,
+                  { color: isUrgent ? colors.danger : colors.mutedForeground },
+                ]}
+              >
+                {formatCountdown(countdown)}
+              </Text>
+            </View>
+          ) : donToday ? (
+            <View style={wStyles.countdownRow}>
+              <Feather name="check-circle" size={11} color={colors.primary} />
+              <Text style={[wStyles.countdown, { color: colors.primary }]}>
+                Done today
+              </Text>
+            </View>
+          ) : (
+            <Text style={[wStyles.countdown, { color: colors.mutedForeground }]}>
+              {daysLeft}d left
+            </Text>
+          )}
+          <Feather
+            name="chevron-right"
+            size={14}
+            color={colors.mutedForeground}
+          />
+        </View>
+      </View>
+
+      {/* Name */}
+      <Text
+        style={[wStyles.name, { color: colors.foreground }]}
+        numberOfLines={2}
+      >
+        {commitment.name}
+      </Text>
+
+      {/* Progress */}
+      <View style={[wStyles.progressBg, { backgroundColor: colors.border }]}>
+        <View
+          style={[
+            wStyles.progressFill,
+            {
+              width: `${Math.min(progress * 100, 100)}%` as any,
+              backgroundColor: colors.primary,
+            },
+          ]}
+        />
+      </View>
+
+      {/* Stats row */}
+      <View style={wStyles.statsRow}>
+        <View style={wStyles.stat}>
+          <Text style={[wStyles.statVal, { color: colors.primary }]}>
+            {formatCurrency(totalRefunded, commitment.currency)}
+          </Text>
+          <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
+            refunded
+          </Text>
+        </View>
+        <View style={wStyles.statDivider} />
+        <View style={wStyles.stat}>
+          <Text style={[wStyles.statVal, { color: colors.foreground }]}>
+            {verified}/{totalDays}
+          </Text>
+          <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
+            days done
+          </Text>
+        </View>
+        <View style={wStyles.statDivider} />
+        <View style={wStyles.stat}>
+          <Text style={[wStyles.statVal, { color: colors.accent }]}>
+            {formatCurrency(perDay, commitment.currency)}
+          </Text>
+          <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
+            per day
+          </Text>
+        </View>
+      </View>
+
+      {/* Action buttons */}
+      <View style={wStyles.actions}>
+        {hasPending && (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation?.();
+              onCheckIn();
+            }}
+            style={[wStyles.checkInBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.85}
+          >
+            <Feather
+              name={commitment.goalType === "content" ? "link" : "activity"}
+              size={15}
+              color="#000"
+            />
+            <Text style={wStyles.checkInTxt}>
+              {commitment.goalType === "content"
+                ? "Submit post link"
+                : "Log steps"}{" "}
+              · +{formatCurrency(perDay, commitment.currency)}
+            </Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          onPress={onViewDetails}
+          style={[
+            wStyles.detailBtn,
+            {
+              backgroundColor: hasPending ? colors.secondary : colors.primary,
+              flex: hasPending ? 0 : 1,
+            },
+          ]}
+          activeOpacity={0.8}
+        >
+          <Text
+            style={[
+              wStyles.detailTxt,
+              { color: hasPending ? colors.mutedForeground : "#000" },
+            ]}
+          >
+            {hasPending ? "Details" : "View details"}
+          </Text>
+          <Feather
+            name="arrow-right"
+            size={14}
+            color={hasPending ? colors.mutedForeground : "#000"}
+          />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function SumStat({
+  value,
+  label,
+  color,
+  colors,
+}: {
+  value: string;
+  label: string;
+  color: string;
+  colors: any;
+}) {
+  return (
+    <View style={styles.summaryStat}>
+      <Text style={[styles.summaryValue, { color }]}>{value}</Text>
+      <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+const wStyles = StyleSheet.create({
+  card: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 18,
+    marginBottom: 16,
+    gap: 12,
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  typeChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  typeChipTxt: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
+  topRight: { flexDirection: "row", alignItems: "center", gap: 6 },
+  countdownRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  countdown: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  name: { fontSize: 18, fontFamily: "Inter_700Bold", lineHeight: 24 },
+  progressBg: {
+    height: 5,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: { height: "100%", borderRadius: 3 },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
+  stat: { flex: 1, alignItems: "center", gap: 2 },
+  statVal: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  statLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  statDivider: { width: 1, height: 28, backgroundColor: "#222230" },
+  actions: { flexDirection: "row", gap: 8, marginTop: 2 },
+  checkInBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  checkInTxt: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    color: "#000",
+  },
+  detailBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  detailTxt: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+});
+
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
@@ -308,15 +595,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 20,
   },
-  greeting: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 2,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-  },
+  greeting: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 2 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   addBtn: {
     width: 42,
     height: 42,
@@ -328,29 +608,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    marginBottom: 14,
-  },
-  summaryRow: {
+    marginBottom: 16,
     flexDirection: "row",
     alignItems: "center",
   },
-  summaryStat: {
-    flex: 1,
-    alignItems: "center",
-    gap: 4,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-  },
-  summaryLabel: {
-    fontSize: 10,
-    fontFamily: "Inter_400Regular",
-  },
-  summaryDivider: {
-    width: 1,
-    height: 32,
-  },
+  summaryStat: { flex: 1, alignItems: "center", gap: 4 },
+  summaryValue: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  summaryLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  summaryDivider: { width: 1, height: 32 },
   deadlineBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -361,10 +626,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 18,
   },
-  deadlineText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
+  deadlineText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   section: { marginBottom: 24 },
   sectionTitle: {
     fontSize: 17,
@@ -376,11 +638,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     marginBottom: 12,
   },
-  empty: {
-    alignItems: "center",
-    paddingTop: 60,
-    gap: 12,
-  },
+  empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyIcon: {
     width: 72,
     height: 72,
@@ -390,11 +648,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-  },
+  emptyTitle: { fontSize: 20, fontFamily: "Inter_600SemiBold", textAlign: "center" },
   emptyText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",

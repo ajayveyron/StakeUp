@@ -14,8 +14,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CheckInModal } from "@/components/CheckInModal";
+import { CommitmentTimeline } from "@/components/CommitmentTimeline";
 import { MonthCalendar } from "@/components/MonthCalendar";
-import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
+import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCurrency,
@@ -59,7 +60,12 @@ export default function CommitmentDetailScreen() {
   if (!commitment) {
     return (
       <View style={[styles.root, { backgroundColor: colors.background }]}>
-        <View style={[styles.headerBar, { paddingTop: topPadding + 8, borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            styles.headerBar,
+            { paddingTop: topPadding + 8, borderBottomColor: colors.border },
+          ]}
+        >
           <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
@@ -75,7 +81,6 @@ export default function CommitmentDetailScreen() {
 
   const refunded = getTotalRefunded(commitment);
   const perDay = getRefundPerDay(commitment);
-  const atRisk = getAmountAtRisk(commitment);
   const totalDays = getTotalCommittedDays(commitment);
   const verified = getVerifiedCheckIns(commitment).length;
   const missed = getMissedDates(commitment).length;
@@ -86,7 +91,10 @@ export default function CommitmentDetailScreen() {
   const expired = isExpired(commitment);
   const todayScheduled = isTodayScheduled(commitment);
   const checkedToday = hasTodayCheckIn(commitment);
-  const showCheckIn = active && todayScheduled && !checkedToday;
+
+  // Upcoming scheduled dates (today + future, not yet submitted)
+  const scheduledDates = getScheduledDates(commitment);
+  const upcomingDates = scheduledDates.filter((d) => d >= today);
 
   function handleDelete() {
     Alert.alert(
@@ -127,10 +135,7 @@ export default function CommitmentDetailScreen() {
       <View
         style={[
           styles.headerBar,
-          {
-            paddingTop: topPadding + 8,
-            borderBottomColor: colors.border,
-          },
+          { paddingTop: topPadding + 8, borderBottomColor: colors.border },
         ]}
       >
         <TouchableOpacity
@@ -162,7 +167,35 @@ export default function CommitmentDetailScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status + meta */}
+        {/* ── Horizontal date timeline ── */}
+        <View
+          style={[
+            styles.timelineCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.timelineHeader}>
+            <Text style={[styles.timelineTitle, { color: colors.foreground }]}>
+              Commitment timeline
+            </Text>
+            <View style={styles.timelineLegend}>
+              <LegendDot color={colors.primary} label="Done" colors={colors} />
+              <LegendDot color={colors.danger} label="Missed" colors={colors} />
+              <LegendDot color={colors.accent} label="Today" colors={colors} />
+            </View>
+          </View>
+          <CommitmentTimeline commitment={commitment} />
+          <View style={styles.dateRangeRow}>
+            <Text style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}>
+              {formatDate(commitment.startDate)}
+            </Text>
+            <Text style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}>
+              → {formatDate(commitment.endDate)}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── Status badge ── */}
         <View style={styles.statusRow}>
           <View
             style={[
@@ -177,7 +210,11 @@ export default function CommitmentDetailScreen() {
             <View
               style={[
                 styles.statusDot,
-                { backgroundColor: active ? colors.primary : colors.mutedForeground },
+                {
+                  backgroundColor: active
+                    ? colors.primary
+                    : colors.mutedForeground,
+                },
               ]}
             />
             <Text
@@ -189,12 +226,16 @@ export default function CommitmentDetailScreen() {
               {expired ? "Completed" : active ? "Active" : "Upcoming"}
             </Text>
           </View>
-          <Text style={[styles.dateRange, { color: colors.mutedForeground }]}>
-            {formatDate(commitment.startDate)} – {formatDate(commitment.endDate)}
+          <Text style={[styles.daysLeftTxt, { color: colors.mutedForeground }]}>
+            {expired
+              ? `${rate}% success`
+              : active
+              ? `${daysLeft} days left`
+              : `Starts ${formatDate(commitment.startDate)}`}
           </Text>
         </View>
 
-        {/* Refund card */}
+        {/* ── Refund card ── */}
         <View
           style={[
             styles.refundCard,
@@ -215,7 +256,11 @@ export default function CommitmentDetailScreen() {
               style={[
                 styles.progressFill,
                 {
-                  width: `${totalDays > 0 ? Math.min((verified / totalDays) * 100, 100) : 0}%` as any,
+                  width: `${
+                    totalDays > 0
+                      ? Math.min((verified / totalDays) * 100, 100)
+                      : 0
+                  }%` as any,
                   backgroundColor: colors.primary,
                 },
               ]}
@@ -248,7 +293,135 @@ export default function CommitmentDetailScreen() {
           </View>
         </View>
 
-        {/* Goal info */}
+        {/* ── Missed banner ── */}
+        {missed > 0 && (
+          <View
+            style={[
+              styles.missedBanner,
+              {
+                backgroundColor: colors.danger + "11",
+                borderColor: colors.danger + "33",
+              },
+            ]}
+          >
+            <Feather name="alert-circle" size={14} color={colors.danger} />
+            <Text style={[styles.missedText, { color: colors.danger }]}>
+              {missed} missed day{missed > 1 ? "s" : ""} ·{" "}
+              {formatCurrency(missedAmount, commitment.currency)} forfeited
+              {commitment.friendName ? ` → ${commitment.friendName}` : ""}
+            </Text>
+          </View>
+        )}
+
+        {/* ── Upcoming check-in slots ── */}
+        {upcomingDates.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Upcoming slots
+            </Text>
+            <View
+              style={[
+                styles.upcomingCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              {upcomingDates.slice(0, 6).map((date, idx) => {
+                const isLast = idx === upcomingDates.slice(0, 6).length - 1;
+                const isDateToday = date === today;
+                const d = new Date(date + "T00:00:00");
+                const checkedIn = commitment.checkIns.some(
+                  (ci) => ci.date === date && ci.verified
+                );
+                return (
+                  <View key={date}>
+                    <View style={styles.upcomingRow}>
+                      <View
+                        style={[
+                          styles.upcomingDot,
+                          {
+                            backgroundColor: checkedIn
+                              ? colors.primary
+                              : isDateToday
+                              ? colors.accent
+                              : colors.border,
+                          },
+                        ]}
+                      >
+                        {checkedIn && (
+                          <Feather name="check" size={10} color="#000" />
+                        )}
+                      </View>
+                      <View style={styles.upcomingInfo}>
+                        <Text
+                          style={[
+                            styles.upcomingDate,
+                            {
+                              color: isDateToday
+                                ? colors.accent
+                                : colors.foreground,
+                              fontFamily: isDateToday
+                                ? "Inter_600SemiBold"
+                                : "Inter_400Regular",
+                            },
+                          ]}
+                        >
+                          {isDateToday
+                            ? "Today"
+                            : d.toLocaleDateString("en-IN", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "short",
+                              })}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.upcomingDeadline,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          Deadline 11:59 PM ·{" "}
+                          {commitment.goalType === "content"
+                            ? "Post public link"
+                            : `${commitment.targetPerDay.toLocaleString(
+                                "en-IN"
+                              )} steps`}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[
+                          styles.upcomingRefund,
+                          { color: colors.primary },
+                        ]}
+                      >
+                        {formatCurrency(perDay, commitment.currency)}
+                      </Text>
+                    </View>
+                    {!isLast && (
+                      <View
+                        style={[
+                          styles.upcomingDiv,
+                          { backgroundColor: colors.border },
+                        ]}
+                      />
+                    )}
+                  </View>
+                );
+              })}
+              {upcomingDates.length > 6 && (
+                <Text
+                  style={[
+                    styles.moreSlots,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  + {upcomingDates.length - 6} more slots
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ── Goal info ── */}
         <View
           style={[
             styles.infoCard,
@@ -279,55 +452,26 @@ export default function CommitmentDetailScreen() {
             value={
               commitment.goalType === "steps"
                 ? `${commitment.targetPerDay.toLocaleString("en-IN")} steps`
-                : `${commitment.targetPerDay} post${commitment.targetPerDay > 1 ? "s" : ""} + public link`
+                : `${commitment.targetPerDay} post${
+                    commitment.targetPerDay > 1 ? "s" : ""
+                  } + public link`
             }
             colors={colors}
           />
-          {commitment.goalType === "content" && (
-            <>
-              <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
-              <InfoRow
-                icon="link"
-                label="Proof required"
-                value="Public post URL (submitted by 11:59 PM)"
-                colors={colors}
-              />
-            </>
-          )}
-          {commitment.goalType === "steps" && (
-            <>
-              <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
-              <InfoRow
-                icon="clock"
-                label="Deadline"
-                value="Log steps by 11:59 PM each committed day"
-                colors={colors}
-              />
-            </>
-          )}
+          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          <InfoRow
+            icon="link"
+            label="Proof required"
+            value={
+              commitment.goalType === "content"
+                ? "Public post URL by 11:59 PM"
+                : `${commitment.targetPerDay.toLocaleString("en-IN")}+ steps logged by 11:59 PM`
+            }
+            colors={colors}
+          />
         </View>
 
-        {/* Missed */}
-        {missed > 0 && (
-          <View
-            style={[
-              styles.missedBanner,
-              {
-                backgroundColor: colors.danger + "11",
-                borderColor: colors.danger + "33",
-              },
-            ]}
-          >
-            <Feather name="alert-circle" size={14} color={colors.danger} />
-            <Text style={[styles.missedText, { color: colors.danger }]}>
-              {missed} missed day{missed > 1 ? "s" : ""} ·{" "}
-              {formatCurrency(missedAmount, commitment.currency)} forfeited
-              {commitment.friendName ? ` → ${commitment.friendName}` : ""}
-            </Text>
-          </View>
-        )}
-
-        {/* Calendar */}
+        {/* ── Calendar ── */}
         <View
           style={[
             styles.calendarCard,
@@ -337,7 +481,7 @@ export default function CommitmentDetailScreen() {
           <MonthCalendar commitment={commitment} />
         </View>
 
-        {/* Recent check-ins */}
+        {/* ── Recent check-ins ── */}
         {commitment.checkIns.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -351,10 +495,7 @@ export default function CommitmentDetailScreen() {
                   key={ci.id}
                   style={[
                     styles.activityRow,
-                    {
-                      backgroundColor: colors.card,
-                      borderColor: colors.border,
-                    },
+                    { backgroundColor: colors.card, borderColor: colors.border },
                   ]}
                 >
                   <View
@@ -369,10 +510,7 @@ export default function CommitmentDetailScreen() {
                   />
                   <View style={styles.activityInfo}>
                     <Text
-                      style={[
-                        styles.activityDate,
-                        { color: colors.foreground },
-                      ]}
+                      style={[styles.activityDate, { color: colors.foreground }]}
                     >
                       {formatDate(ci.date)}
                     </Text>
@@ -403,7 +541,9 @@ export default function CommitmentDetailScreen() {
                     style={[
                       styles.activityAmount,
                       {
-                        color: ci.verified ? colors.primary : colors.mutedForeground,
+                        color: ci.verified
+                          ? colors.primary
+                          : colors.mutedForeground,
                       },
                     ]}
                   >
@@ -416,7 +556,7 @@ export default function CommitmentDetailScreen() {
           </View>
         )}
 
-        {/* Friend */}
+        {/* ── Friend ── */}
         {commitment.friendName && (
           <View
             style={[
@@ -440,14 +580,13 @@ export default function CommitmentDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Action area */}
+      {/* ── Action area ── */}
       {active && todayScheduled && (
         <View
           style={[
             styles.fabArea,
             {
-              paddingBottom:
-                Platform.OS === "web" ? 34 : insets.bottom + 12,
+              paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 12,
               borderTopColor: colors.border,
             },
           ]}
@@ -471,10 +610,7 @@ export default function CommitmentDetailScreen() {
               </View>
               <TouchableOpacity
                 onPress={handleUndoToday}
-                style={[
-                  styles.undoBtn,
-                  { backgroundColor: colors.secondary },
-                ]}
+                style={[styles.undoBtn, { backgroundColor: colors.secondary }]}
                 activeOpacity={0.75}
               >
                 <Feather
@@ -499,8 +635,7 @@ export default function CommitmentDetailScreen() {
                 {commitment.goalType === "content"
                   ? "Submit post link"
                   : "Log today's steps"}{" "}
-                · Get back{" "}
-                {formatCurrency(perDay, commitment.currency)}
+                · Get back {formatCurrency(perDay, commitment.currency)}
               </Text>
             </TouchableOpacity>
           )}
@@ -515,6 +650,40 @@ export default function CommitmentDetailScreen() {
         onSubmitContent={handleSubmitContent}
         onSubmitSteps={handleSubmitSteps}
       />
+    </View>
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────
+
+function LegendDot({
+  color,
+  label,
+  colors,
+}: {
+  color: string;
+  label: string;
+  colors: any;
+}) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: color,
+        }}
+      />
+      <Text
+        style={{
+          fontSize: 10,
+          fontFamily: "Inter_400Regular",
+          color: colors.mutedForeground,
+        }}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -617,7 +786,33 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
+  notFound: { flex: 1, alignItems: "center", justifyContent: "center" },
+  notFoundText: { fontSize: 14, fontFamily: "Inter_400Regular" },
   scroll: { paddingHorizontal: 20, paddingTop: 16, gap: 14 },
+  // Timeline
+  timelineCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingTop: 14,
+    paddingBottom: 10,
+    paddingHorizontal: 14,
+    overflow: "hidden",
+  },
+  timelineHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  timelineTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  timelineLegend: { flexDirection: "row", gap: 10 },
+  dateRangeRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: 4,
+  },
+  dateRangeTxt: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  // Status
   statusRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -633,7 +828,8 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
-  dateRange: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  daysLeftTxt: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  // Refund card
   refundCard: {
     borderRadius: 16,
     padding: 20,
@@ -641,26 +837,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   refundLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  refundValue: {
-    fontSize: 36,
-    fontFamily: "Inter_700Bold",
-    lineHeight: 42,
-  },
+  refundValue: { fontSize: 36, fontFamily: "Inter_700Bold", lineHeight: 42 },
   refundOf: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 14 },
-  progressBg: {
-    height: 6,
-    borderRadius: 3,
-    overflow: "hidden",
-    marginBottom: 16,
-  },
+  progressBg: { height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 16 },
   progressFill: { height: "100%", borderRadius: 3 },
   statsRow: { flexDirection: "row", alignItems: "center" },
-  infoCard: {
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-  },
-  infoDivider: { height: 1 },
+  // Missed banner
   missedBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -675,17 +857,47 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 17,
   },
-  calendarCard: {
-    borderRadius: 16,
-    padding: 16,
+  // Upcoming slots
+  section: { gap: 10 },
+  sectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  upcomingCard: {
+    borderRadius: 14,
     borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
   },
-  section: { gap: 8 },
-  sectionTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 2,
+  upcomingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 11,
   },
+  upcomingDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  upcomingInfo: { flex: 1, gap: 2 },
+  upcomingDate: { fontSize: 13 },
+  upcomingDeadline: { fontSize: 10, fontFamily: "Inter_400Regular" },
+  upcomingRefund: { fontSize: 13, fontFamily: "Inter_600SemiBold", flexShrink: 0 },
+  upcomingDiv: { height: 1, marginLeft: 34 },
+  moreSlots: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    paddingTop: 10,
+    paddingBottom: 6,
+    textAlign: "center",
+  },
+  // Info card
+  infoCard: { borderRadius: 14, padding: 16, borderWidth: 1 },
+  infoDivider: { height: 1 },
+  // Calendar
+  calendarCard: { borderRadius: 16, padding: 16, borderWidth: 1 },
+  // Activity
   activityRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -694,16 +906,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
-  activityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 4,
-  },
+  activityDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4 },
   activityInfo: { flex: 1, gap: 2 },
   activityDate: { fontSize: 13, fontFamily: "Inter_500Medium" },
   activityMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
   activityAmount: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  // Friend
   friendCard: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -715,11 +923,8 @@ const styles = StyleSheet.create({
   friendInfo: { flex: 1, gap: 2 },
   friendLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   friendName: { fontSize: 13, fontFamily: "Inter_500Medium" },
-  fabArea: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-  },
+  // FAB
+  fabArea: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
   fabRow: { flexDirection: "row", gap: 10, alignItems: "center" },
   donePill: {
     flex: 1,
@@ -731,11 +936,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
   },
-  donePillText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  donePillText: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
   undoBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 46,
+    height: 46,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -744,18 +949,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 15,
+    borderRadius: 14,
   },
-  fabText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    color: "#000",
-  },
-  notFound: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  notFoundText: { fontSize: 15, fontFamily: "Inter_400Regular" },
+  fabText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#000" },
 });

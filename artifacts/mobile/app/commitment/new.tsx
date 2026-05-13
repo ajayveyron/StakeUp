@@ -14,26 +14,23 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { GoalType, useCommitments } from "@/contexts/CommitmentsContext";
+import { Commitment, GoalType, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   DurationType,
-  addDays,
   daysBetween,
   formatCurrency,
   formatDate,
-  formatDateShort,
   formatDaysOfWeek,
   formatStartDateOption,
   getDayName,
   getDurationLabel,
   getEndDateForDuration,
-  getFirstScheduledDate,
   getScheduledDates,
+  getStakePresets,
   getStartDateOptions,
   getTodayStr,
 } from "@/utils/commitment";
-import { Commitment } from "@/contexts/CommitmentsContext";
 
 const DURATION_OPTIONS: { label: string; type: DurationType }[] = [
   { label: "1 Week", type: "week" },
@@ -245,139 +242,81 @@ export default function NewCommitmentScreen() {
                 What are you committing to?
               </Text>
 
-              {/* Goal type cards */}
+              {/* Goal type cards — side by side */}
               <View style={styles.goalTypeRow}>
-                <TouchableOpacity
-                  onPress={() => {
-                    update("goalType", "content");
-                    update("targetPerDay", 1);
-                  }}
-                  activeOpacity={0.8}
-                  style={[
-                    styles.goalCard,
+                {(
+                  [
                     {
-                      backgroundColor:
-                        form.goalType === "content"
-                          ? colors.primary + "18"
-                          : colors.card,
-                      borderColor:
-                        form.goalType === "content"
-                          ? colors.primary
-                          : colors.border,
-                      borderWidth: form.goalType === "content" ? 2 : 1,
+                      type: "content" as const,
+                      icon: "video",
+                      title: "Content Creation",
+                      proof: "Paste public post URL by 11:59 PM",
+                      defaultTarget: 1,
                     },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.goalCardIcon,
-                      {
-                        backgroundColor:
-                          form.goalType === "content"
-                            ? colors.primary + "22"
-                            : colors.secondary,
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name="video"
-                      size={22}
-                      color={
-                        form.goalType === "content"
-                          ? colors.primary
-                          : colors.mutedForeground
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.goalCardTitle,
-                      {
-                        color:
-                          form.goalType === "content"
-                            ? colors.primary
-                            : colors.foreground,
-                      },
-                    ]}
-                  >
-                    Content Creation
-                  </Text>
-                  <Text
-                    style={[
-                      styles.goalCardProof,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Proof required: paste the public URL of your published post
-                    (Instagram, YouTube, TikTok, etc.) before 11:59 PM.
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => {
-                    update("goalType", "steps");
-                    update("targetPerDay", 10000);
-                  }}
-                  activeOpacity={0.8}
-                  style={[
-                    styles.goalCard,
                     {
-                      backgroundColor:
-                        form.goalType === "steps"
-                          ? colors.primary + "18"
-                          : colors.card,
-                      borderColor:
-                        form.goalType === "steps"
-                          ? colors.primary
-                          : colors.border,
-                      borderWidth: form.goalType === "steps" ? 2 : 1,
+                      type: "steps" as const,
+                      icon: "activity",
+                      title: "Step Count",
+                      proof: "Log steps by 11:59 PM, must hit goal",
+                      defaultTarget: 10000,
                     },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.goalCardIcon,
-                      {
-                        backgroundColor:
-                          form.goalType === "steps"
-                            ? colors.primary + "22"
-                            : colors.secondary,
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name="activity"
-                      size={22}
-                      color={
-                        form.goalType === "steps"
-                          ? colors.primary
-                          : colors.mutedForeground
-                      }
-                    />
-                  </View>
-                  <Text
-                    style={[
-                      styles.goalCardTitle,
-                      {
-                        color:
-                          form.goalType === "steps"
-                            ? colors.primary
-                            : colors.foreground,
-                      },
-                    ]}
-                  >
-                    Daily Step Count
-                  </Text>
-                  <Text
-                    style={[
-                      styles.goalCardProof,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Proof required: log your step count before 11:59 PM. You
-                    must hit your daily goal to qualify for a refund.
-                  </Text>
-                </TouchableOpacity>
+                  ] as const
+                ).map((opt) => {
+                  const sel = form.goalType === opt.type;
+                  return (
+                    <TouchableOpacity
+                      key={opt.type}
+                      onPress={() => {
+                        update("goalType", opt.type);
+                        update("targetPerDay", opt.defaultTarget);
+                      }}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.goalCard,
+                        {
+                          backgroundColor: sel
+                            ? colors.primary + "18"
+                            : colors.card,
+                          borderColor: sel ? colors.primary : colors.border,
+                          borderWidth: sel ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.goalCardIcon,
+                          {
+                            backgroundColor: sel
+                              ? colors.primary + "22"
+                              : colors.secondary,
+                          },
+                        ]}
+                      >
+                        <Feather
+                          name={opt.icon as any}
+                          size={20}
+                          color={sel ? colors.primary : colors.mutedForeground}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.goalCardTitle,
+                          { color: sel ? colors.primary : colors.foreground },
+                        ]}
+                      >
+                        {opt.title}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.goalCardProof,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        {opt.proof}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Name */}
@@ -853,6 +792,51 @@ export default function NewCommitmentScreen() {
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
                 Total stake amount
               </Text>
+              {/* Dynamic presets: each gives a per-day refund that's a multiple of ₹50 / $0.50 */}
+              {scheduledDays > 0 && (
+                <View style={styles.presetRow}>
+                  {getStakePresets(scheduledDays, form.currency).map((preset) => {
+                    const perDayPreset = preset / scheduledDays;
+                    const sel =
+                      parseFloat(form.stakeAmount) === preset &&
+                      !form.stakeAmount.includes(".");
+                    return (
+                      <TouchableOpacity
+                        key={preset}
+                        onPress={() => update("stakeAmount", String(preset))}
+                        activeOpacity={0.8}
+                        style={[
+                          styles.presetBtn,
+                          {
+                            backgroundColor: sel
+                              ? colors.primary + "22"
+                              : colors.card,
+                            borderColor: sel ? colors.primary : colors.border,
+                            borderWidth: sel ? 2 : 1,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.presetAmount,
+                            { color: sel ? colors.primary : colors.foreground },
+                          ]}
+                        >
+                          {formatCurrency(preset, form.currency)}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.presetPerDay,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          {formatCurrency(perDayPreset, form.currency)}/day
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
               <TextInput
                 style={[
                   styles.input,
@@ -863,7 +847,7 @@ export default function NewCommitmentScreen() {
                     color: colors.foreground,
                   },
                 ]}
-                placeholder="1000"
+                placeholder={form.currency === "INR" ? "e.g. 3000" : "e.g. 50"}
                 placeholderTextColor={colors.mutedForeground}
                 value={form.stakeAmount}
                 onChangeText={(v) =>
@@ -1370,21 +1354,21 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     textAlign: "center",
   },
-  // Goal type
-  goalTypeRow: { gap: 10 },
-  goalCard: { borderRadius: 14, padding: 16, gap: 8 },
+  // Goal type — side by side
+  goalTypeRow: { flexDirection: "row", gap: 10 },
+  goalCard: { flex: 1, borderRadius: 14, padding: 12, gap: 8 },
   goalCardIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
   },
-  goalCardTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  goalCardTitle: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   goalCardProof: {
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: "Inter_400Regular",
-    lineHeight: 17,
+    lineHeight: 15,
   },
   // Start date
   datePillsRow: { gap: 8, paddingVertical: 4 },
@@ -1463,6 +1447,19 @@ const styles = StyleSheet.create({
   scheduleSummaryLabel: { fontSize: 12, fontFamily: "Inter_400Regular", flex: 1 },
   scheduleSummaryVal: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
   scheduleSummaryDivider: { height: 1 },
+  // Stake presets
+  presetRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  presetBtn: {
+    flex: 1,
+    minWidth: "44%",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    gap: 2,
+  },
+  presetAmount: { fontSize: 14, fontFamily: "Inter_700Bold" },
+  presetPerDay: { fontSize: 10, fontFamily: "Inter_400Regular" },
   // Currency
   currencyRow: { flexDirection: "row", gap: 10 },
   currencyBtn: {

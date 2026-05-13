@@ -1,9 +1,34 @@
 import { CheckIn, Commitment, GoalType } from "@/contexts/CommitmentsContext";
 
-export function getTodayStr(): string {
-  return new Date().toISOString().split("T")[0];
+// ── Local date helpers ─────────────────────────────────────────────────────
+// IMPORTANT: never use toISOString() for date strings — it converts to UTC
+// and will return the wrong calendar day for UTC+ users (e.g. India IST).
+function localDateStr(d: Date): string {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
+export function getTodayStr(): string {
+  return localDateStr(new Date());
+}
+
+export function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return localDateStr(d);
+}
+
+export function daysBetween(startDate: string, endDate: string): number {
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  return (
+    Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+  );
+}
+
+// ── Formatting helpers ────────────────────────────────────────────────────
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
   return d.toLocaleDateString("en-IN", {
@@ -20,9 +45,7 @@ export function formatDateShort(dateStr: string): string {
 
 export function formatCurrency(amount: number, currency = "INR"): string {
   const rounded = Math.round(amount * 100) / 100;
-  if (currency === "INR") {
-    return `₹${rounded.toLocaleString("en-IN")}`;
-  }
+  if (currency === "INR") return `₹${rounded.toLocaleString("en-IN")}`;
   return `$${rounded.toLocaleString("en-US")}`;
 }
 
@@ -36,13 +59,7 @@ export function goalTypeUnit(type: GoalType): string {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES_FULL = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
+  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
 ];
 
 export function formatDaysOfWeek(days: number[]): string {
@@ -60,7 +77,7 @@ export function getDayNameFull(day: number): string {
   return DAY_NAMES_FULL[day];
 }
 
-// Duration types — months use actual calendar months
+// ── Duration types ────────────────────────────────────────────────────────
 export type DurationType = "week" | "2weeks" | "month" | "3months";
 
 export function getEndDateForDuration(
@@ -70,45 +87,39 @@ export function getEndDateForDuration(
   const start = new Date(startDate + "T00:00:00");
   switch (durationType) {
     case "week":
-      return addDays(startDate, 6);
+      return addDays(startDate, 6); // 7 days inclusive
     case "2weeks":
-      return addDays(startDate, 13);
+      return addDays(startDate, 13); // 14 days inclusive
     case "month": {
-      // e.g. Jun 1 → Jun 30; May 15 → Jun 14
+      // Same day next month, minus 1 day: Jun 1 → Jun 30; Feb 1 → Feb 28/29
       const end = new Date(start);
       end.setMonth(end.getMonth() + 1);
       end.setDate(end.getDate() - 1);
-      return end.toISOString().split("T")[0];
+      return localDateStr(end);
     }
     case "3months": {
       const end = new Date(start);
       end.setMonth(end.getMonth() + 3);
       end.setDate(end.getDate() - 1);
-      return end.toISOString().split("T")[0];
+      return localDateStr(end);
     }
   }
 }
 
 export function getDurationLabel(durationType: DurationType): string {
   switch (durationType) {
-    case "week":
-      return "1 Week";
-    case "2weeks":
-      return "2 Weeks";
-    case "month":
-      return "1 Month";
-    case "3months":
-      return "3 Months";
+    case "week":    return "1 Week";
+    case "2weeks":  return "2 Weeks";
+    case "month":   return "1 Month";
+    case "3months": return "3 Months";
   }
 }
 
-// Build list of selectable start dates (today + next N days)
+// ── Start date picker ─────────────────────────────────────────────────────
 export function getStartDateOptions(count = 30): string[] {
-  const options: string[] = [];
   const today = getTodayStr();
-  for (let i = 0; i < count; i++) {
-    options.push(addDays(today, i));
-  }
+  const options: string[] = [];
+  for (let i = 0; i < count; i++) options.push(addDays(today, i));
   return options;
 }
 
@@ -119,25 +130,35 @@ export function formatStartDateOption(dateStr: string): {
   const today = getTodayStr();
   const tomorrow = addDays(today, 1);
   const d = new Date(dateStr + "T00:00:00");
-
-  if (dateStr === today) {
+  if (dateStr === today)
     return {
       line1: "Today",
       line2: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
     };
-  }
-  if (dateStr === tomorrow) {
+  if (dateStr === tomorrow)
     return {
       line1: "Tmrw",
       line2: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
     };
-  }
   return {
     line1: d.toLocaleDateString("en-IN", { weekday: "short" }),
     line2: d.toLocaleDateString("en-IN", { day: "numeric", month: "short" }),
   };
 }
 
+// ── Stake presets ─────────────────────────────────────────────────────────
+// Presets give daily refund amounts that are multiples of ₹50 or $0.50.
+export function getStakePresets(
+  scheduledDays: number,
+  currency: string
+): number[] {
+  if (scheduledDays <= 0) return [];
+  const dailyMultiples =
+    currency === "INR" ? [50, 100, 200, 500] : [0.5, 1, 2, 5];
+  return dailyMultiples.map((d) => Math.round(d * scheduledDays * 100) / 100);
+}
+
+// ── Scheduled dates ───────────────────────────────────────────────────────
 /** All calendar days in the commitment range that fall on committed daysOfWeek */
 export function getScheduledDates(c: Commitment): string[] {
   const result: string[] = [];
@@ -145,36 +166,33 @@ export function getScheduledDates(c: Commitment): string[] {
   const end = new Date(c.endDate + "T00:00:00");
   const cursor = new Date(start);
   while (cursor <= end) {
-    const dow = cursor.getDay();
-    if (c.daysOfWeek.includes(dow)) {
-      result.push(cursor.toISOString().split("T")[0]);
+    if (c.daysOfWeek.includes(cursor.getDay())) {
+      result.push(localDateStr(cursor)); // local date, NOT toISOString()
     }
     cursor.setDate(cursor.getDate() + 1);
   }
   return result;
 }
 
-/** First scheduled day of the commitment */
 export function getFirstScheduledDate(c: Commitment): string | null {
   const dates = getScheduledDates(c);
   return dates.length > 0 ? dates[0] : null;
 }
 
-/** Scheduled dates strictly before today */
 export function getPastScheduledDates(c: Commitment): string[] {
   const today = getTodayStr();
   return getScheduledDates(c).filter((d) => d < today);
 }
 
 export function isTodayScheduled(c: Commitment): boolean {
-  const today = getTodayStr();
-  return getScheduledDates(c).includes(today);
+  return getScheduledDates(c).includes(getTodayStr());
 }
 
 export function getTotalCommittedDays(c: Commitment): number {
   return getScheduledDates(c).length;
 }
 
+// ── Financials ────────────────────────────────────────────────────────────
 export function getRefundPerDay(c: Commitment): number {
   const total = getTotalCommittedDays(c);
   if (total <= 0) return 0;
@@ -212,6 +230,7 @@ export function hasTodayCheckIn(c: Commitment): boolean {
   return c.checkIns.some((ci) => ci.date === today && ci.verified);
 }
 
+// ── Status helpers ────────────────────────────────────────────────────────
 export function isActive(c: Commitment): boolean {
   const today = getTodayStr();
   return c.startDate <= today && c.endDate >= today;
@@ -236,6 +255,10 @@ export function getSuccessRate(c: Commitment): number {
   return Math.round((getVerifiedCheckIns(c).length / past) * 100);
 }
 
+export function isPerfectSoFar(c: Commitment): boolean {
+  return getMissedDates(c).length === 0;
+}
+
 export function getPeriodLabel(days: number): string {
   if (days <= 7) return "1 Week";
   if (days <= 14) return "2 Weeks";
@@ -243,29 +266,11 @@ export function getPeriodLabel(days: number): string {
   return "~3 Months";
 }
 
-export function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split("T")[0];
-}
-
-export function daysBetween(startDate: string, endDate: string): number {
-  const start = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T00:00:00");
-  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-}
-
-/** Returns ms until 11:59:59 PM today local time */
+// ── Countdown ─────────────────────────────────────────────────────────────
 export function getMsUntilDeadline(): number {
   const now = new Date();
   const deadline = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-    0
+    now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 0
   );
   return Math.max(0, deadline.getTime() - now.getTime());
 }
