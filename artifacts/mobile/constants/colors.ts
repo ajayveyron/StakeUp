@@ -25,4 +25,19 @@ const colors = {
   radius: 14,
 };
 
+export const gradients = {
+  primary: ["#00C853", "#00E676"] as const,
+  accent: ["#FF9F0A", "#FFB340"] as const,
+  danger: ["#FF3B30", "#FF6961"] as const,
+  cardActive: ["rgba(0,200,83,0.38)", "rgba(0,200,83,0.06)"] as const,
+  cardMuted: ["rgba(26,26,34,0.85)", "rgba(26,26,34,0.85)"] as const,
+  tabBar: [
+    "transparent",
+    "#00C853",
+    "#00E676",
+    "#FF9F0A",
+    "transparent",
+  ] as const,
+};
+
 export default colors;

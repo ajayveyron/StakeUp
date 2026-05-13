@@ -1,9 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { gradients } from "@/constants/colors";
 import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
@@ -13,12 +15,12 @@ import {
   getRefundPerDay,
   getTotalCommittedDays,
   getTotalRefunded,
+  getVerifiedCheckIns,
   goalTypeLabel,
   hasTodayCheckIn,
   isActive,
   isExpired,
   isTodayScheduled,
-  getVerifiedCheckIns,
 } from "@/utils/commitment";
 
 interface Props {
@@ -59,144 +61,189 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
   const showDoneState = active && todayScheduled && checkedToday;
 
   return (
-    <TouchableOpacity
-      onPress={handlePress}
-      activeOpacity={0.75}
-      style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+    <LinearGradient
+      colors={active ? gradients.cardActive : gradients.cardMuted}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradBorder}
     >
-      <View style={styles.header}>
-        <View
-          style={[
-            styles.iconBox,
-            {
-              backgroundColor: active
-                ? colors.primary + "1A"
-                : colors.secondary,
-            },
-          ]}
-        >
-          <Feather
-            name={GOAL_ICONS[c.goalType] as any}
-            size={18}
-            color={active ? colors.primary : colors.mutedForeground}
-          />
-        </View>
+      <TouchableOpacity
+        onPress={handlePress}
+        activeOpacity={0.75}
+        style={[styles.card, { backgroundColor: colors.card }]}
+      >
+        <View style={styles.header}>
+          {active ? (
+            <LinearGradient
+              colors={
+                c.goalType === "content"
+                  ? ["rgba(0,200,83,0.22)", "rgba(0,230,118,0.08)"]
+                  : ["rgba(255,159,10,0.22)", "rgba(255,179,64,0.08)"]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.iconBox}
+            >
+              <Feather
+                name={GOAL_ICONS[c.goalType] as any}
+                size={18}
+                color={
+                  c.goalType === "content" ? colors.primary : colors.accent
+                }
+              />
+            </LinearGradient>
+          ) : (
+            <View
+              style={[styles.iconBox, { backgroundColor: colors.secondary }]}
+            >
+              <Feather
+                name={GOAL_ICONS[c.goalType] as any}
+                size={18}
+                color={colors.mutedForeground}
+              />
+            </View>
+          )}
 
-        <View style={styles.titleBlock}>
-          <Text
-            style={[styles.name, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
-            {c.name}
-          </Text>
-          <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-            {goalTypeLabel(c.goalType)} · {formatDaysOfWeek(c.daysOfWeek)}
-          </Text>
-        </View>
-
-        {showCheckInBtn && (
-          <TouchableOpacity
-            onPress={handleCheckIn}
-            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
-            activeOpacity={0.8}
-          >
-            <Feather
-              name={c.goalType === "content" ? "link" : "activity"}
-              size={15}
-              color="#000"
-            />
-          </TouchableOpacity>
-        )}
-        {showDoneState && (
-          <View
-            style={[
-              styles.actionBtn,
-              { backgroundColor: colors.primary + "22" },
-            ]}
-          >
-            <Feather name="check-circle" size={15} color={colors.primary} />
-          </View>
-        )}
-        {(!active || !todayScheduled) && (
-          <View
-            style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
-          >
-            <Feather
-              name={expired ? "flag" : "calendar"}
-              size={15}
-              color={colors.mutedForeground}
-            />
-          </View>
-        )}
-      </View>
-
-      {/* Progress */}
-      <View style={styles.progressRow}>
-        <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${progress * 100}%` as any,
-                backgroundColor: expired ? colors.mutedForeground : colors.primary,
-              },
-            ]}
-          />
-        </View>
-        <Text style={[styles.progressText, { color: colors.mutedForeground }]}>
-          {verified}/{totalDays}
-        </Text>
-      </View>
-
-      {!compact && (
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.primary }]}>
-              {formatCurrency(refunded, c.currency)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Refunded
-            </Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>
-              {formatCurrency(perDay, c.currency)}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              Per day
-            </Text>
-          </View>
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <View style={styles.stat}>
+          <View style={styles.titleBlock}>
             <Text
+              style={[styles.name, { color: colors.foreground }]}
+              numberOfLines={1}
+            >
+              {c.name}
+            </Text>
+            <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+              {goalTypeLabel(c.goalType)} · {formatDaysOfWeek(c.daysOfWeek)}
+            </Text>
+          </View>
+
+          {showCheckInBtn && (
+            <TouchableOpacity onPress={handleCheckIn} activeOpacity={0.8}>
+              <LinearGradient
+                colors={gradients.primary}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionBtn}
+              >
+                <Feather
+                  name={c.goalType === "content" ? "link" : "activity"}
+                  size={15}
+                  color="#000"
+                />
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+          {showDoneState && (
+            <View
               style={[
-                styles.statValue,
-                {
-                  color: expired
-                    ? colors.mutedForeground
-                    : colors.foreground,
-                },
+                styles.actionBtn,
+                { backgroundColor: colors.primary + "22" },
               ]}
             >
-              {expired ? "Done" : `${daysLeft}d left`}
-            </Text>
-            <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>
-              {expired ? "Status" : "Remaining"}
-            </Text>
-          </View>
+              <Feather name="check-circle" size={15} color={colors.primary} />
+            </View>
+          )}
+          {(!active || !todayScheduled) && (
+            <View
+              style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
+            >
+              <Feather
+                name={expired ? "flag" : "calendar"}
+                size={15}
+                color={colors.mutedForeground}
+              />
+            </View>
+          )}
         </View>
-      )}
-    </TouchableOpacity>
+
+        <View style={styles.progressRow}>
+          <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
+            <LinearGradient
+              colors={
+                expired
+                  ? ([colors.mutedForeground, colors.mutedForeground] as [
+                      string,
+                      string,
+                    ])
+                  : gradients.primary
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[
+                styles.progressFill,
+                { width: `${progress * 100}%` as any },
+              ]}
+            />
+          </View>
+          <Text
+            style={[styles.progressText, { color: colors.mutedForeground }]}
+          >
+            {verified}/{totalDays}
+          </Text>
+        </View>
+
+        {!compact && (
+          <View style={styles.statsRow}>
+            <View style={styles.stat}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>
+                {formatCurrency(refunded, c.currency)}
+              </Text>
+              <Text
+                style={[styles.statLabel, { color: colors.mutedForeground }]}
+              >
+                Refunded
+              </Text>
+            </View>
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.stat}>
+              <Text style={[styles.statValue, { color: colors.accent }]}>
+                {formatCurrency(perDay, c.currency)}
+              </Text>
+              <Text
+                style={[styles.statLabel, { color: colors.mutedForeground }]}
+              >
+                Per day
+              </Text>
+            </View>
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
+            <View style={styles.stat}>
+              <Text
+                style={[
+                  styles.statValue,
+                  {
+                    color: expired
+                      ? colors.mutedForeground
+                      : colors.foreground,
+                  },
+                ]}
+              >
+                {expired ? "Done" : `${daysLeft}d left`}
+              </Text>
+              <Text
+                style={[styles.statLabel, { color: colors.mutedForeground }]}
+              >
+                {expired ? "Status" : "Remaining"}
+              </Text>
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradBorder: {
+    borderRadius: 17,
+    padding: 1,
+    marginBottom: 12,
+  },
   card: {
     borderRadius: 16,
     padding: 16,
-    borderWidth: 1,
-    marginBottom: 12,
   },
   header: {
     flexDirection: "row",

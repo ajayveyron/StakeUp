@@ -1,5 +1,6 @@
 import { BlurView } from "expo-blur";
 import { isLiquidGlassAvailable } from "expo-glass-effect";
+import { LinearGradient } from "expo-linear-gradient";
 import { Tabs } from "expo-router";
 import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
@@ -7,6 +8,7 @@ import { Feather } from "@expo/vector-icons";
 import React from "react";
 import { Platform, StyleSheet, View, useColorScheme } from "react-native";
 
+import { gradients } from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
 
 function NativeTabLayout() {
@@ -43,26 +45,38 @@ function ClassicTabLayout() {
         headerShown: false,
         tabBarStyle: {
           position: "absolute",
-          backgroundColor: isIOS ? "transparent" : colors.background,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
+          backgroundColor: "transparent",
+          borderTopWidth: 0,
           elevation: 0,
           height: isWeb ? 84 : 60,
         },
         tabBarBackground: () =>
           isIOS ? (
-            <BlurView
-              intensity={100}
-              tint={isDark ? "dark" : "dark"}
-              style={StyleSheet.absoluteFill}
-            />
+            <View style={StyleSheet.absoluteFill}>
+              <LinearGradient
+                colors={gradients.tabBar as unknown as string[]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ height: 1.5 }}
+              />
+              <BlurView
+                intensity={100}
+                tint={isDark ? "dark" : "dark"}
+                style={{ flex: 1 }}
+              />
+            </View>
           ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
-            />
+            <View style={StyleSheet.absoluteFill}>
+              <LinearGradient
+                colors={gradients.tabBar as unknown as string[]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={{ height: 1.5 }}
+              />
+              <View
+                style={{ flex: 1, backgroundColor: "rgba(10, 10, 15, 0.97)" }}
+              />
+            </View>
           ) : null,
       }}
     >
