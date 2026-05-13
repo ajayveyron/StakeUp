@@ -1,0 +1,100 @@
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import type { Commitment } from "../../artifacts/mobile/contexts/CommitmentsContext";
+import {
+  getAmountAtRisk,
+  getEndDateForDuration,
+  getRefundPerDay,
+  getScheduledDates,
+  getTotalCommittedDays,
+  getTotalRefunded,
+} from "../../artifacts/mobile/utils/commitment";
+
+function makeCommitment(overrides: Partial<Commitment> = {}): Commitment {
+  return {
+    id: "commitment-1",
+    name: "Publish reels",
+    goalType: "content",
+    daysOfWeek: [1, 3, 5],
+    targetPerDay: 1,
+    durationDays: 30,
+    stakeAmount: 3900,
+    currency: "INR",
+    startDate: "2026-06-01",
+    endDate: "2026-06-30",
+    checkIns: [],
+    createdAt: "2026-05-13T00:00:00.000Z",
+    ...overrides,
+  };
+}
+
+describe("commitment schedule helpers", () => {
+  it("calculates inclusive end dates for preset durations", () => {
+    assert.equal(getEndDateForDuration("2026-06-01", "week"), "2026-06-07");
+    assert.equal(getEndDateForDuration("2026-06-01", "2weeks"), "2026-06-14");
+    assert.equal(getEndDateForDuration("2026-06-01", "month"), "2026-06-30");
+    assert.equal(getEndDateForDuration("2028-02-01", "month"), "2028-02-29");
+    assert.equal(getEndDateForDuration("2026-01-01", "3months"), "2026-03-31");
+  });
+
+  it("returns only scheduled weekdays inside the commitment range", () => {
+    const commitment = makeCommitment();
+
+    assert.deepEqual(getScheduledDates(commitment), [
+      "2026-06-01",
+      "2026-06-03",
+      "2026-06-05",
+      "2026-06-08",
+      "2026-06-10",
+      "2026-06-12",
+      "2026-06-15",
+      "2026-06-17",
+      "2026-06-19",
+      "2026-06-22",
+      "2026-06-24",
+      "2026-06-26",
+      "2026-06-29",
+    ]);
+    assert.equal(getTotalCommittedDays(commitment), 13);
+  });
+});
+
+describe("commitment refund helpers", () => {
+  it("splits stake amount across scheduled days", () => {
+    const commitment = makeCommitment();
+
+    assert.equal(getRefundPerDay(commitment), 300);
+  });
+
+  it("counts only verified check-ins as refunded", () => {
+    const commitment = makeCommitment({
+      checkIns: [
+        {
+          id: "check-in-1",
+          date: "2026-06-01",
+          proofUrl: "https://example.com/post-1",
+          verified: true,
+          submittedAt: "2026-06-01T12:00:00.000Z",
+        },
+        {
+          id: "check-in-2",
+          date: "2026-06-03",
+          proofUrl: "draft-only",
+          verified: false,
+          submittedAt: "2026-06-03T12:00:00.000Z",
+        },
+        {
+          id: "check-in-3",
+          date: "2026-06-05",
+          proofUrl: "https://example.com/post-2",
+          verified: true,
+          submittedAt: "2026-06-05T12:00:00.000Z",
+        },
+      ],
+    });
+
+    assert.equal(getTotalRefunded(commitment), 600);
+    assert.equal(getAmountAtRisk(commitment), 3300);
+  });
+});

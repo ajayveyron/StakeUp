@@ -1,4 +1,8 @@
-import { CheckIn, Commitment, GoalType } from "@/contexts/CommitmentsContext";
+import type {
+  CheckIn,
+  Commitment,
+  GoalType,
+} from "@/contexts/CommitmentsContext";
 
 // ── Local date helpers ─────────────────────────────────────────────────────
 // IMPORTANT: never use toISOString() for date strings — it converts to UTC
