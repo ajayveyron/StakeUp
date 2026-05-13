@@ -1,5 +1,6 @@
 import type {
   CheckIn,
+  CheckInStatus,
   Commitment,
   GoalType,
 } from "@/contexts/CommitmentsContext";
@@ -204,7 +205,26 @@ export function getRefundPerDay(c: Commitment): number {
 }
 
 export function getVerifiedCheckIns(c: Commitment): CheckIn[] {
-  return c.checkIns.filter((ci) => ci.verified);
+  return c.checkIns.filter((ci) => getCheckInStatus(ci) === "approved");
+}
+
+export function getPendingReviewCheckIns(c: Commitment): CheckIn[] {
+  return c.checkIns.filter((ci) => getCheckInStatus(ci) === "under_review");
+}
+
+export function getRejectedCheckIns(c: Commitment): CheckIn[] {
+  return c.checkIns.filter((ci) => getCheckInStatus(ci) === "rejected");
+}
+
+export function getCheckInStatus(ci?: CheckIn): CheckInStatus | null {
+  if (!ci) return null;
+  if (ci.status) return ci.status;
+  return ci.verified ? "approved" : "rejected";
+}
+
+export function countsForDeadline(ci?: CheckIn): boolean {
+  const status = getCheckInStatus(ci);
+  return status === "under_review" || status === "approved";
 }
 
 export function getTotalRefunded(c: Commitment): number {
@@ -218,7 +238,7 @@ export function getAmountAtRisk(c: Commitment): number {
 export function getMissedDates(c: Commitment): string[] {
   const today = getTodayStr();
   return getPastScheduledDates(c).filter(
-    (d) => !c.checkIns.some((ci) => ci.date === d && ci.verified)
+    (d) => !c.checkIns.some((ci) => ci.date === d && countsForDeadline(ci))
   );
 }
 
@@ -231,7 +251,7 @@ export function getCheckInForDate(
 
 export function hasTodayCheckIn(c: Commitment): boolean {
   const today = getTodayStr();
-  return c.checkIns.some((ci) => ci.date === today && ci.verified);
+  return c.checkIns.some((ci) => ci.date === today && countsForDeadline(ci));
 }
 
 // ── Status helpers ────────────────────────────────────────────────────────

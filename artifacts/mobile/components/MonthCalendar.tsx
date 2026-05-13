@@ -5,6 +5,7 @@ import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   getCheckInForDate,
+  getCheckInStatus,
   getScheduledDates,
   getTodayStr,
 } from "@/utils/commitment";
@@ -48,6 +49,7 @@ export function MonthCalendar({ commitment, year, month }: Props) {
     const isToday = dateStr === today;
     const isScheduled = scheduledSet.has(dateStr);
     const checkIn = getCheckInForDate(commitment, dateStr);
+    const checkInStatus = getCheckInStatus(checkIn);
     const isPast = dateStr < today;
 
     if (!isScheduled) {
@@ -59,7 +61,7 @@ export function MonthCalendar({ commitment, year, month }: Props) {
       };
     }
 
-    if (checkIn?.verified) {
+    if (checkInStatus === "approved") {
       return {
         bg: colors.primary + "22",
         textColor: colors.primary,
@@ -68,12 +70,20 @@ export function MonthCalendar({ commitment, year, month }: Props) {
       };
     }
 
-    if (checkIn && !checkIn.verified) {
-      // Logged but didn't meet goal (steps short)
+    if (checkInStatus === "under_review") {
       return {
         bg: colors.warning + "15",
         textColor: colors.warning,
         dot: colors.warning,
+        opacity: 1,
+      };
+    }
+
+    if (checkInStatus === "rejected") {
+      return {
+        bg: colors.danger + "11",
+        textColor: colors.danger,
+        dot: colors.danger,
         opacity: 1,
       };
     }
@@ -141,10 +151,10 @@ export function MonthCalendar({ commitment, year, month }: Props) {
         })}
       </View>
       <View style={styles.legend}>
-        <LegendItem color={colors.primary} label="Refunded" colors={colors} />
+        <LegendItem color={colors.primary} label="Approved" colors={colors} />
+        <LegendItem color={colors.warning} label="Review" colors={colors} />
         <LegendItem color={colors.danger} label="Missed" colors={colors} />
         <LegendItem color={colors.accent} label="Today" colors={colors} />
-        <LegendItem color={colors.warning} label="Logged" colors={colors} />
       </View>
     </View>
   );

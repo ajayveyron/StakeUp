@@ -8,13 +8,18 @@ import React, {
 } from "react";
 
 export type GoalType = "content" | "steps";
+export type CheckInStatus = "under_review" | "approved" | "rejected";
+export type ForfeitDestination = "friend" | "reward_pool";
 
 export interface CheckIn {
   id: string;
   date: string; // YYYY-MM-DD
   proofUrl?: string; // content: public post URL
   stepCount?: number; // steps: step count logged
-  verified: boolean; // true = qualifies for refund
+  status?: CheckInStatus; // missing means legacy data; use verified as fallback
+  verified?: boolean; // true = approved and qualifies for refund
+  rejectionReason?: string;
+  reviewedAt?: string;
   submittedAt: string; // ISO timestamp
 }
 
@@ -27,6 +32,7 @@ export interface Commitment {
   durationDays: number; // 7, 14, 30, 90
   stakeAmount: number;
   currency: string;
+  forfeitDestination?: ForfeitDestination;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   friendName?: string;
@@ -50,6 +56,12 @@ interface CommitmentsContextType {
     commitmentId: string,
     date: string,
     stepCount: number
+  ) => void;
+  approveCheckIn: (commitmentId: string, date: string) => void;
+  rejectCheckIn: (
+    commitmentId: string,
+    date: string,
+    rejectionReason: string
   ) => void;
   removeCheckIn: (commitmentId: string, date: string) => void;
   getCommitment: (id: string) => Commitment | undefined;
@@ -115,7 +127,8 @@ export function CommitmentsProvider({
             id: existing?.id ?? genId(),
             date,
             proofUrl,
-            verified: proofUrl.trim().startsWith("http"),
+            status: "under_review",
+            verified: false,
             submittedAt: new Date().toISOString(),
           };
           return {
@@ -140,7 +153,8 @@ export function CommitmentsProvider({
             id: existing?.id ?? genId(),
             date,
             stepCount,
-            verified: stepCount >= c.targetPerDay,
+            status: "under_review",
+            verified: false,
             submittedAt: new Date().toISOString(),
           };
           return {
@@ -148,6 +162,56 @@ export function CommitmentsProvider({
             checkIns: existing
               ? c.checkIns.map((ci) => (ci.date === date ? entry : ci))
               : [...c.checkIns, entry],
+          };
+        })
+      );
+    },
+    [commitments, save]
+  );
+
+  const approveCheckIn = useCallback(
+    (commitmentId: string, date: string) => {
+      save(
+        commitments.map((c) => {
+          if (c.id !== commitmentId) return c;
+          return {
+            ...c,
+            checkIns: c.checkIns.map((ci) =>
+              ci.date === date
+                ? {
+                    ...ci,
+                    status: "approved",
+                    verified: true,
+                    rejectionReason: undefined,
+                    reviewedAt: new Date().toISOString(),
+                  }
+                : ci
+            ),
+          };
+        })
+      );
+    },
+    [commitments, save]
+  );
+
+  const rejectCheckIn = useCallback(
+    (commitmentId: string, date: string, rejectionReason: string) => {
+      save(
+        commitments.map((c) => {
+          if (c.id !== commitmentId) return c;
+          return {
+            ...c,
+            checkIns: c.checkIns.map((ci) =>
+              ci.date === date
+                ? {
+                    ...ci,
+                    status: "rejected",
+                    verified: false,
+                    rejectionReason,
+                    reviewedAt: new Date().toISOString(),
+                  }
+                : ci
+            ),
           };
         })
       );
@@ -183,6 +247,8 @@ export function CommitmentsProvider({
         deleteCommitment,
         submitContentCheckIn,
         submitStepsCheckIn,
+        approveCheckIn,
+        rejectCheckIn,
         removeCheckIn,
         getCommitment,
       }}

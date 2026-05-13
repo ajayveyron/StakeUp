@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "dev:mobile": "corepack pnpm --filter @workspace/mobile exec expo start --localhost --port 8081",
+    "dev:mobile": "corepack pnpm --filter @workspace/mobile exec expo start --lan --port 8081",
     "test:mobile": "corepack pnpm --dir scripts exec tsx --test ../tests/mobile/**/*.test.ts",
     "build": "corepack pnpm run typecheck && corepack pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",

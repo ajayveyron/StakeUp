@@ -5,6 +5,7 @@ import type { Commitment } from "../../artifacts/mobile/contexts/CommitmentsCont
 import {
   getAmountAtRisk,
   getEndDateForDuration,
+  getPendingReviewCheckIns,
   getRefundPerDay,
   getScheduledDates,
   getTotalCommittedDays,
@@ -67,20 +68,22 @@ describe("commitment refund helpers", () => {
     assert.equal(getRefundPerDay(commitment), 300);
   });
 
-  it("counts only verified check-ins as refunded", () => {
+  it("counts only approved check-ins as refunded", () => {
     const commitment = makeCommitment({
       checkIns: [
         {
           id: "check-in-1",
           date: "2026-06-01",
           proofUrl: "https://example.com/post-1",
+          status: "approved",
           verified: true,
           submittedAt: "2026-06-01T12:00:00.000Z",
         },
         {
           id: "check-in-2",
           date: "2026-06-03",
-          proofUrl: "draft-only",
+          proofUrl: "https://example.com/post-review",
+          status: "under_review",
           verified: false,
           submittedAt: "2026-06-03T12:00:00.000Z",
         },
@@ -88,12 +91,24 @@ describe("commitment refund helpers", () => {
           id: "check-in-3",
           date: "2026-06-05",
           proofUrl: "https://example.com/post-2",
+          status: "approved",
           verified: true,
           submittedAt: "2026-06-05T12:00:00.000Z",
+        },
+        {
+          id: "check-in-4",
+          date: "2026-06-08",
+          proofUrl: "https://example.com/private-post",
+          status: "rejected",
+          verified: false,
+          rejectionReason: "Post was private during review.",
+          reviewedAt: "2026-06-09T12:00:00.000Z",
+          submittedAt: "2026-06-08T12:00:00.000Z",
         },
       ],
     });
 
+    assert.equal(getPendingReviewCheckIns(commitment).length, 1);
     assert.equal(getTotalRefunded(commitment), 600);
     assert.equal(getAmountAtRisk(commitment), 3300);
   });

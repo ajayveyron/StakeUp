@@ -1,6 +1,6 @@
 # StakeUp
 
-StakeUp is a mobile app for goal commitments with money at stake. Users create a commitment, submit proof on scheduled days, and receive proportional refunds for verified check-ins.
+StakeUp is a mobile app for goal commitments with money at stake. Users create a commitment, submit proof on scheduled days, and receive proportional wallet refunds for manually approved check-ins.
 
 ## Quick Start
 
@@ -55,10 +55,14 @@ Key files:
 - v1 is local-only and uses AsyncStorage.
 - No backend or env vars are required for the mobile app.
 - Supported goal types are Content Creation and Step Count.
-- Content check-ins require a public HTTP URL.
+- Submitted proof enters manual review and counts as submitted while review is pending.
+- Content check-ins require a public HTTP URL; private posts are not valid proof.
 - Step check-ins require meeting or exceeding the daily target.
-- Refund language is intentional: users get their own stake back for verified days.
+- Approved refunds are credited to the user's in-app wallet.
+- Rejected or missed days are forfeited to the chosen friend beneficiary or the reward pool.
+- Refund language is intentional: users get their own stake back for approved days.
 - Scheduled-day deadlines are local time.
+- Product rules are captured in `docs/product-decisions.md`.
 
 ## Assets
 

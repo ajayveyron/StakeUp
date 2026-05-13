@@ -23,6 +23,8 @@ import {
   formatDate,
   formatDaysOfWeek,
   getAmountAtRisk,
+  getCheckInForDate,
+  getCheckInStatus,
   getDaysRemaining,
   getMissedDates,
   getRefundPerDay,
@@ -91,6 +93,12 @@ export default function CommitmentDetailScreen() {
   const expired = isExpired(commitment);
   const todayScheduled = isTodayScheduled(commitment);
   const checkedToday = hasTodayCheckIn(commitment);
+  const todayCheckIn = getCheckInForDate(commitment, today);
+  const todayStatus = getCheckInStatus(todayCheckIn);
+  const forfeitLabel =
+    commitment.friendName && commitment.forfeitDestination !== "reward_pool"
+      ? `${commitment.friendName}'s wallet`
+      : "the reward pool";
 
   // Upcoming scheduled dates (today + future, not yet submitted)
   const scheduledDates = getScheduledDates(commitment);
@@ -306,9 +314,9 @@ export default function CommitmentDetailScreen() {
           >
             <Feather name="alert-circle" size={14} color={colors.danger} />
             <Text style={[styles.missedText, { color: colors.danger }]}>
-              {missed} missed day{missed > 1 ? "s" : ""} ·{" "}
-              {formatCurrency(missedAmount, commitment.currency)} forfeited
-              {commitment.friendName ? ` → ${commitment.friendName}` : ""}
+              {missed} missed/rejected day{missed > 1 ? "s" : ""} ·{" "}
+              {formatCurrency(missedAmount, commitment.currency)} forfeited to{" "}
+              {forfeitLabel}
             </Text>
           </View>
         )}
@@ -329,9 +337,8 @@ export default function CommitmentDetailScreen() {
                 const isLast = idx === upcomingDates.slice(0, 6).length - 1;
                 const isDateToday = date === today;
                 const d = new Date(date + "T00:00:00");
-                const checkedIn = commitment.checkIns.some(
-                  (ci) => ci.date === date && ci.verified
-                );
+                const checkIn = getCheckInForDate(commitment, date);
+                const checkInStatus = getCheckInStatus(checkIn);
                 return (
                   <View key={date}>
                     <View style={styles.upcomingRow}>
@@ -339,16 +346,21 @@ export default function CommitmentDetailScreen() {
                         style={[
                           styles.upcomingDot,
                           {
-                            backgroundColor: checkedIn
+                            backgroundColor: checkInStatus === "approved"
                               ? colors.primary
+                              : checkInStatus === "under_review"
+                              ? colors.accent
                               : isDateToday
                               ? colors.accent
                               : colors.border,
                           },
                         ]}
                       >
-                        {checkedIn && (
+                        {checkInStatus === "approved" && (
                           <Feather name="check" size={10} color="#000" />
+                        )}
+                        {checkInStatus === "under_review" && (
+                          <Feather name="clock" size={9} color="#000" />
                         )}
                       </View>
                       <View style={styles.upcomingInfo}>
@@ -490,69 +502,89 @@ export default function CommitmentDetailScreen() {
             {[...commitment.checkIns]
               .sort((a, b) => b.date.localeCompare(a.date))
               .slice(0, 5)
-              .map((ci) => (
-                <View
-                  key={ci.id}
-                  style={[
-                    styles.activityRow,
-                    { backgroundColor: colors.card, borderColor: colors.border },
-                  ]}
-                >
+              .map((ci) => {
+                const status = getCheckInStatus(ci);
+                return (
                   <View
+                    key={ci.id}
                     style={[
-                      styles.activityDot,
-                      {
-                        backgroundColor: ci.verified
-                          ? colors.primary
-                          : colors.warning,
-                      },
-                    ]}
-                  />
-                  <View style={styles.activityInfo}>
-                    <Text
-                      style={[styles.activityDate, { color: colors.foreground }]}
-                    >
-                      {formatDate(ci.date)}
-                    </Text>
-                    {ci.proofUrl && (
-                      <Text
-                        style={[
-                          styles.activityMeta,
-                          { color: colors.mutedForeground },
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {ci.proofUrl}
-                      </Text>
-                    )}
-                    {ci.stepCount !== undefined && (
-                      <Text
-                        style={[
-                          styles.activityMeta,
-                          { color: colors.mutedForeground },
-                        ]}
-                      >
-                        {ci.stepCount.toLocaleString("en-IN")} steps
-                        {ci.verified ? " ✓ goal met" : " — goal not met"}
-                      </Text>
-                    )}
-                  </View>
-                  <Text
-                    style={[
-                      styles.activityAmount,
-                      {
-                        color: ci.verified
-                          ? colors.primary
-                          : colors.mutedForeground,
-                      },
+                      styles.activityRow,
+                      { backgroundColor: colors.card, borderColor: colors.border },
                     ]}
                   >
-                    {ci.verified
-                      ? `+${formatCurrency(perDay, commitment.currency)}`
-                      : "—"}
-                  </Text>
-                </View>
-              ))}
+                    <View
+                      style={[
+                        styles.activityDot,
+                        {
+                          backgroundColor:
+                            status === "approved"
+                              ? colors.primary
+                              : status === "under_review"
+                              ? colors.accent
+                              : colors.danger,
+                        },
+                      ]}
+                    />
+                    <View style={styles.activityInfo}>
+                      <Text
+                        style={[styles.activityDate, { color: colors.foreground }]}
+                      >
+                        {formatDate(ci.date)}
+                      </Text>
+                      {ci.proofUrl && (
+                        <Text
+                          style={[
+                            styles.activityMeta,
+                            { color: colors.mutedForeground },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {ci.proofUrl}
+                        </Text>
+                      )}
+                      {ci.stepCount !== undefined && (
+                        <Text
+                          style={[
+                            styles.activityMeta,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          {ci.stepCount.toLocaleString("en-IN")} steps
+                        </Text>
+                      )}
+                      {status === "rejected" && ci.rejectionReason && (
+                        <Text
+                          style={[
+                            styles.activityMeta,
+                            { color: colors.danger },
+                          ]}
+                        >
+                          Rejected: {ci.rejectionReason}
+                        </Text>
+                      )}
+                    </View>
+                    <Text
+                      style={[
+                        styles.activityAmount,
+                        {
+                          color:
+                            status === "approved"
+                              ? colors.primary
+                              : status === "under_review"
+                              ? colors.accent
+                              : colors.mutedForeground,
+                        },
+                      ]}
+                    >
+                      {status === "approved"
+                        ? `+${formatCurrency(perDay, commitment.currency)}`
+                        : status === "under_review"
+                        ? "Review"
+                        : "Rejected"}
+                    </Text>
+                  </View>
+                );
+              })}
           </View>
         )}
 
@@ -578,6 +610,28 @@ export default function CommitmentDetailScreen() {
             </View>
           </View>
         )}
+
+        {!commitment.friendName && commitment.forfeitDestination !== "friend" && (
+          <View
+            style={[
+              styles.friendCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Feather name="award" size={14} color={colors.mutedForeground} />
+            <View style={styles.friendInfo}>
+              <Text style={[styles.friendLabel, { color: colors.mutedForeground }]}>
+                Forfeit goes to
+              </Text>
+              <Text style={[styles.friendName, { color: colors.foreground }]}>
+                Reward pool
+              </Text>
+              <Text style={[styles.friendMeta, { color: colors.mutedForeground }]}>
+                Keeps you eligible for reward-pool benefits when program rules are met.
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {/* ── Action area ── */}
@@ -597,15 +651,36 @@ export default function CommitmentDetailScreen() {
                 style={[
                   styles.donePill,
                   {
-                    backgroundColor: colors.primary + "22",
-                    borderColor: colors.primary + "44",
+                    backgroundColor:
+                      todayStatus === "approved"
+                        ? colors.primary + "22"
+                        : colors.accent + "22",
+                    borderColor:
+                      todayStatus === "approved"
+                        ? colors.primary + "44"
+                        : colors.accent + "44",
                   },
                 ]}
               >
-                <Feather name="check-circle" size={16} color={colors.primary} />
-                <Text style={[styles.donePillText, { color: colors.primary }]}>
-                  Submitted · +{formatCurrency(perDay, commitment.currency)}{" "}
-                  refunded
+                <Feather
+                  name={todayStatus === "approved" ? "check-circle" : "clock"}
+                  size={16}
+                  color={todayStatus === "approved" ? colors.primary : colors.accent}
+                />
+                <Text
+                  style={[
+                    styles.donePillText,
+                    {
+                      color:
+                        todayStatus === "approved"
+                          ? colors.primary
+                          : colors.accent,
+                    },
+                  ]}
+                >
+                  {todayStatus === "approved"
+                    ? `Approved · +${formatCurrency(perDay, commitment.currency)} in wallet`
+                    : "Submitted for review"}
                 </Text>
               </View>
               <TouchableOpacity
@@ -635,7 +710,7 @@ export default function CommitmentDetailScreen() {
                 {commitment.goalType === "content"
                   ? "Submit post link"
                   : "Log today's steps"}{" "}
-                · Get back {formatCurrency(perDay, commitment.currency)}
+                · review
               </Text>
             </TouchableOpacity>
           )}
@@ -923,6 +998,7 @@ const styles = StyleSheet.create({
   friendInfo: { flex: 1, gap: 2 },
   friendLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   friendName: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  friendMeta: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
   // FAB
   fabArea: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
   fabRow: { flexDirection: "row", gap: 10, alignItems: "center" },

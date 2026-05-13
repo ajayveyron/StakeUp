@@ -6,6 +6,7 @@ import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   getCheckInForDate,
+  getCheckInStatus,
   getMissedDates,
   getScheduledDates,
   getTodayStr,
@@ -52,8 +53,10 @@ export function CommitmentTimeline({ commitment }: Props) {
         const isFuture = date > today;
         const isPast = date < today;
         const checkIn = getCheckInForDate(commitment, date);
-        const verified = checkIn?.verified === true;
-        const missed = isPast && !verified;
+        const status = getCheckInStatus(checkIn);
+        const verified = status === "approved";
+        const underReview = status === "under_review";
+        const missed = isPast && status !== "approved" && status !== "under_review";
 
         // Mystery card = last slot
         if (isLast) {
@@ -111,13 +114,15 @@ export function CommitmentTimeline({ commitment }: Props) {
         // Connector line before this node (skip first)
         const dot = verified
           ? colors.primary
+          : underReview
+          ? colors.accent
           : missed
           ? colors.danger
           : isToday
           ? colors.accent
           : colors.border;
 
-        const dotFilled = verified || missed || isToday;
+        const dotFilled = verified || underReview || missed || isToday;
 
         return (
           <View key={date} style={styles.node}>
@@ -137,7 +142,10 @@ export function CommitmentTimeline({ commitment }: Props) {
               {missed && (
                 <Feather name="x" size={13} color="#fff" />
               )}
-              {isToday && !verified && !missed && (
+              {underReview && !verified && (
+                <Feather name="clock" size={12} color="#000" />
+              )}
+              {isToday && !verified && !underReview && !missed && (
                 <View
                   style={[styles.todayInner, { backgroundColor: "#000" }]}
                 />
@@ -163,6 +171,8 @@ export function CommitmentTimeline({ commitment }: Props) {
                     ? colors.accent
                     : verified
                     ? colors.primary
+                    : underReview
+                    ? colors.accent
                     : missed
                     ? colors.danger
                     : colors.mutedForeground,

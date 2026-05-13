@@ -20,6 +20,8 @@ import { useColors } from "@/hooks/useColors";
 import {
   formatCountdown,
   formatCurrency,
+  getCheckInForDate,
+  getCheckInStatus,
   getDaysRemaining,
   getMsUntilDeadline,
   getRefundPerDay,
@@ -218,11 +220,11 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Done today */}
+        {/* Submitted today */}
         {todayDone.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Done today
+              Submitted today
             </Text>
             <Text style={[styles.sectionSub, { color: colors.primary }]}>
               {todayDone.length} submitted
@@ -317,7 +319,8 @@ function ActiveWidget({
   const verified = getVerifiedCheckIns(commitment).length;
   const daysLeft = getDaysRemaining(commitment);
   const hasPending = isTodayScheduled(commitment) && !hasTodayCheckIn(commitment);
-  const donToday = hasTodayCheckIn(commitment);
+  const todayCheckIn = getCheckInForDate(commitment, today);
+  const todayStatus = getCheckInStatus(todayCheckIn);
   const progress = totalDays > 0 ? verified / totalDays : 0;
   const totalRefunded = getTotalRefunded(commitment);
 
@@ -385,11 +388,18 @@ function ActiveWidget({
                 {formatCountdown(countdown)}
               </Text>
             </View>
-          ) : donToday ? (
+          ) : todayStatus === "under_review" ? (
+            <View style={wStyles.countdownRow}>
+              <Feather name="clock" size={11} color={colors.accent} />
+              <Text style={[wStyles.countdown, { color: colors.accent }]}>
+                Under review
+              </Text>
+            </View>
+          ) : todayStatus === "approved" ? (
             <View style={wStyles.countdownRow}>
               <Feather name="check-circle" size={11} color={colors.primary} />
               <Text style={[wStyles.countdown, { color: colors.primary }]}>
-                Done today
+                Approved today
               </Text>
             </View>
           ) : (
@@ -482,7 +492,7 @@ function ActiveWidget({
                 {commitment.goalType === "content"
                   ? "Submit post link"
                   : "Log steps"}{" "}
-                · +{formatCurrency(perDay, commitment.currency)}
+                · review
               </Text>
             </LinearGradient>
           </TouchableOpacity>

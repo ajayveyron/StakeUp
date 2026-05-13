@@ -15,7 +15,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Commitment, GoalType, useCommitments } from "@/contexts/CommitmentsContext";
+import {
+  Commitment,
+  ForfeitDestination,
+  GoalType,
+  useCommitments,
+} from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   DurationType,
@@ -56,6 +61,7 @@ interface FormData {
   customSteps: string;
   stakeAmount: string;
   currency: string;
+  forfeitDestination: ForfeitDestination;
   friendName: string;
   friendContact: string;
 }
@@ -78,6 +84,7 @@ export default function NewCommitmentScreen() {
     customSteps: "",
     stakeAmount: "1000",
     currency: "INR",
+    forfeitDestination: "reward_pool",
     friendName: "",
     friendContact: "",
   });
@@ -117,6 +124,10 @@ export default function NewCommitmentScreen() {
   const stepGoalFinal = form.customSteps.trim()
     ? parseInt(form.customSteps) || 0
     : form.targetPerDay;
+  const forfeitTarget =
+    form.forfeitDestination === "friend" && form.friendName.trim()
+      ? `to ${form.friendName.trim()}`
+      : "to the reward pool";
 
   function canNext(): boolean {
     if (step === 0)
@@ -127,7 +138,16 @@ export default function NewCommitmentScreen() {
       }
       return form.targetPerDay > 0 && form.daysOfWeek.length > 0;
     }
-    if (step === 2) return parseFloat(form.stakeAmount) > 0;
+    if (step === 2) {
+      if (parseFloat(form.stakeAmount) <= 0) return false;
+      if (form.forfeitDestination === "friend") {
+        return (
+          form.friendName.trim().length > 0 &&
+          form.friendContact.trim().length > 0
+        );
+      }
+      return true;
+    }
     return true;
   }
 
@@ -156,10 +176,17 @@ export default function NewCommitmentScreen() {
       durationDays: daysBetween(form.startDate, endDate),
       stakeAmount: parseFloat(form.stakeAmount) || 0,
       currency: form.currency,
+      forfeitDestination: form.forfeitDestination,
       startDate: form.startDate,
       endDate,
-      friendName: form.friendName.trim() || undefined,
-      friendContact: form.friendContact.trim() || undefined,
+      friendName:
+        form.forfeitDestination === "friend"
+          ? form.friendName.trim()
+          : undefined,
+      friendContact:
+        form.forfeitDestination === "friend"
+          ? form.friendContact.trim()
+          : undefined,
     });
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.replace("/(tabs)");
@@ -756,7 +783,7 @@ export default function NewCommitmentScreen() {
                 Put your money down
               </Text>
               <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Show up, submit proof, and get it back day by day.
+                Approved days go to your StakeUp wallet. Missed or rejected days are forfeited.
               </Text>
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
@@ -884,7 +911,7 @@ export default function NewCommitmentScreen() {
                         { color: colors.primary },
                       ]}
                     >
-                      {formatCurrency(perDay, form.currency)} refunded per day
+                      {formatCurrency(perDay, form.currency)} per day if approved
                     </Text>
                     <Text
                       style={[
@@ -900,42 +927,121 @@ export default function NewCommitmentScreen() {
               )}
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Forfeit to a friend (optional)
+                If a day is forfeited
               </Text>
-              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Missed days are sent to them instead of being lost.
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    color: colors.foreground,
-                  },
-                ]}
-                placeholder="Friend's name"
-                placeholderTextColor={colors.mutedForeground}
-                value={form.friendName}
-                onChangeText={(v) => update("friendName", v)}
-                maxLength={60}
-              />
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.card,
-                    borderColor: colors.border,
-                    color: colors.foreground,
-                  },
-                ]}
-                placeholder="Phone number or UPI ID"
-                placeholderTextColor={colors.mutedForeground}
-                value={form.friendContact}
-                onChangeText={(v) => update("friendContact", v)}
-                maxLength={80}
-                keyboardType="phone-pad"
-              />
+              <View style={styles.forfeitGrid}>
+                {(
+                  [
+                    {
+                      value: "reward_pool" as const,
+                      icon: "award",
+                      title: "Reward pool",
+                      body:
+                        "Funds rewards for consistent users and keeps StakeUp running.",
+                    },
+                    {
+                      value: "friend" as const,
+                      icon: "user",
+                      title: "Friend wallet",
+                      body:
+                        "Goes to a friend's StakeUp wallet. No reward-pool eligibility.",
+                    },
+                  ] as const
+                ).map((opt) => {
+                  const selected = form.forfeitDestination === opt.value;
+                  return (
+                    <TouchableOpacity
+                      key={opt.value}
+                      onPress={() => update("forfeitDestination", opt.value)}
+                      activeOpacity={0.8}
+                      style={[
+                        styles.forfeitOption,
+                        {
+                          backgroundColor: selected
+                            ? colors.primary + "18"
+                            : colors.card,
+                          borderColor: selected ? colors.primary : colors.border,
+                          borderWidth: selected ? 2 : 1,
+                        },
+                      ]}
+                    >
+                      <Feather
+                        name={opt.icon as any}
+                        size={17}
+                        color={selected ? colors.primary : colors.mutedForeground}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.forfeitTitle,
+                            {
+                              color: selected
+                                ? colors.primary
+                                : colors.foreground,
+                            },
+                          ]}
+                        >
+                          {opt.title}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.forfeitBody,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          {opt.body}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {form.forfeitDestination === "friend" && (
+                <>
+                  <Text
+                    style={[styles.fieldLabel, { color: colors.mutedForeground }]}
+                  >
+                    Friend beneficiary
+                  </Text>
+                  <Text
+                    style={[styles.fieldHint, { color: colors.mutedForeground }]}
+                  >
+                    They will need to sign up to receive forfeits in their wallet.
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        color: colors.foreground,
+                      },
+                    ]}
+                    placeholder="Friend's name"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={form.friendName}
+                    onChangeText={(v) => update("friendName", v)}
+                    maxLength={60}
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        color: colors.foreground,
+                      },
+                    ]}
+                    placeholder="Phone number or UPI ID"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={form.friendContact}
+                    onChangeText={(v) => update("friendContact", v)}
+                    maxLength={80}
+                    keyboardType="phone-pad"
+                  />
+                </>
+              )}
             </View>
           )}
 
@@ -1068,16 +1174,16 @@ export default function NewCommitmentScreen() {
                   colors={colors}
                   valueColor={colors.primary}
                 />
-                {form.friendName ? (
-                  <>
-                    <RDiv colors={colors} />
-                    <RRow
-                      label="Forfeit to"
-                      value={`${form.friendName}${form.friendContact ? ` · ${form.friendContact}` : ""}`}
-                      colors={colors}
-                    />
-                  </>
-                ) : null}
+                <RDiv colors={colors} />
+                <RRow
+                  label="Forfeit destination"
+                  value={
+                    form.forfeitDestination === "friend"
+                      ? `${form.friendName}${form.friendContact ? ` · ${form.friendContact}` : ""}`
+                      : "Reward pool"
+                  }
+                  colors={colors}
+                />
               </View>
 
               {/* First submission callout */}
@@ -1143,13 +1249,19 @@ export default function NewCommitmentScreen() {
                     <ProofRule
                       icon="check-circle"
                       color={colors.primary}
-                      text={`Submit a valid public post URL on each active day → get back ${formatCurrency(perDay, form.currency)}`}
+                      text={`Submit a valid public post URL on each active day → sent for manual review`}
+                      colors={colors}
+                    />
+                    <ProofRule
+                      icon="rotate-ccw"
+                      color={colors.primary}
+                      text={`If approved → ${formatCurrency(perDay, form.currency)} added to your wallet`}
                       colors={colors}
                     />
                     <ProofRule
                       icon="x-circle"
                       color={colors.danger}
-                      text={`Miss a day or no valid link by 11:59 PM → ${formatCurrency(perDay, form.currency)} forfeited${form.friendName ? ` to ${form.friendName}` : ""}`}
+                      text={`Missed or rejected proof → ${formatCurrency(perDay, form.currency)} forfeited ${forfeitTarget}`}
                       colors={colors}
                     />
                     <ProofRule
@@ -1164,13 +1276,19 @@ export default function NewCommitmentScreen() {
                     <ProofRule
                       icon="check-circle"
                       color={colors.primary}
-                      text={`Log ${stepGoalFinal.toLocaleString("en-IN")}+ steps by 11:59 PM → get back ${formatCurrency(perDay, form.currency)}`}
+                      text={`Submit ${stepGoalFinal.toLocaleString("en-IN")}+ steps by 11:59 PM → sent for manual review`}
+                      colors={colors}
+                    />
+                    <ProofRule
+                      icon="rotate-ccw"
+                      color={colors.primary}
+                      text={`If approved → ${formatCurrency(perDay, form.currency)} added to your wallet`}
                       colors={colors}
                     />
                     <ProofRule
                       icon="x-circle"
                       color={colors.danger}
-                      text={`Steps below goal or no log by 11:59 PM → ${formatCurrency(perDay, form.currency)} forfeited${form.friendName ? ` to ${form.friendName}` : ""}`}
+                      text={`Steps below goal, missed, or rejected proof → ${formatCurrency(perDay, form.currency)} forfeited ${forfeitTarget}`}
                       colors={colors}
                     />
                     <ProofRule
@@ -1508,6 +1626,21 @@ const styles = StyleSheet.create({
   },
   refundChipMain: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   refundChipSub: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 2 },
+  forfeitGrid: { gap: 10 },
+  forfeitOption: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    borderRadius: 12,
+    padding: 13,
+  },
+  forfeitTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  forfeitBody: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
+    marginTop: 2,
+  },
   // Review
   dateBanner: {
     flexDirection: "row",

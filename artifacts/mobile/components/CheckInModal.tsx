@@ -73,7 +73,7 @@ export function CheckInModal({
   const stepsGoalMet = stepCount >= commitment.targetPerDay;
   const canSubmit = isContent
     ? url.trim().startsWith("http")
-    : stepCount > 0;
+    : stepsGoalMet;
 
   function handleSubmit() {
     if (!canSubmit) return;
@@ -118,7 +118,7 @@ export function CheckInModal({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={[styles.title, { color: colors.foreground }]}>
-                {isContent ? "Submit Proof" : "Log Your Steps"}
+                {isContent ? "Submit Proof" : "Submit Steps"}
               </Text>
               <Text style={[styles.commitName, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {commitment.name}
@@ -297,12 +297,12 @@ export function CheckInModal({
             <Feather name="rotate-ccw" size={14} color={colors.primary} />
             <Text style={[styles.refundText, { color: colors.primary }]}>
               {isContent && canSubmit
-                ? `You'll get back ${formatCurrency(refundPerDay, commitment.currency)} for this post`
+                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} will be added to your wallet`
                 : !isContent && stepsGoalMet
-                ? `You'll get back ${formatCurrency(refundPerDay, commitment.currency)} for hitting your goal`
+                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} will be added to your wallet`
                 : !isContent && stepCount > 0 && !stepsGoalMet
-                ? `No refund — goal not met. You need ${commitment.targetPerDay.toLocaleString("en-IN")} steps.`
-                : `Get back ${formatCurrency(refundPerDay, commitment.currency)} for today`}
+                ? `This is below target. You need ${commitment.targetPerDay.toLocaleString("en-IN")} steps to submit.`
+                : `Submit by the deadline for manual review`}
             </Text>
           </View>
 
@@ -325,7 +325,7 @@ export function CheckInModal({
                 { color: canSubmit ? "#000" : colors.mutedForeground },
               ]}
             >
-              {isContent ? "Claim Refund" : stepsGoalMet ? "Claim Refund" : "Log Steps (No Refund)"}
+              Submit for Review
             </Text>
           </TouchableOpacity>
         </View>

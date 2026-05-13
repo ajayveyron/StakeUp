@@ -11,8 +11,11 @@ import { useColors } from "@/hooks/useColors";
 import {
   formatCurrency,
   formatDaysOfWeek,
+  getCheckInForDate,
+  getCheckInStatus,
   getDaysRemaining,
   getRefundPerDay,
+  getTodayStr,
   getTotalCommittedDays,
   getTotalRefunded,
   getVerifiedCheckIns,
@@ -42,6 +45,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
   const totalDays = getTotalCommittedDays(c);
   const verified = getVerifiedCheckIns(c).length;
   const checkedToday = hasTodayCheckIn(c);
+  const todayStatus = getCheckInStatus(getCheckInForDate(c, getTodayStr()));
   const todayScheduled = isTodayScheduled(c);
   const active = isActive(c);
   const expired = isExpired(c);
@@ -58,7 +62,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
   }
 
   const showCheckInBtn = active && todayScheduled && !checkedToday;
-  const showDoneState = active && todayScheduled && checkedToday;
+  const showSubmittedState = active && todayScheduled && checkedToday;
 
   return (
     <LinearGradient
@@ -132,14 +136,23 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               </LinearGradient>
             </TouchableOpacity>
           )}
-          {showDoneState && (
+          {showSubmittedState && (
             <View
               style={[
                 styles.actionBtn,
-                { backgroundColor: colors.primary + "22" },
+                {
+                  backgroundColor:
+                    todayStatus === "approved"
+                      ? colors.primary + "22"
+                      : colors.accent + "22",
+                },
               ]}
             >
-              <Feather name="check-circle" size={15} color={colors.primary} />
+              <Feather
+                name={todayStatus === "approved" ? "check-circle" : "clock"}
+                size={15}
+                color={todayStatus === "approved" ? colors.primary : colors.accent}
+              />
             </View>
           )}
           {(!active || !todayScheduled) && (
