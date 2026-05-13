@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -198,21 +199,29 @@ export default function NewCommitmentScreen() {
         <View style={styles.stepsRow}>
           {STEP_LABELS.map((s, i) => (
             <View key={s} style={styles.stepItem}>
-              <View
-                style={[
-                  styles.stepDot,
-                  {
-                    backgroundColor: i <= step ? colors.primary : colors.border,
-                    opacity: i > step ? 0.35 : 1,
-                  },
-                ]}
-              >
-                {i < step ? (
-                  <Feather name="check" size={10} color="#000" />
-                ) : (
+              {i <= step ? (
+                <LinearGradient
+                  colors={["#00C853", "#00E676"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.stepDot}
+                >
+                  {i < step ? (
+                    <Feather name="check" size={10} color="#000" />
+                  ) : (
+                    <Text style={styles.stepNum}>{i + 1}</Text>
+                  )}
+                </LinearGradient>
+              ) : (
+                <View
+                  style={[
+                    styles.stepDot,
+                    { backgroundColor: colors.border, opacity: 0.35 },
+                  ]}
+                >
                   <Text style={styles.stepNum}>{i + 1}</Text>
-                )}
-              </View>
+                </View>
+              )}
               <Text
                 style={[
                   styles.stepLabel,
@@ -1190,28 +1199,47 @@ export default function NewCommitmentScreen() {
           <TouchableOpacity
             onPress={handleNext}
             disabled={!canNext()}
-            style={[
-              styles.nextBtn,
-              {
-                backgroundColor: canNext() ? colors.primary : colors.secondary,
-                opacity: canNext() ? 1 : 0.5,
-              },
-            ]}
             activeOpacity={0.85}
+            style={{ opacity: canNext() ? 1 : 0.5 }}
           >
-            <Text
-              style={[
-                styles.nextBtnText,
-                { color: canNext() ? "#000" : colors.mutedForeground },
-              ]}
-            >
-              {step === 3 ? "Start Stake" : "Continue"}
-            </Text>
-            <Feather
-              name={step === 3 ? "check" : "arrow-right"}
-              size={18}
-              color={canNext() ? "#000" : colors.mutedForeground}
-            />
+            {canNext() ? (
+              <LinearGradient
+                colors={["#00C853", "#00E676"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.nextBtn}
+              >
+                <Text style={[styles.nextBtnText, { color: "#000" }]}>
+                  {step === 3 ? "Start Stake" : "Continue"}
+                </Text>
+                <Feather
+                  name={step === 3 ? "check" : "arrow-right"}
+                  size={18}
+                  color="#000"
+                />
+              </LinearGradient>
+            ) : (
+              <View
+                style={[
+                  styles.nextBtn,
+                  { backgroundColor: colors.secondary },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.nextBtnText,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {step === 3 ? "Start Stake" : "Continue"}
+                </Text>
+                <Feather
+                  name={step === 3 ? "check" : "arrow-right"}
+                  size={18}
+                  color={colors.mutedForeground}
+                />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

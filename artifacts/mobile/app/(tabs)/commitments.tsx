@@ -1,4 +1,5 @@
 import { Feather } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -48,10 +49,16 @@ export default function CommitmentsScreen() {
           </Text>
           <TouchableOpacity
             onPress={() => router.push("/commitment/new")}
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.8}
           >
-            <Feather name="plus" size={20} color="#000" />
+            <LinearGradient
+              colors={["#00C853", "#00E676"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addBtn}
+            >
+              <Feather name="plus" size={20} color="#000" />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -66,12 +73,17 @@ export default function CommitmentsScreen() {
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
-              style={[
-                styles.tabItem,
-                tab === t && { backgroundColor: colors.primary },
-              ]}
               activeOpacity={0.8}
+              style={[styles.tabItem, { overflow: "hidden" }]}
             >
+              {tab === t && (
+                <LinearGradient
+                  colors={["#00C853", "#00E676"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              )}
               <Text
                 style={[
                   styles.tabText,
@@ -108,10 +120,16 @@ export default function CommitmentsScreen() {
             {tab === "active" && (
               <TouchableOpacity
                 onPress={() => router.push("/commitment/new")}
-                style={[styles.createBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.85}
               >
-                <Text style={styles.createBtnText}>New Stake</Text>
+                <LinearGradient
+                  colors={["#00C853", "#00E676"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.createBtn}
+                >
+                  <Text style={styles.createBtnText}>New Stake</Text>
+                </LinearGradient>
               </TouchableOpacity>
             )}
           </View>

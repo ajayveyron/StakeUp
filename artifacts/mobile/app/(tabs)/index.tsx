@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -116,10 +117,16 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             onPress={() => router.push("/commitment/new")}
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.8}
           >
-            <Feather name="plus" size={20} color="#000" />
+            <LinearGradient
+              colors={["#00C853", "#00E676"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.addBtn}
+            >
+              <Feather name="plus" size={20} color="#000" />
+            </LinearGradient>
           </TouchableOpacity>
         </View>
 
@@ -261,10 +268,16 @@ export default function HomeScreen() {
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
-              style={[styles.createBtn, { backgroundColor: colors.primary }]}
               activeOpacity={0.85}
             >
-              <Text style={styles.createBtnText}>Create your first stake</Text>
+              <LinearGradient
+                colors={["#00C853", "#00E676"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.createBtn}
+              >
+                <Text style={styles.createBtnText}>Create your first stake</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
@@ -402,13 +415,13 @@ function ActiveWidget({
 
       {/* Progress */}
       <View style={[wStyles.progressBg, { backgroundColor: colors.border }]}>
-        <View
+        <LinearGradient
+          colors={["#00C853", "#00E676"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
           style={[
             wStyles.progressFill,
-            {
-              width: `${Math.min(progress * 100, 100)}%` as any,
-              backgroundColor: colors.primary,
-            },
+            { width: `${Math.min(progress * 100, 100)}%` as any },
           ]}
         />
       </View>
@@ -451,47 +464,59 @@ function ActiveWidget({
               e.stopPropagation?.();
               onCheckIn();
             }}
-            style={[wStyles.checkInBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}
+            style={{ flex: 1 }}
           >
-            <Feather
-              name={commitment.goalType === "content" ? "link" : "activity"}
-              size={15}
-              color="#000"
-            />
-            <Text style={wStyles.checkInTxt}>
-              {commitment.goalType === "content"
-                ? "Submit post link"
-                : "Log steps"}{" "}
-              · +{formatCurrency(perDay, commitment.currency)}
-            </Text>
+            <LinearGradient
+              colors={["#00C853", "#00E676"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={wStyles.checkInBtn}
+            >
+              <Feather
+                name={commitment.goalType === "content" ? "link" : "activity"}
+                size={15}
+                color="#000"
+              />
+              <Text style={wStyles.checkInTxt}>
+                {commitment.goalType === "content"
+                  ? "Submit post link"
+                  : "Log steps"}{" "}
+                · +{formatCurrency(perDay, commitment.currency)}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
         )}
-        <TouchableOpacity
-          onPress={onViewDetails}
-          style={[
-            wStyles.detailBtn,
-            {
-              backgroundColor: hasPending ? colors.secondary : colors.primary,
-              flex: hasPending ? 0 : 1,
-            },
-          ]}
-          activeOpacity={0.8}
-        >
-          <Text
-            style={[
-              wStyles.detailTxt,
-              { color: hasPending ? colors.mutedForeground : "#000" },
-            ]}
+        {hasPending ? (
+          <TouchableOpacity
+            onPress={onViewDetails}
+            activeOpacity={0.8}
+            style={[wStyles.detailBtn, { backgroundColor: colors.secondary }]}
           >
-            {hasPending ? "Details" : "View details"}
-          </Text>
-          <Feather
-            name="arrow-right"
-            size={14}
-            color={hasPending ? colors.mutedForeground : "#000"}
-          />
-        </TouchableOpacity>
+            <Text style={[wStyles.detailTxt, { color: colors.mutedForeground }]}>
+              Details
+            </Text>
+            <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={onViewDetails}
+            activeOpacity={0.8}
+            style={{ flex: 1 }}
+          >
+            <LinearGradient
+              colors={["#00C853", "#00E676"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[wStyles.detailBtn, { flex: 1 }]}
+            >
+              <Text style={[wStyles.detailTxt, { color: "#000" }]}>
+                View details
+              </Text>
+              <Feather name="arrow-right" size={14} color="#000" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );

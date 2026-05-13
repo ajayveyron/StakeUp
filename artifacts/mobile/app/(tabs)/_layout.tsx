@@ -54,7 +54,7 @@ function ClassicTabLayout() {
           isIOS ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={gradients.tabBar as unknown as string[]}
+                colors={["transparent", "#00C853", "#00E676", "#FF9F0A", "transparent"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
@@ -68,7 +68,7 @@ function ClassicTabLayout() {
           ) : isWeb ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={gradients.tabBar as unknown as string[]}
+                colors={["transparent", "#00C853", "#00E676", "#FF9F0A", "transparent"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
