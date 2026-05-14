@@ -15,9 +15,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CommitmentCard } from "@/components/CommitmentCard";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
-import { isActive, isExpired } from "@/utils/commitment";
+import { isActive, isExpired, isPendingPayment } from "@/utils/commitment";
 
-type Tab = "active" | "past";
+type Tab = "pending" | "active" | "past";
 
 export default function CommitmentsScreen() {
   const colors = useColors();
@@ -26,9 +26,10 @@ export default function CommitmentsScreen() {
   const { commitments } = useCommitments();
   const [tab, setTab] = useState<Tab>("active");
 
+  const pending = commitments.filter(isPendingPayment);
   const active = commitments.filter(isActive);
   const past = commitments.filter(isExpired);
-  const displayed = tab === "active" ? active : past;
+  const displayed = tab === "pending" ? pending : tab === "active" ? active : past;
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
 
   return (
@@ -69,7 +70,7 @@ export default function CommitmentsScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          {(["active", "past"] as Tab[]).map((t) => (
+          {(["pending", "active", "past"] as Tab[]).map((t) => (
             <TouchableOpacity
               key={t}
               onPress={() => setTab(t)}
@@ -94,7 +95,9 @@ export default function CommitmentsScreen() {
                   },
                 ]}
               >
-                {t === "active"
+                {t === "pending"
+                  ? `Pending (${pending.length})`
+                  : t === "active"
                   ? `Active (${active.length})`
                   : `Past (${past.length})`}
               </Text>
@@ -110,10 +113,16 @@ export default function CommitmentsScreen() {
               color={colors.mutedForeground}
             />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {tab === "active" ? "No active pacts" : "No past pacts"}
+              {tab === "pending"
+                ? "No pending payments"
+                : tab === "active"
+                ? "No active pacts"
+                : "No past pacts"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              {tab === "active"
+              {tab === "pending"
+                ? "Payment requests waiting for confirmation will appear here."
+                : tab === "active"
                 ? "Create a pact and start getting refunds for every day you show up."
                 : "Completed pacts will appear here."}
             </Text>

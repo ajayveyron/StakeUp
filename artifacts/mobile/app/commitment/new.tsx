@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -74,6 +75,7 @@ export default function NewCommitmentScreen() {
   const dateScrollRef = useRef<ScrollView>(null);
 
   const [step, setStep] = useState<FormStep>(0);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<FormData>({
     name: "",
     goalType: "content",
@@ -152,12 +154,12 @@ export default function NewCommitmentScreen() {
   }
 
   function handleNext() {
-    if (!canNext()) return;
+    if (!canNext() || creating) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (step < 3) {
       setStep((s) => (s + 1) as FormStep);
     } else {
-      handleCreate();
+      void handleCreate();
     }
   }
 
@@ -166,8 +168,10 @@ export default function NewCommitmentScreen() {
     else setStep((s) => (s - 1) as FormStep);
   }
 
-  function handleCreate() {
-    addCommitment({
+  async function handleCreate() {
+    if (creating) return;
+    setCreating(true);
+    const commitmentId = await addCommitment({
       name: form.name.trim(),
       goalType: form.goalType,
       daysOfWeek: form.daysOfWeek,
@@ -188,8 +192,13 @@ export default function NewCommitmentScreen() {
           ? form.friendContact.trim()
           : undefined,
     });
+    setCreating(false);
+    if (!commitmentId) {
+      Alert.alert("Could not create pact", "Please try again.");
+      return;
+    }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.replace("/(tabs)");
+    router.replace(`/commitment/${commitmentId}`);
   }
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
@@ -780,10 +789,10 @@ export default function NewCommitmentScreen() {
           {step === 2 && (
             <View style={styles.stepContent}>
               <Text style={[styles.stepTitle, { color: colors.foreground }]}>
-                Put your money down
+                Set the amount
               </Text>
               <Text style={[styles.stepSub, { color: colors.mutedForeground }]}>
-                Approved days go to your Pact Raven wallet. Missed or rejected days are forfeited.
+                Your pact is created first, then payment is confirmed manually before check-ins start.
               </Text>
 
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
@@ -942,9 +951,9 @@ export default function NewCommitmentScreen() {
                     {
                       value: "friend" as const,
                       icon: "user",
-                      title: "Friend wallet",
+                      title: "Friend beneficiary",
                       body:
-                        "Goes to a friend's Pact Raven wallet. No reward-pool eligibility.",
+                        "Goes to the chosen friend manually. No reward-pool eligibility.",
                     },
                   ] as const
                 ).map((opt) => {
@@ -1007,7 +1016,7 @@ export default function NewCommitmentScreen() {
                   <Text
                     style={[styles.fieldHint, { color: colors.mutedForeground }]}
                   >
-                    They will need to sign up to receive forfeits in their wallet.
+                    They will need to sign up before any manual payout is made.
                   </Text>
                   <TextInput
                     style={[
@@ -1244,6 +1253,12 @@ export default function NewCommitmentScreen() {
                 >
                   How refunds work
                 </Text>
+                <ProofRule
+                  icon="message-circle"
+                  color={colors.accent}
+                  text="After creation, contact Pact Raven on WhatsApp to complete UPI payment. The pact stays pending until admin confirmation."
+                  colors={colors}
+                />
                 {form.goalType === "content" ? (
                   <>
                     <ProofRule
@@ -1255,7 +1270,7 @@ export default function NewCommitmentScreen() {
                     <ProofRule
                       icon="rotate-ccw"
                       color={colors.primary}
-                      text={`If approved → ${formatCurrency(perDay, form.currency)} added to your wallet`}
+                      text={`If approved → ${formatCurrency(perDay, form.currency)} available for manual payout`}
                       colors={colors}
                     />
                     <ProofRule
@@ -1282,7 +1297,7 @@ export default function NewCommitmentScreen() {
                     <ProofRule
                       icon="rotate-ccw"
                       color={colors.primary}
-                      text={`If approved → ${formatCurrency(perDay, form.currency)} added to your wallet`}
+                      text={`If approved → ${formatCurrency(perDay, form.currency)} available for manual payout`}
                       colors={colors}
                     />
                     <ProofRule
@@ -1316,11 +1331,11 @@ export default function NewCommitmentScreen() {
         >
           <TouchableOpacity
             onPress={handleNext}
-            disabled={!canNext()}
+            disabled={!canNext() || creating}
             activeOpacity={0.85}
-            style={{ opacity: canNext() ? 1 : 0.5 }}
+            style={{ opacity: canNext() && !creating ? 1 : 0.5 }}
           >
-            {canNext() ? (
+            {canNext() && !creating ? (
               <LinearGradient
                 colors={["#00C853", "#00E676"]}
                 start={{ x: 0, y: 0 }}
@@ -1328,7 +1343,7 @@ export default function NewCommitmentScreen() {
                 style={styles.nextBtn}
               >
                 <Text style={[styles.nextBtnText, { color: "#000" }]}>
-                  {step === 3 ? "Start Pact" : "Continue"}
+                  {step === 3 ? "Create payment request" : "Continue"}
                 </Text>
                 <Feather
                   name={step === 3 ? "check" : "arrow-right"}
@@ -1349,7 +1364,11 @@ export default function NewCommitmentScreen() {
                     { color: colors.mutedForeground },
                   ]}
                 >
-                  {step === 3 ? "Start Pact" : "Continue"}
+                  {creating
+                    ? "Creating..."
+                    : step === 3
+                    ? "Create payment request"
+                    : "Continue"}
                 </Text>
                 <Feather
                   name={step === 3 ? "check" : "arrow-right"}

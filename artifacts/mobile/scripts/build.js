@@ -44,33 +44,41 @@ function setupSignalHandlers() {
   process.on("SIGHUP", cleanup);
 }
 
-function stripProtocol(domain) {
-  let urlString = domain.trim();
+function normalizeDeploymentUrl(value) {
+  let urlString = value.trim();
 
   if (!/^https?:\/\//i.test(urlString)) {
     urlString = `https://${urlString}`;
   }
 
-  return new URL(urlString).host;
+  const url = new URL(urlString);
+  return {
+    domain: url.host,
+    baseUrl: `${url.protocol}//${url.host}`,
+  };
 }
 
-function getDeploymentDomain() {
+function getDeploymentConfig() {
   if (process.env.REPLIT_INTERNAL_APP_DOMAIN) {
-    return stripProtocol(process.env.REPLIT_INTERNAL_APP_DOMAIN);
+    return normalizeDeploymentUrl(process.env.REPLIT_INTERNAL_APP_DOMAIN);
   }
 
   if (process.env.REPLIT_DEV_DOMAIN) {
-    return stripProtocol(process.env.REPLIT_DEV_DOMAIN);
+    return normalizeDeploymentUrl(process.env.REPLIT_DEV_DOMAIN);
   }
 
   if (process.env.EXPO_PUBLIC_DOMAIN) {
-    return stripProtocol(process.env.EXPO_PUBLIC_DOMAIN);
+    return normalizeDeploymentUrl(process.env.EXPO_PUBLIC_DOMAIN);
   }
 
-  console.error(
-    "ERROR: No deployment domain found. Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN",
+  console.warn(
+    "No deployment domain found. Falling back to localhost for a local build check. " +
+      "Set REPLIT_INTERNAL_APP_DOMAIN, REPLIT_DEV_DOMAIN, or EXPO_PUBLIC_DOMAIN for deployable output.",
   );
-  process.exit(1);
+  return {
+    domain: "localhost:8081",
+    baseUrl: "http://localhost:8081",
+  };
 }
 
 function prepareDirectories(timestamp) {
@@ -127,6 +135,21 @@ function getExpoPublicReplId() {
   return process.env.REPL_ID || process.env.EXPO_PUBLIC_REPL_ID;
 }
 
+function getPnpmInvocation() {
+  const npmExecPath = process.env.npm_execpath;
+  if (npmExecPath && npmExecPath.includes("pnpm")) {
+    return {
+      command: process.execPath,
+      args: [npmExecPath],
+    };
+  }
+
+  return {
+    command: "corepack",
+    args: ["pnpm"],
+  };
+}
+
 async function startMetro(expoPublicDomain, expoPublicReplId) {
   const isRunning = await checkMetroHealth();
   if (isRunning) {
@@ -146,9 +169,11 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
     console.log(`Setting EXPO_PUBLIC_REPL_ID=${expoPublicReplId}`);
   }
 
+  const pnpm = getPnpmInvocation();
   metroProcess = spawn(
-    "pnpm",
+    pnpm.command,
     [
+      ...pnpm.args,
       "exec",
       "expo",
       "start",
@@ -163,6 +188,10 @@ async function startMetro(expoPublicDomain, expoPublicReplId) {
       env,
     },
   );
+
+  metroProcess.on("error", (error) => {
+    exitWithError(`Failed to start Metro: ${error.message}`);
+  });
 
   if (metroProcess.stdout) {
     metroProcess.stdout.on("data", (data) => {
@@ -510,9 +539,8 @@ async function main() {
 
   setupSignalHandlers();
 
-  const domain = getDeploymentDomain();
+  const { domain, baseUrl } = getDeploymentConfig();
   const expoPublicReplId = getExpoPublicReplId();
-  const baseUrl = `https://${domain}`;
   const timestamp = `${Date.now()}-${process.pid}`;
 
   prepareDirectories(timestamp);

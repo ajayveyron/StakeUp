@@ -1,15 +1,17 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { useMutation, useQuery } from "convex/react";
+import React, { createContext, useCallback, useContext } from "react";
+
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 
 export type GoalType = "content" | "steps";
-export type CheckInStatus = "under_review" | "approved" | "rejected";
+export type CheckInStatus =
+  | "under_review"
+  | "approved"
+  | "rejected"
+  | "missed";
 export type ForfeitDestination = "friend" | "reward_pool";
+export type CommitmentStatus = "pending_payment" | "active" | "deleted";
 
 export interface CheckIn {
   id: string;
@@ -35,17 +37,23 @@ export interface Commitment {
   forfeitDestination?: ForfeitDestination;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
+  timezone?: string;
+  status?: CommitmentStatus;
+  paymentConfirmedAt?: string;
+  paymentReference?: string;
+  paymentNote?: string;
   friendName?: string;
   friendContact?: string;
   checkIns: CheckIn[];
   createdAt: string;
+  updatedAt?: string;
 }
 
 interface CommitmentsContextType {
   commitments: Commitment[];
   addCommitment: (
     c: Omit<Commitment, "id" | "checkIns" | "createdAt">
-  ) => void;
+  ) => Promise<string | null>;
   deleteCommitment: (id: string) => void;
   submitContentCheckIn: (
     commitmentId: string,
@@ -67,171 +75,120 @@ interface CommitmentsContextType {
   getCommitment: (id: string) => Commitment | undefined;
 }
 
-const STORAGE_KEY = "@pactraven_v1_commitments";
+const CommitmentsContext = createContext<CommitmentsContextType | null>(null);
 
-function genId() {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+function deviceTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
 
-const CommitmentsContext = createContext<CommitmentsContextType | null>(null);
+function logMutationError(error: unknown) {
+  console.error(error);
+}
 
 export function CommitmentsProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [commitments, setCommitments] = useState<Commitment[]>([]);
-
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
-      if (raw) {
-        try {
-          setCommitments(JSON.parse(raw));
-        } catch {}
-      }
-    });
-  }, []);
-
-  const save = useCallback((updated: Commitment[]) => {
-    setCommitments(updated);
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  }, []);
+  const commitments = (useQuery(api.commitments.listMine) ?? []) as Commitment[];
+  const createCommitment = useMutation(api.commitments.create);
+  const deleteMine = useMutation(api.commitments.deleteMine);
+  const submitContent = useMutation(api.checkIns.submitContent);
+  const submitSteps = useMutation(api.checkIns.submitSteps);
+  const approve = useMutation(api.reviews.approve);
+  const reject = useMutation(api.reviews.reject);
+  const removeMine = useMutation(api.checkIns.removeMine);
 
   const addCommitment = useCallback(
-    (c: Omit<Commitment, "id" | "checkIns" | "createdAt">) => {
-      const newC: Commitment = {
-        ...c,
-        id: genId(),
-        checkIns: [],
-        createdAt: new Date().toISOString(),
-      };
-      save([...commitments, newC]);
+    async (c: Omit<Commitment, "id" | "checkIns" | "createdAt">) => {
+      try {
+        return await createCommitment({
+          name: c.name,
+          goalType: c.goalType,
+          daysOfWeek: c.daysOfWeek,
+          targetPerDay: c.targetPerDay,
+          durationDays: c.durationDays,
+          pactAmount: c.pactAmount,
+          currency: c.currency,
+          forfeitDestination: c.forfeitDestination ?? "reward_pool",
+          friendName: c.friendName,
+          friendContact: c.friendContact,
+          startDate: c.startDate,
+          endDate: c.endDate,
+          timezone: c.timezone ?? deviceTimeZone(),
+        });
+      } catch (error) {
+        logMutationError(error);
+        return null;
+      }
     },
-    [commitments, save]
+    [createCommitment]
   );
 
   const deleteCommitment = useCallback(
     (id: string) => {
-      save(commitments.filter((c) => c.id !== id));
+      void deleteMine({ id: id as Id<"commitments"> }).catch(logMutationError);
     },
-    [commitments, save]
+    [deleteMine]
   );
 
   const submitContentCheckIn = useCallback(
     (commitmentId: string, date: string, proofUrl: string) => {
-      save(
-        commitments.map((c) => {
-          if (c.id !== commitmentId) return c;
-          const existing = c.checkIns.find((ci) => ci.date === date);
-          const entry: CheckIn = {
-            id: existing?.id ?? genId(),
-            date,
-            proofUrl,
-            status: "under_review",
-            verified: false,
-            submittedAt: new Date().toISOString(),
-          };
-          return {
-            ...c,
-            checkIns: existing
-              ? c.checkIns.map((ci) => (ci.date === date ? entry : ci))
-              : [...c.checkIns, entry],
-          };
-        })
-      );
+      void submitContent({
+        commitmentId: commitmentId as Id<"commitments">,
+        date,
+        proofUrl,
+      }).catch(logMutationError);
     },
-    [commitments, save]
+    [submitContent]
   );
 
   const submitStepsCheckIn = useCallback(
     (commitmentId: string, date: string, stepCount: number) => {
-      save(
-        commitments.map((c) => {
-          if (c.id !== commitmentId) return c;
-          const existing = c.checkIns.find((ci) => ci.date === date);
-          const entry: CheckIn = {
-            id: existing?.id ?? genId(),
-            date,
-            stepCount,
-            status: "under_review",
-            verified: false,
-            submittedAt: new Date().toISOString(),
-          };
-          return {
-            ...c,
-            checkIns: existing
-              ? c.checkIns.map((ci) => (ci.date === date ? entry : ci))
-              : [...c.checkIns, entry],
-          };
-        })
-      );
+      void submitSteps({
+        commitmentId: commitmentId as Id<"commitments">,
+        date,
+        stepCount,
+      }).catch(logMutationError);
     },
-    [commitments, save]
+    [submitSteps]
   );
 
   const approveCheckIn = useCallback(
     (commitmentId: string, date: string) => {
-      save(
-        commitments.map((c) => {
-          if (c.id !== commitmentId) return c;
-          return {
-            ...c,
-            checkIns: c.checkIns.map((ci) =>
-              ci.date === date
-                ? {
-                    ...ci,
-                    status: "approved",
-                    verified: true,
-                    rejectionReason: undefined,
-                    reviewedAt: new Date().toISOString(),
-                  }
-                : ci
-            ),
-          };
-        })
+      const checkIn = commitments
+        .find((c) => c.id === commitmentId)
+        ?.checkIns.find((ci) => ci.date === date);
+      if (!checkIn) return;
+      void approve({ checkInId: checkIn.id as Id<"checkIns"> }).catch(
+        logMutationError
       );
     },
-    [commitments, save]
+    [approve, commitments]
   );
 
   const rejectCheckIn = useCallback(
     (commitmentId: string, date: string, rejectionReason: string) => {
-      save(
-        commitments.map((c) => {
-          if (c.id !== commitmentId) return c;
-          return {
-            ...c,
-            checkIns: c.checkIns.map((ci) =>
-              ci.date === date
-                ? {
-                    ...ci,
-                    status: "rejected",
-                    verified: false,
-                    rejectionReason,
-                    reviewedAt: new Date().toISOString(),
-                  }
-                : ci
-            ),
-          };
-        })
-      );
+      const checkIn = commitments
+        .find((c) => c.id === commitmentId)
+        ?.checkIns.find((ci) => ci.date === date);
+      if (!checkIn) return;
+      void reject({
+        checkInId: checkIn.id as Id<"checkIns">,
+        reason: rejectionReason,
+      }).catch(logMutationError);
     },
-    [commitments, save]
+    [commitments, reject]
   );
 
   const removeCheckIn = useCallback(
     (commitmentId: string, date: string) => {
-      save(
-        commitments.map((c) => {
-          if (c.id !== commitmentId) return c;
-          return {
-            ...c,
-            checkIns: c.checkIns.filter((ci) => ci.date !== date),
-          };
-        })
-      );
+      void removeMine({
+        commitmentId: commitmentId as Id<"commitments">,
+        date,
+      }).catch(logMutationError);
     },
-    [commitments, save]
+    [removeMine]
   );
 
   const getCommitment = useCallback(

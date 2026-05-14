@@ -232,6 +232,7 @@ export function getTotalRefunded(c: Commitment): number {
 }
 
 export function getAmountAtRisk(c: Commitment): number {
+  if (c.status === "pending_payment") return 0;
   return Math.max(0, c.pactAmount - getTotalRefunded(c));
 }
 
@@ -256,12 +257,18 @@ export function hasTodayCheckIn(c: Commitment): boolean {
 
 // ── Status helpers ────────────────────────────────────────────────────────
 export function isActive(c: Commitment): boolean {
+  if (c.status && c.status !== "active") return false;
   const today = getTodayStr();
   return c.startDate <= today && c.endDate >= today;
 }
 
 export function isExpired(c: Commitment): boolean {
+  if (c.status && c.status !== "active") return false;
   return c.endDate < getTodayStr();
+}
+
+export function isPendingPayment(c: Commitment): boolean {
+  return c.status === "pending_payment";
 }
 
 export function getDaysRemaining(c: Commitment): number {

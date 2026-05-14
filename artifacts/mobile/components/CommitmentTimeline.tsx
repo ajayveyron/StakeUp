@@ -56,7 +56,9 @@ export function CommitmentTimeline({ commitment }: Props) {
         const status = getCheckInStatus(checkIn);
         const verified = status === "approved";
         const underReview = status === "under_review";
-        const missed = isPast && status !== "approved" && status !== "under_review";
+        const missed =
+          status === "missed" ||
+          (isPast && status !== "approved" && status !== "under_review");
 
         // Mystery card = last slot
         if (isLast) {

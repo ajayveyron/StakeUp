@@ -31,6 +31,7 @@ import {
   getVerifiedCheckIns,
   hasTodayCheckIn,
   isActive,
+  isPendingPayment,
   isTodayScheduled,
 } from "@/utils/commitment";
 
@@ -55,6 +56,8 @@ export default function HomeScreen() {
 
   const today = getTodayStr();
   const activeCommitments = commitments.filter(isActive);
+  const pendingPaymentCommitments = commitments.filter(isPendingPayment);
+  const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
   const todayPending = activeCommitments.filter(
     (c) => isTodayScheduled(c) && !hasTodayCheckIn(c)
   );
@@ -65,8 +68,14 @@ export default function HomeScreen() {
     (c) => !isTodayScheduled(c)
   );
 
-  const totalCommitted = commitments.reduce((s, c) => s + c.pactAmount, 0);
-  const totalRefunded = commitments.reduce((s, c) => s + getTotalRefunded(c), 0);
+  const totalCommitted = confirmedCommitments.reduce(
+    (s, c) => s + c.pactAmount,
+    0
+  );
+  const totalRefunded = confirmedCommitments.reduce(
+    (s, c) => s + getTotalRefunded(c),
+    0
+  );
 
   const hour = new Date().getHours();
   const greeting =
@@ -142,7 +151,7 @@ export default function HomeScreen() {
           >
             <SumStat
               value={formatCurrency(totalRefunded)}
-              label="Refunded"
+              label="Approved"
               color={colors.primary}
               colors={colors}
             />
@@ -162,6 +171,20 @@ export default function HomeScreen() {
               }
               colors={colors}
             />
+          </View>
+        )}
+
+        {pendingPaymentCommitments.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Payment pending
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              These pacts unlock after manual UPI confirmation.
+            </Text>
+            {pendingPaymentCommitments.map((c) => (
+              <CommitmentCard key={c.id} commitment={c} compact />
+            ))}
           </View>
         )}
 
@@ -443,7 +466,7 @@ function ActiveWidget({
             {formatCurrency(totalRefunded, commitment.currency)}
           </Text>
           <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
-            refunded
+            approved
           </Text>
         </View>
         <View style={wStyles.statDivider} />

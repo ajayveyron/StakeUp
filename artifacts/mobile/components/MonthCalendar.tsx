@@ -79,7 +79,7 @@ export function MonthCalendar({ commitment, year, month }: Props) {
       };
     }
 
-    if (checkInStatus === "rejected") {
+    if (checkInStatus === "rejected" || checkInStatus === "missed") {
       return {
         bg: colors.danger + "11",
         textColor: colors.danger,

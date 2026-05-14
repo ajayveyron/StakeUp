@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,7 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentTimeline } from "@/components/CommitmentTimeline";
 import { MonthCalendar } from "@/components/MonthCalendar";
-import { useCommitments } from "@/contexts/CommitmentsContext";
+import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCurrency,
@@ -37,8 +38,10 @@ import {
   hasTodayCheckIn,
   isActive,
   isExpired,
+  isPendingPayment,
   isTodayScheduled,
 } from "@/utils/commitment";
+import { paymentSetupUrl } from "@/utils/payment";
 
 export default function CommitmentDetailScreen() {
   const colors = useColors();
@@ -91,13 +94,14 @@ export default function CommitmentDetailScreen() {
   const daysLeft = getDaysRemaining(commitment);
   const active = isActive(commitment);
   const expired = isExpired(commitment);
+  const pendingPayment = isPendingPayment(commitment);
   const todayScheduled = isTodayScheduled(commitment);
   const checkedToday = hasTodayCheckIn(commitment);
   const todayCheckIn = getCheckInForDate(commitment, today);
   const todayStatus = getCheckInStatus(todayCheckIn);
   const forfeitLabel =
     commitment.friendName && commitment.forfeitDestination !== "reward_pool"
-      ? `${commitment.friendName}'s wallet`
+      ? commitment.friendName
       : "the reward pool";
 
   // Upcoming scheduled dates (today + future, not yet submitted)
@@ -135,6 +139,16 @@ export default function CommitmentDetailScreen() {
   function handleUndoToday() {
     removeCheckIn(commitment!.id, today);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }
+
+  async function openPaymentChat() {
+    const url = paymentSetupUrl(commitment!);
+    const supported = await Linking.canOpenURL(url);
+    if (!supported) {
+      Alert.alert("Could not open WhatsApp", "Please try again from your browser.");
+      return;
+    }
+    await Linking.openURL(url);
   }
 
   return (
@@ -211,6 +225,8 @@ export default function CommitmentDetailScreen() {
               {
                 backgroundColor: active
                   ? colors.primary + "22"
+                  : pendingPayment
+                  ? colors.accent + "22"
                   : colors.secondary,
               },
             ]}
@@ -221,27 +237,51 @@ export default function CommitmentDetailScreen() {
                 {
                   backgroundColor: active
                     ? colors.primary
+                    : pendingPayment
+                    ? colors.accent
                     : colors.mutedForeground,
                 },
               ]}
             />
-            <Text
-              style={[
-                styles.statusText,
-                { color: active ? colors.primary : colors.mutedForeground },
-              ]}
-            >
-              {expired ? "Completed" : active ? "Active" : "Upcoming"}
+          <Text
+            style={[
+              styles.statusText,
+              {
+                color: pendingPayment
+                  ? colors.accent
+                  : active
+                  ? colors.primary
+                  : colors.mutedForeground,
+              },
+            ]}
+          >
+              {pendingPayment
+                ? "Payment pending"
+                : expired
+                ? "Completed"
+                : active
+                ? "Active"
+                : "Upcoming"}
             </Text>
           </View>
           <Text style={[styles.daysLeftTxt, { color: colors.mutedForeground }]}>
-            {expired
+            {pendingPayment
+              ? "Confirm payment to activate"
+              : expired
               ? `${rate}% success`
               : active
               ? `${daysLeft} days left`
               : `Starts ${formatDate(commitment.startDate)}`}
           </Text>
         </View>
+
+        {pendingPayment && (
+          <PaymentSetupCard
+            commitment={commitment}
+            colors={colors}
+            onContact={openPaymentChat}
+          />
+        )}
 
         {/* ── Refund card ── */}
         <View
@@ -251,7 +291,7 @@ export default function CommitmentDetailScreen() {
           ]}
         >
           <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
-            Refunded
+            Approved for payout
           </Text>
           <Text style={[styles.refundValue, { color: colors.primary }]}>
             {formatCurrency(refunded, commitment.currency)}
@@ -580,6 +620,8 @@ export default function CommitmentDetailScreen() {
                         ? `+${formatCurrency(perDay, commitment.currency)}`
                         : status === "under_review"
                         ? "Review"
+                        : status === "missed"
+                        ? "Missed"
                         : "Rejected"}
                     </Text>
                   </View>
@@ -679,21 +721,23 @@ export default function CommitmentDetailScreen() {
                   ]}
                 >
                   {todayStatus === "approved"
-                    ? `Approved · +${formatCurrency(perDay, commitment.currency)} in wallet`
+                    ? `Approved · ${formatCurrency(perDay, commitment.currency)} payout credit`
                     : "Submitted for review"}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={handleUndoToday}
-                style={[styles.undoBtn, { backgroundColor: colors.secondary }]}
-                activeOpacity={0.75}
-              >
-                <Feather
-                  name="rotate-ccw"
-                  size={16}
-                  color={colors.mutedForeground}
-                />
-              </TouchableOpacity>
+              {todayStatus === "under_review" && (
+                <TouchableOpacity
+                  onPress={handleUndoToday}
+                  style={[styles.undoBtn, { backgroundColor: colors.secondary }]}
+                  activeOpacity={0.75}
+                >
+                  <Feather
+                    name="rotate-ccw"
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
             <TouchableOpacity
@@ -730,6 +774,59 @@ export default function CommitmentDetailScreen() {
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────
+
+function PaymentSetupCard({
+  commitment,
+  colors,
+  onContact,
+}: {
+  commitment: Commitment;
+  colors: any;
+  onContact: () => void;
+}) {
+  return (
+    <View
+      style={[
+        styles.paymentCard,
+        {
+          backgroundColor: colors.accent + "12",
+          borderColor: colors.accent + "44",
+        },
+      ]}
+    >
+      <View style={styles.paymentTop}>
+        <View
+          style={[
+            styles.paymentIcon,
+            { backgroundColor: colors.accent + "18" },
+          ]}
+        >
+          <Feather name="message-circle" size={17} color={colors.accent} />
+        </View>
+        <View style={styles.paymentCopy}>
+          <Text style={[styles.paymentTitle, { color: colors.foreground }]}>
+            Complete payment on WhatsApp
+          </Text>
+          <Text style={[styles.paymentText, { color: colors.mutedForeground }]}>
+            This pact is saved but not active. Send the commitment details, pay
+            by UPI, and admin will confirm it here.
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        onPress={onContact}
+        style={[styles.paymentBtn, { backgroundColor: colors.accent }]}
+        activeOpacity={0.85}
+      >
+        <Feather name="send" size={15} color="#000" />
+        <Text style={styles.paymentBtnText}>Contact for UPI payment</Text>
+      </TouchableOpacity>
+      <Text style={[styles.paymentMeta, { color: colors.mutedForeground }]}>
+        Ref: {commitment.id}
+      </Text>
+    </View>
+  );
+}
 
 function LegendDot({
   color,
@@ -904,6 +1001,45 @@ const styles = StyleSheet.create({
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
   daysLeftTxt: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  paymentCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 14,
+  },
+  paymentTop: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  paymentIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paymentCopy: { flex: 1, gap: 4 },
+  paymentTitle: { fontSize: 15, fontFamily: "Inter_700Bold" },
+  paymentText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  paymentBtn: {
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  paymentBtnText: {
+    color: "#000",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  paymentMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
   // Refund card
   refundCard: {
     borderRadius: 16,

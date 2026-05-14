@@ -297,9 +297,9 @@ export function CheckInModal({
             <Feather name="rotate-ccw" size={14} color={colors.primary} />
             <Text style={[styles.refundText, { color: colors.primary }]}>
               {isContent && canSubmit
-                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} will be added to your wallet`
+                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} becomes available for manual payout`
                 : !isContent && stepsGoalMet
-                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} will be added to your wallet`
+                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} becomes available for manual payout`
                 : !isContent && stepCount > 0 && !stepsGoalMet
                 ? `This is below target. You need ${commitment.targetPerDay.toLocaleString("en-IN")} steps to submit.`
                 : `Submit by the deadline for manual review`}

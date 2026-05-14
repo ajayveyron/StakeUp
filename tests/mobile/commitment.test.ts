@@ -10,6 +10,7 @@ import {
   getScheduledDates,
   getTotalCommittedDays,
   getTotalRefunded,
+  isActive,
 } from "../../artifacts/mobile/utils/commitment";
 
 function makeCommitment(overrides: Partial<Commitment> = {}): Commitment {
@@ -111,5 +112,16 @@ describe("commitment refund helpers", () => {
     assert.equal(getPendingReviewCheckIns(commitment).length, 1);
     assert.equal(getTotalRefunded(commitment), 600);
     assert.equal(getAmountAtRisk(commitment), 3300);
+  });
+
+  it("does not treat pending-payment pacts as active or at risk", () => {
+    const commitment = makeCommitment({
+      status: "pending_payment",
+      startDate: "2026-01-01",
+      endDate: "2026-12-31",
+    });
+
+    assert.equal(isActive(commitment), false);
+    assert.equal(getAmountAtRisk(commitment), 0);
   });
 });

@@ -23,6 +23,7 @@ import {
   hasTodayCheckIn,
   isActive,
   isExpired,
+  isPendingPayment,
   isTodayScheduled,
 } from "@/utils/commitment";
 
@@ -49,6 +50,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
   const todayScheduled = isTodayScheduled(c);
   const active = isActive(c);
   const expired = isExpired(c);
+  const pendingPayment = isPendingPayment(c);
   const daysLeft = getDaysRemaining(c);
   const progress = totalDays > 0 ? Math.min(verified / totalDays, 1) : 0;
 
@@ -160,9 +162,9 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               style={[styles.actionBtn, { backgroundColor: colors.secondary }]}
             >
               <Feather
-                name={expired ? "flag" : "calendar"}
+                name={pendingPayment ? "clock" : expired ? "flag" : "calendar"}
                 size={15}
-                color={colors.mutedForeground}
+                color={pendingPayment ? colors.accent : colors.mutedForeground}
               />
             </View>
           )}
@@ -190,7 +192,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
           <Text
             style={[styles.progressText, { color: colors.mutedForeground }]}
           >
-            {verified}/{totalDays}
+            {pendingPayment ? "Pending payment" : `${verified}/${totalDays}`}
           </Text>
         </View>
 
@@ -203,7 +205,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
               >
-                Refunded
+                Approved
               </Text>
             </View>
             <View
@@ -233,7 +235,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
                   },
                 ]}
               >
-                {expired ? "Done" : `${daysLeft}d left`}
+                {pendingPayment ? "Pending" : expired ? "Done" : `${daysLeft}d left`}
               </Text>
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}

@@ -1,16 +1,21 @@
+import { useAuth } from "@clerk/clerk-expo";
 import { Feather } from "@expo/vector-icons";
+import { useQuery } from "convex/react";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
+import { api } from "@convex/_generated/api";
 import {
   formatCurrency,
   formatDate,
@@ -24,16 +29,31 @@ import {
   getVerifiedCheckIns,
   goalTypeLabel,
   isExpired,
+  isPendingPayment,
 } from "@/utils/commitment";
 
 export default function ProfileScreen() {
   const colors = useColors();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { signOut } = useAuth();
+  const currentUser = useQuery(api.users.current);
+  const wallet = useQuery(api.wallet.getMine);
   const { commitments } = useCommitments();
 
-  const totalCommitted = commitments.reduce((s, c) => s + c.pactAmount, 0);
-  const totalRefunded = commitments.reduce((s, c) => s + getTotalRefunded(c), 0);
-  const totalAtRisk = commitments.reduce((s, c) => s + getAmountAtRisk(c), 0);
+  const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
+  const totalCommitted = confirmedCommitments.reduce(
+    (s, c) => s + c.pactAmount,
+    0
+  );
+  const totalRefunded = confirmedCommitments.reduce(
+    (s, c) => s + getTotalRefunded(c),
+    0
+  );
+  const totalAtRisk = confirmedCommitments.reduce(
+    (s, c) => s + getAmountAtRisk(c),
+    0
+  );
   const totalCheckIns = commitments.reduce(
     (s, c) => s + getVerifiedCheckIns(c).length,
     0
@@ -61,7 +81,58 @@ export default function ProfileScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: colors.foreground }]}>Stats</Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            Stats
+          </Text>
+          <TouchableOpacity
+            onPress={() => void signOut()}
+            style={[styles.signOutBtn, { backgroundColor: colors.secondary }]}
+            activeOpacity={0.75}
+          >
+            <Feather name="log-out" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        </View>
+
+        {currentUser?.role === "admin" && (
+          <TouchableOpacity
+            onPress={() => router.push("/admin/reviews")}
+            style={[
+              styles.adminCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+            activeOpacity={0.82}
+          >
+            <View style={styles.adminLeft}>
+              <View
+                style={[
+                  styles.adminIcon,
+                  { backgroundColor: colors.accent + "18" },
+                ]}
+              >
+                <Feather name="shield" size={15} color={colors.accent} />
+              </View>
+              <View>
+                <Text style={[styles.adminTitle, { color: colors.foreground }]}>
+                  Admin ops
+                </Text>
+                <Text
+                  style={[
+                    styles.adminMeta,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  Payments, check-ins, reviews, payouts
+                </Text>
+              </View>
+            </View>
+            <Feather
+              name="chevron-right"
+              size={18}
+              color={colors.mutedForeground}
+            />
+          </TouchableOpacity>
+        )}
 
         {commitments.length === 0 ? (
           <View style={styles.empty}>
@@ -91,10 +162,10 @@ export default function ProfileScreen() {
                 ]}
               >
                 <Text style={[styles.heroValue, { color: colors.primary }]}>
-                  {formatCurrency(totalRefunded)}
+                  {formatCurrency(wallet?.availableToPayout ?? totalRefunded)}
                 </Text>
                 <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-                  Total Refunded
+                  Pending Payout
                 </Text>
               </View>
               <View
@@ -126,6 +197,20 @@ export default function ProfileScreen() {
                 icon="layers"
                 label="Total committed"
                 value={formatCurrency(totalCommitted)}
+                colors={colors}
+              />
+              <Div colors={colors} />
+              <StatRow
+                icon="download"
+                label="Deposits confirmed"
+                value={formatCurrency(wallet?.depositsConfirmed ?? 0)}
+                colors={colors}
+              />
+              <Div colors={colors} />
+              <StatRow
+                icon="send"
+                label="Paid manually"
+                value={formatCurrency(wallet?.paidOut ?? 0)}
                 colors={colors}
               />
               <Div colors={colors} />
@@ -323,7 +408,39 @@ const srStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
-  title: { fontSize: 26, fontFamily: "Inter_700Bold", marginBottom: 20 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  signOutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  adminLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  adminIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  adminMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
   heroRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
   heroCard: {
     flex: 1,
