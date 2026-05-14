@@ -84,16 +84,9 @@ export function AuthScreen() {
           strategy: "email_code",
         } as any);
       } else {
-        const created = await signIn.create({ identifier: normalizedEmail });
-        const emailCodeFactor = (created.supportedFirstFactors as any[])?.find(
-          (factor) => factor.strategy === "email_code",
-        );
-        if (!emailCodeFactor?.emailAddressId) {
-          throw new Error("Email code sign-in is not enabled for this account");
-        }
-        await signIn.prepareFirstFactor({
+        await signIn.create({
+          identifier: normalizedEmail,
           strategy: "email_code",
-          emailAddressId: emailCodeFactor.emailAddressId,
         } as any);
       }
       setPendingCode(true);
