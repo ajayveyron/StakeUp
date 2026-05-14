@@ -20,6 +20,10 @@ import {
   insertManualPayoutLedgerEntry,
 } from "./lib/ledger";
 import {
+  notifyManualPayoutRecorded,
+  notifyPaymentConfirmed,
+} from "./lib/notifications";
+import {
   approveCheckInForReview,
   rejectCheckInForReview,
 } from "./lib/review";
@@ -303,6 +307,11 @@ export const confirmPayment = mutation({
       createdBy: reviewer._id,
     });
 
+    await notifyPaymentConfirmed(ctx, {
+      user: await ctx.db.get(commitment.userId),
+      commitment,
+    });
+
     return { ok: true };
   },
 });
@@ -333,6 +342,13 @@ export const recordManualPayout = mutation({
       externalReference: args.reference?.trim() || undefined,
       note: args.note?.trim() || undefined,
       createdBy: reviewer._id,
+    });
+
+    await notifyManualPayoutRecorded(ctx, {
+      user: await ctx.db.get(args.userId),
+      amount: Math.round(args.amount * 100) / 100,
+      currency: args.currency,
+      note: args.note?.trim() || undefined,
     });
 
     return { ok: true };

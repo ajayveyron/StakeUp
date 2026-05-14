@@ -5,6 +5,7 @@ import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { daysBetween } from "./lib/dates";
+import { notifyPaymentPending } from "./lib/notifications";
 
 const goalType = v.union(v.literal("content"), v.literal("steps"));
 const forfeitDestination = v.union(
@@ -148,6 +149,11 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    const commitment = await ctx.db.get(commitmentId);
+    if (commitment) {
+      await notifyPaymentPending(ctx, { user, commitment });
+    }
 
     await ctx.scheduler.runAfter(0, internal.slack.sendPaymentNotification, {
       commitmentId,

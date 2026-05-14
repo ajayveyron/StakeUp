@@ -2,12 +2,23 @@ import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalAction, internalMutation, internalQuery } from "./_generated/server";
-import { getRefundPerDay } from "./lib/dates";
 import {
-  approveCheckInForReview,
-  rejectCheckInForReview,
-} from "./lib/review";
+  internalAction,
+  internalMutation,
+  internalQuery,
+} from "./_generated/server";
+import {
+  addDays,
+  daysBetween,
+  getRefundPerDay,
+  todayInTimeZone,
+} from "./lib/dates";
+import { ensureDepositLedgerEntry } from "./lib/ledger";
+import {
+  notifyPaymentConfirmed,
+  notifyPaymentDiscarded,
+} from "./lib/notifications";
+import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
 type ReviewNotificationData = {
   checkInId: Id<"checkIns">;
@@ -17,9 +28,16 @@ type ReviewNotificationData = {
   submittedAt: string;
   userEmail?: string;
   userName?: string;
+  userPhone?: string;
   commitmentName: string;
   goalType: "content" | "steps";
   targetPerDay: number;
+  startDate: string;
+  endDate: string;
+  forfeitDestination: "friend" | "reward_pool";
+  friendName?: string;
+  friendContact?: string;
+  pactAmount: number;
   currency: string;
   refundPerDay: number;
 };
@@ -28,12 +46,18 @@ type PaymentNotificationData = {
   commitmentId: Id<"commitments">;
   userEmail?: string;
   userName?: string;
+  userPhone?: string;
   commitmentName: string;
   goalType: "content" | "steps";
+  targetPerDay: number;
   startDate: string;
   endDate: string;
+  forfeitDestination: "friend" | "reward_pool";
+  friendName?: string;
+  friendContact?: string;
   currency: string;
   pactAmount: number;
+  refundPerDay: number;
 };
 
 function slackReviewerLabel(args: {
@@ -42,6 +66,45 @@ function slackReviewerLabel(args: {
   name?: string;
 }) {
   return args.username || args.name || `Slack ${args.slackUserId}`;
+}
+
+function formatMoney(currency: string, amount: number) {
+  return `${currency} ${amount.toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function userLabel(args: {
+  userName?: string;
+  userEmail?: string;
+  userPhone?: string;
+}) {
+  return args.userName || args.userEmail || args.userPhone || "Unknown user";
+}
+
+function contactLabel(args: { userEmail?: string; userPhone?: string }) {
+  return (
+    [args.userEmail, args.userPhone].filter(Boolean).join("\n") || "No contact"
+  );
+}
+
+function goalLabel(args: {
+  goalType: "content" | "steps";
+  targetPerDay: number;
+}) {
+  return args.goalType === "steps"
+    ? `${args.targetPerDay.toLocaleString("en-IN")} steps/day`
+    : `${args.targetPerDay.toLocaleString("en-IN")} content proof/day`;
+}
+
+function forfeitLabel(args: {
+  forfeitDestination: "friend" | "reward_pool";
+  friendName?: string;
+  friendContact?: string;
+}) {
+  if (args.forfeitDestination === "reward_pool") return "Reward pool";
+  const friend = args.friendName ?? "Friend";
+  return args.friendContact ? `${friend}\n${args.friendContact}` : friend;
 }
 
 async function callSlack(method: string, payload: Record<string, unknown>) {
@@ -59,7 +122,9 @@ async function callSlack(method: string, payload: Record<string, unknown>) {
   const result = (await response.json()) as { ok?: boolean; error?: string };
 
   if (!response.ok || !result.ok) {
-    throw new Error(`Slack ${method} failed: ${result.error ?? response.status}`);
+    throw new Error(
+      `Slack ${method} failed: ${result.error ?? response.status}`,
+    );
   }
 
   return result;
@@ -82,9 +147,16 @@ export const getReviewNotificationData = internalQuery({
       submittedAt: checkIn.submittedAt ?? checkIn.createdAt,
       userEmail: user.email,
       userName: user.displayName,
+      userPhone: user.phone,
       commitmentName: commitment.name,
       goalType: commitment.goalType,
       targetPerDay: commitment.targetPerDay,
+      startDate: commitment.startDate,
+      endDate: commitment.endDate,
+      forfeitDestination: commitment.forfeitDestination,
+      friendName: commitment.friendName,
+      friendContact: commitment.friendContact,
+      pactAmount: commitment.pactAmount,
       currency: commitment.currency,
       refundPerDay: getRefundPerDay(commitment),
     };
@@ -103,12 +175,18 @@ export const getPaymentNotificationData = internalQuery({
       commitmentId: commitment._id,
       userEmail: user.email,
       userName: user.displayName,
+      userPhone: user.phone,
       commitmentName: commitment.name,
       goalType: commitment.goalType,
+      targetPerDay: commitment.targetPerDay,
       startDate: commitment.startDate,
       endDate: commitment.endDate,
+      forfeitDestination: commitment.forfeitDestination,
+      friendName: commitment.friendName,
+      friendContact: commitment.friendContact,
       currency: commitment.currency,
       pactAmount: commitment.pactAmount,
+      refundPerDay: getRefundPerDay(commitment),
     };
   },
 });
@@ -123,25 +201,28 @@ export const sendReviewNotification = internalAction({
 
     const data = (await ctx.runQuery(
       (internal as any).slack.getReviewNotificationData,
-      args
+      args,
     )) as ReviewNotificationData | null;
     if (!data) return { skipped: true, reason: "check-in not pending" };
 
     const proofText =
       data.goalType === "content"
-        ? data.proofUrl ?? "No URL"
+        ? (data.proofUrl ?? "No URL")
         : `${data.stepCount?.toLocaleString("en-IN") ?? "Not provided"} / ${data.targetPerDay.toLocaleString("en-IN")} steps`;
+    const user = userLabel(data);
+    const contact = contactLabel(data);
+    const payout = formatMoney(data.currency, data.refundPerDay);
 
     return await callSlack("chat.postMessage", {
       channel,
-      text: `Pact Raven review: ${data.commitmentName}`,
+      text: `Proof review pending: ${data.commitmentName}`,
       unfurl_links: false,
       blocks: [
         {
           type: "header",
           text: {
             type: "plain_text",
-            text: "Pact Raven review",
+            text: "Proof review pending",
             emoji: false,
           },
         },
@@ -150,7 +231,11 @@ export const sendReviewNotification = internalAction({
           fields: [
             {
               type: "mrkdwn",
-              text: `*User*\n${data.userEmail ?? data.userName ?? "Unknown"}`,
+              text: `*User*\n${user}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Contact*\n${contact}`,
             },
             {
               type: "mrkdwn",
@@ -158,13 +243,28 @@ export const sendReviewNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Date*\n${data.date}`,
+              text: `*Goal*\n${goalLabel(data)}`,
             },
             {
               type: "mrkdwn",
-              text: `*Refund*\n${data.currency} ${data.refundPerDay}`,
+              text: `*Check-in date*\n${data.date}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Payout on approval*\n${payout}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Pact amount*\n${formatMoney(data.currency, data.pactAmount)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*If rejected*\n${forfeitLabel(data)}`,
             },
           ],
+        },
+        {
+          type: "divider",
         },
         {
           type: "section",
@@ -177,11 +277,24 @@ export const sendReviewNotification = internalAction({
           },
         },
         {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: "Approve only after the user's refund/reward has been paid manually.",
+            },
+          ],
+        },
+        {
           type: "actions",
           elements: [
             {
               type: "button",
-              text: { type: "plain_text", text: "Approve", emoji: false },
+              text: {
+                type: "plain_text",
+                text: "Approve + mark paid",
+                emoji: false,
+              },
               style: "primary",
               action_id: "approve_check_in",
               value: data.checkInId,
@@ -212,20 +325,22 @@ export const sendPaymentNotification = internalAction({
 
     const data = (await ctx.runQuery(
       (internal as any).slack.getPaymentNotificationData,
-      args
+      args,
     )) as PaymentNotificationData | null;
     if (!data) return { skipped: true, reason: "commitment not pending" };
+    const user = userLabel(data);
+    const contact = contactLabel(data);
 
     return await callSlack("chat.postMessage", {
       channel,
-      text: `Pact Raven payment pending: ${data.commitmentName}`,
+      text: `Payment pending: ${data.commitmentName}`,
       unfurl_links: false,
       blocks: [
         {
           type: "header",
           text: {
             type: "plain_text",
-            text: "Pact payment pending",
+            text: "Payment pending",
             emoji: false,
           },
         },
@@ -234,7 +349,11 @@ export const sendPaymentNotification = internalAction({
           fields: [
             {
               type: "mrkdwn",
-              text: `*User*\n${data.userEmail ?? data.userName ?? "Unknown"}`,
+              text: `*User*\n${user}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Contact*\n${contact}`,
             },
             {
               type: "mrkdwn",
@@ -242,20 +361,54 @@ export const sendPaymentNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Amount*\n${data.currency} ${data.pactAmount}`,
+              text: `*Goal*\n${goalLabel(data)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Deposit to confirm*\n${formatMoney(data.currency, data.pactAmount)}`,
             },
             {
               type: "mrkdwn",
               text: `*Schedule*\n${data.startDate} to ${data.endDate}`,
             },
+            {
+              type: "mrkdwn",
+              text: `*Payout per approval*\n${formatMoney(data.currency, data.refundPerDay)}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*If forfeited*\n${forfeitLabel(data)}`,
+            },
           ],
+        },
+        {
+          type: "divider",
         },
         {
           type: "context",
           elements: [
             {
               type: "mrkdwn",
-              text: "Confirm the UPI payment from the admin dashboard before this pact becomes active.",
+              text: "Activate only after manual payment is received. Discard archives this pending pact.",
+            },
+          ],
+        },
+        {
+          type: "actions",
+          elements: [
+            {
+              type: "button",
+              text: { type: "plain_text", text: "Activate pact", emoji: false },
+              style: "primary",
+              action_id: "activate_commitment",
+              value: data.commitmentId,
+            },
+            {
+              type: "button",
+              text: { type: "plain_text", text: "Discard", emoji: false },
+              style: "danger",
+              action_id: "discard_commitment",
+              value: data.commitmentId,
             },
           ],
         },
@@ -302,6 +455,103 @@ export const rejectFromSlack = internalMutation({
   },
 });
 
+export const activateCommitmentFromSlack = internalMutation({
+  args: {
+    commitmentId: v.id("commitments"),
+    slackUserId: v.string(),
+    username: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const commitment = await ctx.db.get(args.commitmentId);
+    if (!commitment || commitment.status === "deleted") {
+      throw new Error("Commitment not found");
+    }
+    if (commitment.status === "active") return { ok: true };
+    if (commitment.status !== "pending_payment") {
+      throw new Error("Payment is not pending for this commitment");
+    }
+
+    const now = new Date().toISOString();
+    const today = todayInTimeZone(commitment.timezone);
+    const startsBeforeConfirmation = commitment.startDate < today;
+    const shiftedStartDate = startsBeforeConfirmation
+      ? today
+      : commitment.startDate;
+    const shiftedEndDate = startsBeforeConfirmation
+      ? addDays(
+          commitment.endDate,
+          daysBetween(commitment.startDate, today) - 1,
+        )
+      : commitment.endDate;
+    const reviewer = slackReviewerLabel(args);
+
+    await ctx.db.patch(commitment._id, {
+      status: "active",
+      startDate: shiftedStartDate,
+      endDate: shiftedEndDate,
+      durationDays: daysBetween(shiftedStartDate, shiftedEndDate),
+      paymentConfirmedAt: now,
+      paymentReference: `slack:${args.slackUserId}`,
+      paymentNote: `Activated from Slack by ${reviewer}`,
+      updatedAt: now,
+    });
+
+    await ensureDepositLedgerEntry(ctx, {
+      userId: commitment.userId,
+      commitmentId: commitment._id,
+      amount: commitment.pactAmount,
+      currency: commitment.currency,
+      externalReference: `slack:${args.slackUserId}`,
+      note: `Manual payment confirmed from Slack by ${reviewer}`,
+    });
+
+    await notifyPaymentConfirmed(ctx, {
+      user: await ctx.db.get(commitment.userId),
+      commitment,
+    });
+
+    return { ok: true };
+  },
+});
+
+export const discardCommitmentFromSlack = internalMutation({
+  args: {
+    commitmentId: v.id("commitments"),
+    slackUserId: v.string(),
+    username: v.optional(v.string()),
+    name: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const commitment = await ctx.db.get(args.commitmentId);
+    if (!commitment) throw new Error("Commitment not found");
+    if (commitment.status === "deleted") return { ok: true };
+    if (commitment.status !== "pending_payment") {
+      throw new Error("Only pending-payment pacts can be discarded");
+    }
+
+    const reviewer = slackReviewerLabel(args);
+    const now = new Date().toISOString();
+    await ctx.db.patch(commitment._id, {
+      status: "deleted",
+      deletedAt: now,
+      paymentNote: `Discarded from Slack by ${reviewer}`,
+      updatedAt: now,
+    });
+
+    await notifyPaymentDiscarded(ctx, {
+      user: await ctx.db.get(commitment.userId),
+      commitment,
+    });
+
+    return { ok: true };
+  },
+});
+
 export function asCheckInId(value: string) {
   return value as Id<"checkIns">;
+}
+
+export function asCommitmentId(value: string) {
+  return value as Id<"commitments">;
 }

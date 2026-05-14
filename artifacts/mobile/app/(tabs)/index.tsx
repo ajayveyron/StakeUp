@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentCard } from "@/components/CommitmentCard";
+import { NotificationButton } from "@/components/NotificationButton";
 import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
@@ -126,19 +127,22 @@ export default function HomeScreen() {
               Your Pacts
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push("/commitment/new")}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={["#00C853", "#00E676"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.addBtn}
+          <View style={styles.headerActions}>
+            <NotificationButton />
+            <TouchableOpacity
+              onPress={() => router.push("/commitment/new")}
+              activeOpacity={0.8}
             >
-              <Feather name="plus" size={20} color="#000" />
-            </LinearGradient>
-          </TouchableOpacity>
+              <LinearGradient
+                colors={["#00C853", "#00E676"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.addBtn}
+              >
+                <Feather name="plus" size={20} color="#000" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Summary strip */}
@@ -655,6 +659,11 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 2 },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   addBtn: {
     width: 42,
     height: 42,

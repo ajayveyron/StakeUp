@@ -16,7 +16,7 @@ export function adminEmails(): Set<string> {
     (process.env.ADMIN_EMAILS ?? "")
       .split(",")
       .map((email) => email.trim().toLowerCase())
-      .filter(Boolean)
+      .filter(Boolean),
   );
 }
 
@@ -27,7 +27,7 @@ export function isAdminEmail(email: IdentityValue): boolean {
 
 export async function getCurrentUserDoc(
   db: GenericDatabaseReader<DataModel>,
-  clerkSubject: string
+  clerkSubject: string,
 ): Promise<Doc<"users"> | null> {
   return await db
     .query("users")
@@ -76,12 +76,16 @@ export function identityPhone(identity: {
 }
 
 export function identityName(identity: {
+  displayName?: string | null;
+  fullName?: string | null;
   name?: string | null;
   nickname?: string | null;
   givenName?: string | null;
   familyName?: string | null;
   [key: string]: unknown;
 }): string | undefined {
+  if (identity.displayName) return identity.displayName;
+  if (identity.fullName) return identity.fullName;
   if (identity.name) return identity.name;
   if (identity.nickname) return identity.nickname;
   const parts = [identity.givenName, identity.familyName].filter(Boolean);
@@ -94,5 +98,7 @@ export function identityImage(identity: {
   imageUrl?: string | null;
   [key: string]: unknown;
 }): string | undefined {
-  return identity.pictureUrl ?? identity.picture ?? identity.imageUrl ?? undefined;
+  return (
+    identity.pictureUrl ?? identity.picture ?? identity.imageUrl ?? undefined
+  );
 }

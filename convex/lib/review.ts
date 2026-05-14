@@ -2,9 +2,14 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { getRefundPerDay } from "./dates";
 import {
+  ensureManualPayoutLedgerEntry,
   ensureWalletLedgerEntry,
   forfeitDestinationToLedger,
 } from "./ledger";
+import {
+  notifyCheckInApproved,
+  notifyCheckInRejected,
+} from "./notifications";
 
 type Reviewer = {
   reviewerId?: Id<"users">;
@@ -14,7 +19,7 @@ type Reviewer = {
 
 export async function approveCheckInForReview(
   ctx: MutationCtx,
-  args: { checkInId: Id<"checkIns">; reviewer: Reviewer }
+  args: { checkInId: Id<"checkIns">; reviewer: Reviewer },
 ) {
   const checkIn = await ctx.db.get(args.checkInId);
   if (!checkIn) throw new Error("Check-in not found");
@@ -33,6 +38,14 @@ export async function approveCheckInForReview(
       currency: commitment.currency,
       type: "approved_refund",
       destination: "user",
+    });
+    await ensureManualPayoutLedgerEntry(ctx, {
+      userId: checkIn.userId,
+      commitmentId: checkIn.commitmentId,
+      checkInId: checkIn._id,
+      amount,
+      currency: commitment.currency,
+      note: "Approved check-in payout marked paid",
     });
     return { ok: true };
   }
@@ -69,6 +82,23 @@ export async function approveCheckInForReview(
     destination: "user",
   });
 
+  await ensureManualPayoutLedgerEntry(ctx, {
+    userId: checkIn.userId,
+    commitmentId: checkIn.commitmentId,
+    checkInId: checkIn._id,
+    amount,
+    currency: commitment.currency,
+    note: args.reviewer.reviewerLabel
+      ? `Approved and paid by ${args.reviewer.reviewerLabel}`
+      : "Approved check-in payout marked paid",
+  });
+
+  await notifyCheckInApproved(ctx, {
+    user: await ctx.db.get(checkIn.userId),
+    commitment,
+    checkIn,
+  });
+
   return { ok: true };
 }
 
@@ -78,7 +108,7 @@ export async function rejectCheckInForReview(
     checkInId: Id<"checkIns">;
     reason: string;
     reviewer: Reviewer;
-  }
+  },
 ) {
   const reason = args.reason.trim();
   if (!reason) throw new Error("Rejection reason is required");
@@ -95,6 +125,7 @@ export async function rejectCheckInForReview(
     throw new Error("This check-in cannot be rejected");
   }
 
+  const wasAlreadyRejected = checkIn.status === "rejected";
   const now = new Date().toISOString();
   await ctx.db.patch(checkIn._id, {
     status: "rejected",
@@ -124,6 +155,15 @@ export async function rejectCheckInForReview(
     type: "forfeited",
     destination: forfeitDestinationToLedger(commitment.forfeitDestination),
   });
+
+  if (!wasAlreadyRejected) {
+    await notifyCheckInRejected(ctx, {
+      user: await ctx.db.get(checkIn.userId),
+      commitment,
+      checkIn,
+      reason,
+    });
+  }
 
   return { ok: true };
 }

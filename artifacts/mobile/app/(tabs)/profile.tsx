@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { NotificationButton } from "@/components/NotificationButton";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { api } from "@convex/_generated/api";
@@ -85,13 +86,23 @@ export default function ProfileScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>
             Stats
           </Text>
-          <TouchableOpacity
-            onPress={() => void signOut()}
-            style={[styles.signOutBtn, { backgroundColor: colors.secondary }]}
-            activeOpacity={0.75}
-          >
-            <Feather name="log-out" size={15} color={colors.mutedForeground} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <NotificationButton />
+            <TouchableOpacity
+              onPress={() => void signOut()}
+              style={[
+                styles.signOutBtn,
+                { backgroundColor: colors.secondary },
+              ]}
+              activeOpacity={0.75}
+            >
+              <Feather
+                name="log-out"
+                size={15}
+                color={colors.mutedForeground}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {currentUser?.role === "admin" && (
@@ -415,6 +426,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   signOutBtn: {
     width: 36,
     height: 36,

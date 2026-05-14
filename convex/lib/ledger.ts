@@ -2,7 +2,7 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 export function forfeitDestinationToLedger(
-  destination: "friend" | "reward_pool"
+  destination: "friend" | "reward_pool",
 ): "friend" | "reward_pool" {
   return destination === "friend" ? "friend" : "reward_pool";
 }
@@ -17,7 +17,7 @@ export async function ensureWalletLedgerEntry(
     currency: string;
     type: "approved_refund" | "forfeited";
     destination: "user" | "friend" | "reward_pool";
-  }
+  },
 ) {
   const existing = await ctx.db
     .query("walletLedgerEntries")
@@ -48,14 +48,12 @@ export async function ensureDepositLedgerEntry(
     currency: string;
     externalReference?: string;
     note?: string;
-    createdBy: Id<"users">;
-  }
+    createdBy?: Id<"users">;
+  },
 ) {
   const existing = await ctx.db
     .query("walletLedgerEntries")
-    .withIndex("by_commitment", (q) =>
-      q.eq("commitmentId", args.commitmentId)
-    )
+    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
     .filter((q) => q.eq(q.field("type"), "deposit_confirmed"))
     .first();
 
@@ -79,15 +77,19 @@ export async function insertManualPayoutLedgerEntry(
   ctx: MutationCtx,
   args: {
     userId: Id<"users">;
+    commitmentId?: Id<"commitments">;
+    checkInId?: Id<"checkIns">;
     amount: number;
     currency: string;
     externalReference?: string;
     note?: string;
-    createdBy: Id<"users">;
-  }
+    createdBy?: Id<"users">;
+  },
 ) {
   return await ctx.db.insert("walletLedgerEntries", {
     userId: args.userId,
+    commitmentId: args.commitmentId,
+    checkInId: args.checkInId,
     amount: args.amount,
     currency: args.currency,
     type: "manual_payout",
@@ -97,4 +99,28 @@ export async function insertManualPayoutLedgerEntry(
     createdBy: args.createdBy,
     createdAt: new Date().toISOString(),
   });
+}
+
+export async function ensureManualPayoutLedgerEntry(
+  ctx: MutationCtx,
+  args: {
+    userId: Id<"users">;
+    commitmentId?: Id<"commitments">;
+    checkInId: Id<"checkIns">;
+    amount: number;
+    currency: string;
+    externalReference?: string;
+    note?: string;
+    createdBy?: Id<"users">;
+  },
+) {
+  const existing = await ctx.db
+    .query("walletLedgerEntries")
+    .withIndex("by_check_in", (q) => q.eq("checkInId", args.checkInId))
+    .filter((q) => q.eq(q.field("type"), "manual_payout"))
+    .first();
+
+  if (existing) return existing._id;
+
+  return await insertManualPayoutLedgerEntry(ctx, args);
 }

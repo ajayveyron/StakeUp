@@ -53,6 +53,7 @@ function RootLayoutNav() {
         name="commitment/[id]"
         options={{ headerShown: false }}
       />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
     </Stack>
   );

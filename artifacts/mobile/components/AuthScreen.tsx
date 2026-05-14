@@ -25,12 +25,21 @@ function errorMessage(error: unknown): string {
     "errors" in error &&
     Array.isArray((error as { errors?: unknown[] }).errors)
   ) {
-    const first = (error as { errors: { longMessage?: string; message?: string }[] })
-      .errors[0];
+    const first = (
+      error as { errors: { longMessage?: string; message?: string }[] }
+    ).errors[0];
     return first?.longMessage ?? first?.message ?? "Something went wrong";
   }
   if (error instanceof Error) return error.message;
   return "Something went wrong";
+}
+
+function splitName(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0],
+    lastName: parts.slice(1).join(" ") || undefined,
+  };
 }
 
 export function AuthScreen() {
@@ -39,6 +48,7 @@ export function AuthScreen() {
   const { isLoaded: signInLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: signUpLoaded, signUp } = useSignUp();
   const [mode, setMode] = useState<AuthMode>("signIn");
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [pendingCode, setPendingCode] = useState(false);
@@ -46,6 +56,7 @@ export function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const loaded = signInLoaded && signUpLoaded;
+  const normalizedFullName = useMemo(() => fullName.trim(), [fullName]);
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
 
   function switchMode(nextMode: AuthMode) {
@@ -57,18 +68,25 @@ export function AuthScreen() {
 
   async function requestCode() {
     if (!loaded || !normalizedEmail) return;
+    if (mode === "signUp" && !normalizedFullName) return;
     setSubmitting(true);
     setError(null);
     try {
       if (mode === "signUp") {
-        await signUp.create({ emailAddress: normalizedEmail });
+        const nameParts = splitName(normalizedFullName);
+        await signUp.create({
+          emailAddress: normalizedEmail,
+          firstName: nameParts.firstName,
+          lastName: nameParts.lastName,
+          unsafeMetadata: { displayName: normalizedFullName },
+        } as any);
         await signUp.prepareEmailAddressVerification({
           strategy: "email_code",
         } as any);
       } else {
         const created = await signIn.create({ identifier: normalizedEmail });
         const emailCodeFactor = (created.supportedFirstFactors as any[])?.find(
-          (factor) => factor.strategy === "email_code"
+          (factor) => factor.strategy === "email_code",
         );
         if (!emailCodeFactor?.emailAddressId) {
           throw new Error("Email code sign-in is not enabled for this account");
@@ -192,6 +210,36 @@ export function AuthScreen() {
             </TouchableOpacity>
           </View>
 
+          {mode === "signUp" && !pendingCode && (
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                Full name
+              </Text>
+              <View
+                style={[
+                  styles.inputRow,
+                  { backgroundColor: colors.input, borderColor: colors.border },
+                ]}
+              >
+                <Feather name="user" size={16} color={colors.mutedForeground} />
+                <TextInput
+                  style={[styles.input, { color: colors.foreground }]}
+                  value={fullName}
+                  onChangeText={(value) => {
+                    setFullName(value);
+                    setPendingCode(false);
+                    setCode("");
+                  }}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  placeholder="Ajay Pawriya"
+                  placeholderTextColor={colors.mutedForeground}
+                  editable={!submitting}
+                />
+              </View>
+            </View>
+          )}
+
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.mutedForeground }]}>
               Email
@@ -202,11 +250,7 @@ export function AuthScreen() {
                 { backgroundColor: colors.input, borderColor: colors.border },
               ]}
             >
-              <Feather
-                name="mail"
-                size={16}
-                color={colors.mutedForeground}
-              />
+              <Feather name="mail" size={16} color={colors.mutedForeground} />
               <TextInput
                 style={[styles.input, { color: colors.foreground }]}
                 value={email}
@@ -236,11 +280,7 @@ export function AuthScreen() {
                   { backgroundColor: colors.input, borderColor: colors.border },
                 ]}
               >
-                <Feather
-                  name="key"
-                  size={16}
-                  color={colors.mutedForeground}
-                />
+                <Feather name="key" size={16} color={colors.mutedForeground} />
                 <TextInput
                   style={[styles.input, { color: colors.foreground }]}
                   value={code}
@@ -268,6 +308,7 @@ export function AuthScreen() {
               submitting ||
               !loaded ||
               !normalizedEmail ||
+              (mode === "signUp" && !normalizedFullName) ||
               (pendingCode && code.trim().length < 4)
             }
             activeOpacity={0.85}
@@ -283,6 +324,7 @@ export function AuthScreen() {
                     submitting ||
                     !loaded ||
                     !normalizedEmail ||
+                    (mode === "signUp" && !normalizedFullName) ||
                     (pendingCode && code.trim().length < 4)
                       ? 0.5
                       : 1,

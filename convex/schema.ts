@@ -18,6 +18,20 @@ const commitmentStatus = v.union(
   v.literal("deleted")
 );
 const userRole = v.union(v.literal("user"), v.literal("admin"));
+const notificationType = v.union(
+  v.literal("payment_pending"),
+  v.literal("payment_confirmed"),
+  v.literal("payment_discarded"),
+  v.literal("check_in_approved"),
+  v.literal("check_in_rejected"),
+  v.literal("manual_payout_recorded")
+);
+const notificationDeliveryStatus = v.union(
+  v.literal("pending"),
+  v.literal("sent"),
+  v.literal("skipped"),
+  v.literal("failed")
+);
 
 export default defineSchema({
   users: defineTable({
@@ -119,4 +133,38 @@ export default defineSchema({
     .index("by_check_in", ["checkInId"])
     .index("by_commitment", ["commitmentId"])
     .index("by_created_at", ["createdAt"]),
+
+  notifications: defineTable({
+    userId: v.id("users"),
+    type: notificationType,
+    title: v.string(),
+    body: v.string(),
+    commitmentId: v.optional(v.id("commitments")),
+    checkInId: v.optional(v.id("checkIns")),
+    route: v.optional(v.string()),
+    readAt: v.optional(v.string()),
+    emailSubject: v.optional(v.string()),
+    emailBody: v.optional(v.string()),
+    dedupeKey: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_user_created_at", ["userId", "createdAt"])
+    .index("by_user_read", ["userId", "readAt"])
+    .index("by_user_dedupe", ["userId", "dedupeKey"]),
+
+  notificationDeliveries: defineTable({
+    notificationId: v.id("notifications"),
+    userId: v.id("users"),
+    channel: v.literal("email"),
+    status: notificationDeliveryStatus,
+    provider: v.optional(v.string()),
+    providerMessageId: v.optional(v.string()),
+    error: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_notification", ["notificationId"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"]),
 });

@@ -2,7 +2,7 @@ import { httpRouter } from "convex/server";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
-import { asCheckInId } from "./slack";
+import { asCheckInId, asCommitmentId } from "./slack";
 
 type SlackUser = {
   id: string;
@@ -20,6 +20,11 @@ type SlackView = {
   state?: {
     values?: Record<string, Record<string, { value?: string }>>;
   };
+};
+
+type SlackModalMetadata = {
+  checkInId: string;
+  responseUrl?: string;
 };
 
 type SlackPayload = {
@@ -70,12 +75,12 @@ async function verifySlackSignature(request: Request, rawBody: string) {
     encoder.encode(signingSecret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
   const signed = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(`v0:${timestamp}:${rawBody}`)
+    encoder.encode(`v0:${timestamp}:${rawBody}`),
   );
 
   return equalHex(`v0=${toHex(signed)}`, signature);
@@ -96,23 +101,132 @@ async function callSlack(method: string, payload: Record<string, unknown>) {
   const result = (await response.json()) as { ok?: boolean; error?: string };
 
   if (!response.ok || !result.ok) {
-    throw new Error(`Slack ${method} failed: ${result.error ?? response.status}`);
+    throw new Error(
+      `Slack ${method} failed: ${result.error ?? response.status}`,
+    );
   }
 
   return result;
 }
 
-async function postSlackResponse(responseUrl: string | undefined, text: string) {
+async function postSlackResponse(
+  responseUrl: string | undefined,
+  payload: Record<string, unknown>,
+) {
   if (!responseUrl) return;
   await fetch(responseUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      response_type: "ephemeral",
-      replace_original: false,
-      text,
-    }),
+    body: JSON.stringify(payload),
   });
+}
+
+async function replaceSlackReviewMessage(
+  responseUrl: string | undefined,
+  args: {
+    status: "approved" | "rejected";
+    reviewer: SlackUser;
+    reason?: string;
+  },
+) {
+  const reviewer =
+    args.reviewer.username || args.reviewer.name || args.reviewer.id;
+  const statusLabel = args.status === "approved" ? "Approved" : "Rejected";
+  const statusText =
+    args.status === "approved"
+      ? `*Approved and marked paid by* ${reviewer}\nThe user's refund/reward is treated as already paid.`
+      : `*Rejected by* ${reviewer}\n*Reason*\n${args.reason ?? "No reason provided"}\nThe amount is treated as forfeited.`;
+
+  await postSlackResponse(responseUrl, {
+    replace_original: true,
+    text:
+      args.status === "approved"
+        ? `Pact Raven proof approved and marked paid by ${reviewer}`
+        : `Pact Raven proof rejected by ${reviewer}`,
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text:
+            args.status === "approved"
+              ? "Proof approved + paid"
+              : `Proof ${statusLabel.toLowerCase()}`,
+          emoji: false,
+        },
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: statusText,
+        },
+      },
+    ],
+  });
+}
+
+async function replaceSlackPaymentMessage(
+  responseUrl: string | undefined,
+  args: {
+    status: "activated" | "discarded";
+    reviewer: SlackUser;
+  },
+) {
+  const reviewer =
+    args.reviewer.username || args.reviewer.name || args.reviewer.id;
+  const isActivated = args.status === "activated";
+
+  await postSlackResponse(responseUrl, {
+    replace_original: true,
+    text: isActivated
+      ? `Pact Raven payment confirmed and pact activated by ${reviewer}`
+      : `Pact Raven pending pact discarded by ${reviewer}`,
+    blocks: [
+      {
+        type: "header",
+        text: {
+          type: "plain_text",
+          text: isActivated ? "Payment confirmed" : "Pending pact discarded",
+          emoji: false,
+        },
+      },
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: isActivated
+            ? `*Activated by* ${reviewer}\nManual payment is treated as received and the pact is now active.`
+            : `*Discarded by* ${reviewer}\nThe pending pact was archived without activation.`,
+        },
+      },
+    ],
+  });
+}
+
+function encodeSlackModalMetadata(metadata: SlackModalMetadata) {
+  return JSON.stringify(metadata);
+}
+
+function decodeSlackModalMetadata(
+  value: string | undefined,
+): SlackModalMetadata {
+  if (!value) return { checkInId: "" };
+  try {
+    const parsed = JSON.parse(value) as Partial<SlackModalMetadata>;
+    if (typeof parsed.checkInId === "string") {
+      return {
+        checkInId: parsed.checkInId,
+        responseUrl:
+          typeof parsed.responseUrl === "string"
+            ? parsed.responseUrl
+            : undefined,
+      };
+    }
+  } catch {
+    // Older modals stored only the check-in id as private_metadata.
+  }
+  return { checkInId: value };
 }
 
 function rejectionReason(view: SlackView | undefined) {
@@ -142,18 +256,21 @@ http.route({
 
     if (payload.type === "block_actions") {
       const action = payload.actions?.[0];
-      const checkInId = action?.value;
+      const value = action?.value;
 
-      if (!action?.action_id || !checkInId) return new Response("ok");
+      if (!action?.action_id || !value) return new Response("ok");
 
       if (action.action_id === "approve_check_in") {
         await ctx.runMutation(internal.slack.approveFromSlack, {
-          checkInId: asCheckInId(checkInId),
+          checkInId: asCheckInId(value),
           slackUserId: payload.user.id,
           username: payload.user.username,
           name: payload.user.name,
         });
-        await postSlackResponse(payload.response_url, "Approved.");
+        await replaceSlackReviewMessage(payload.response_url, {
+          status: "approved",
+          reviewer: payload.user,
+        });
         return new Response("ok");
       }
 
@@ -165,7 +282,10 @@ http.route({
           view: {
             type: "modal",
             callback_id: "reject_check_in_modal",
-            private_metadata: checkInId,
+            private_metadata: encodeSlackModalMetadata({
+              checkInId: value,
+              responseUrl: payload.response_url,
+            }),
             title: {
               type: "plain_text",
               text: "Reject proof",
@@ -207,10 +327,39 @@ http.route({
 
         return new Response("ok");
       }
+
+      if (action.action_id === "activate_commitment") {
+        await ctx.runMutation(internal.slack.activateCommitmentFromSlack, {
+          commitmentId: asCommitmentId(value),
+          slackUserId: payload.user.id,
+          username: payload.user.username,
+          name: payload.user.name,
+        });
+        await replaceSlackPaymentMessage(payload.response_url, {
+          status: "activated",
+          reviewer: payload.user,
+        });
+        return new Response("ok");
+      }
+
+      if (action.action_id === "discard_commitment") {
+        await ctx.runMutation(internal.slack.discardCommitmentFromSlack, {
+          commitmentId: asCommitmentId(value),
+          slackUserId: payload.user.id,
+          username: payload.user.username,
+          name: payload.user.name,
+        });
+        await replaceSlackPaymentMessage(payload.response_url, {
+          status: "discarded",
+          reviewer: payload.user,
+        });
+        return new Response("ok");
+      }
     }
 
     if (payload.type === "view_submission") {
-      const checkInId = payload.view?.private_metadata;
+      const metadata = decodeSlackModalMetadata(payload.view?.private_metadata);
+      const checkInId = metadata.checkInId;
       const reason = rejectionReason(payload.view);
 
       if (!checkInId || !reason) {
@@ -235,10 +384,18 @@ http.route({
           response_action: "errors",
           errors: {
             rejection_reason_block:
-              error instanceof Error ? error.message : "Could not reject proof.",
+              error instanceof Error
+                ? error.message
+                : "Could not reject proof.",
           },
         });
       }
+
+      await replaceSlackReviewMessage(metadata.responseUrl, {
+        status: "rejected",
+        reviewer: payload.user,
+        reason,
+      });
 
       return slackJson({ response_action: "clear" });
     }
