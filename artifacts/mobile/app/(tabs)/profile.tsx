@@ -101,6 +101,14 @@ export default function ProfileScreen() {
                 size={15}
                 color={colors.mutedForeground}
               />
+              <Text
+                style={[
+                  styles.signOutText,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                Sign out
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -432,11 +440,18 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   signOutBtn: {
-    width: 36,
+    minWidth: 92,
     height: 36,
-    borderRadius: 12,
+    borderRadius: 18,
+    paddingHorizontal: 12,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
+  },
+  signOutText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
   },
   adminCard: {
     borderRadius: 14,

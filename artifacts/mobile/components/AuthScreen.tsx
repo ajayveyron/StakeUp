@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useSignIn, useSignUp } from "@clerk/clerk-expo";
 import { LinearGradient } from "expo-linear-gradient";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 
 type AuthMode = "signIn" | "signUp";
+const RESEND_COOLDOWN_MS = 30_000;
 
 function errorMessage(error: unknown): string {
   if (
@@ -42,6 +43,20 @@ function splitName(name: string) {
   };
 }
 
+function getEmailCodeFactor(resource: unknown) {
+  const factors = (resource as { supportedFirstFactors?: unknown[] })
+    ?.supportedFirstFactors;
+  if (!Array.isArray(factors)) return null;
+  return (
+    factors.find(
+      (factor) =>
+        factor &&
+        typeof factor === "object" &&
+        (factor as { strategy?: string }).strategy === "email_code"
+    ) ?? null
+  ) as { emailAddressId?: string } | null;
+}
+
 export function AuthScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -54,42 +69,113 @@ export function AuthScreen() {
   const [pendingCode, setPendingCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signInEmailAddressId, setSignInEmailAddressId] = useState<
+    string | null
+  >(null);
+  const [lastCodeSentAt, setLastCodeSentAt] = useState<number | null>(null);
+  const [clockTick, setClockTick] = useState(Date.now());
 
   const loaded = signInLoaded && signUpLoaded;
   const normalizedFullName = useMemo(() => fullName.trim(), [fullName]);
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const resendCooldownSeconds = useMemo(() => {
+    if (!lastCodeSentAt) return 0;
+    return Math.max(
+      0,
+      Math.ceil((RESEND_COOLDOWN_MS - (clockTick - lastCodeSentAt)) / 1000)
+    );
+  }, [clockTick, lastCodeSentAt]);
+
+  useEffect(() => {
+    if (!pendingCode || !lastCodeSentAt || resendCooldownSeconds <= 0) return;
+    const interval = setInterval(() => setClockTick(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [lastCodeSentAt, pendingCode, resendCooldownSeconds]);
+
+  function resetCodeState() {
+    setPendingCode(false);
+    setCode("");
+    setSignInEmailAddressId(null);
+    setLastCodeSentAt(null);
+    setClockTick(Date.now());
+  }
 
   function switchMode(nextMode: AuthMode) {
     setMode(nextMode);
-    setPendingCode(false);
-    setCode("");
+    resetCodeState();
     setError(null);
   }
 
-  async function requestCode() {
+  async function prepareSignInCode() {
+    if (!signIn) throw new Error("Sign-in is not ready. Try again.");
+    const created = await signIn.create({ identifier: normalizedEmail });
+    const emailCodeFactor = getEmailCodeFactor(created);
+
+    if (emailCodeFactor?.emailAddressId) {
+      setSignInEmailAddressId(emailCodeFactor.emailAddressId);
+      await signIn.prepareFirstFactor({
+        strategy: "email_code",
+        emailAddressId: emailCodeFactor.emailAddressId,
+      } as any);
+      return;
+    }
+
+    const explicit = await signIn.create({
+      identifier: normalizedEmail,
+      strategy: "email_code",
+    } as any);
+    const explicitFactor = getEmailCodeFactor(explicit);
+    const emailAddressId = explicitFactor?.emailAddressId;
+    if (emailAddressId) setSignInEmailAddressId(emailAddressId);
+
+    await signIn.prepareFirstFactor({
+      strategy: "email_code",
+      ...(emailAddressId ? { emailAddressId } : {}),
+    } as any);
+  }
+
+  async function prepareOrResendSignInCode() {
+    if (!signIn) throw new Error("Sign-in is not ready. Try again.");
+    if (!pendingCode) {
+      await prepareSignInCode();
+      return;
+    }
+
+    await signIn.prepareFirstFactor({
+      strategy: "email_code",
+      ...(signInEmailAddressId
+        ? { emailAddressId: signInEmailAddressId }
+        : {}),
+    } as any);
+  }
+
+  async function requestCode({ resend = false } = {}) {
     if (!loaded || !normalizedEmail) return;
     if (mode === "signUp" && !normalizedFullName) return;
+    if (resend && resendCooldownSeconds > 0) return;
     setSubmitting(true);
     setError(null);
     try {
       if (mode === "signUp") {
-        const nameParts = splitName(normalizedFullName);
-        await signUp.create({
-          emailAddress: normalizedEmail,
-          firstName: nameParts.firstName,
-          lastName: nameParts.lastName,
-          unsafeMetadata: { displayName: normalizedFullName },
-        } as any);
+        if (!pendingCode) {
+          const nameParts = splitName(normalizedFullName);
+          await signUp.create({
+            emailAddress: normalizedEmail,
+            firstName: nameParts.firstName,
+            lastName: nameParts.lastName,
+            unsafeMetadata: { displayName: normalizedFullName },
+          } as any);
+        }
         await signUp.prepareEmailAddressVerification({
           strategy: "email_code",
         } as any);
       } else {
-        await signIn.create({
-          identifier: normalizedEmail,
-          strategy: "email_code",
-        } as any);
+        await prepareOrResendSignInCode();
       }
       setPendingCode(true);
+      setLastCodeSentAt(Date.now());
+      setClockTick(Date.now());
+      if (resend) setCode("");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -220,8 +306,7 @@ export function AuthScreen() {
                   value={fullName}
                   onChangeText={(value) => {
                     setFullName(value);
-                    setPendingCode(false);
-                    setCode("");
+                    resetCodeState();
                   }}
                   autoCapitalize="words"
                   autoCorrect={false}
@@ -249,8 +334,7 @@ export function AuthScreen() {
                 value={email}
                 onChangeText={(value) => {
                   setEmail(value);
-                  setPendingCode(false);
-                  setCode("");
+                  resetCodeState();
                 }}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -263,30 +347,95 @@ export function AuthScreen() {
           </View>
 
           {pendingCode && (
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                Verification code
-              </Text>
+            <>
               <View
                 style={[
-                  styles.inputRow,
-                  { backgroundColor: colors.input, borderColor: colors.border },
+                  styles.notice,
+                  { backgroundColor: colors.primary + "12" },
                 ]}
               >
-                <Feather name="key" size={16} color={colors.mutedForeground} />
-                <TextInput
-                  style={[styles.input, { color: colors.foreground }]}
-                  value={code}
-                  onChangeText={(value) =>
-                    setCode(value.replace(/[^0-9]/g, ""))
-                  }
-                  keyboardType="number-pad"
-                  placeholder="123456"
-                  placeholderTextColor={colors.mutedForeground}
-                  editable={!submitting}
-                />
+                <Feather name="mail" size={15} color={colors.primary} />
+                <Text
+                  style={[styles.noticeText, { color: colors.foreground }]}
+                >
+                  Code sent to {normalizedEmail}
+                </Text>
               </View>
-            </View>
+
+              <View style={styles.field}>
+                <Text style={[styles.label, { color: colors.mutedForeground }]}>
+                  Verification code
+                </Text>
+                <View
+                  style={[
+                    styles.inputRow,
+                    {
+                      backgroundColor: colors.input,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="key"
+                    size={16}
+                    color={colors.mutedForeground}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: colors.foreground }]}
+                    value={code}
+                    onChangeText={(value) =>
+                      setCode(value.replace(/[^0-9]/g, ""))
+                    }
+                    keyboardType="number-pad"
+                    placeholder="123456"
+                    placeholderTextColor={colors.mutedForeground}
+                    editable={!submitting}
+                    autoFocus
+                  />
+                </View>
+              </View>
+
+              <View style={styles.secondaryActions}>
+                <TouchableOpacity
+                  onPress={() => requestCode({ resend: true })}
+                  disabled={submitting || resendCooldownSeconds > 0}
+                  activeOpacity={0.75}
+                >
+                  <Text
+                    style={[
+                      styles.secondaryAction,
+                      {
+                        color:
+                          submitting || resendCooldownSeconds > 0
+                            ? colors.mutedForeground
+                            : colors.primary,
+                      },
+                    ]}
+                  >
+                    {resendCooldownSeconds > 0
+                      ? `Resend in ${resendCooldownSeconds}s`
+                      : "Resend code"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    resetCodeState();
+                    setError(null);
+                  }}
+                  disabled={submitting}
+                  activeOpacity={0.75}
+                >
+                  <Text
+                    style={[
+                      styles.secondaryAction,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Change email
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
 
           {error && (
@@ -296,7 +445,7 @@ export function AuthScreen() {
           )}
 
           <TouchableOpacity
-            onPress={pendingCode ? verifyCode : requestCode}
+            onPress={pendingCode ? verifyCode : () => requestCode()}
             disabled={
               submitting ||
               !loaded ||
@@ -410,6 +559,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     lineHeight: 18,
+  },
+  notice: {
+    minHeight: 42,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 17,
+  },
+  secondaryActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  secondaryAction: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
   },
   primaryBtn: {
     height: 50,
