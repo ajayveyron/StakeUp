@@ -114,9 +114,9 @@ describe("commitment refund helpers", () => {
     assert.equal(getAmountAtRisk(commitment), 3300);
   });
 
-  it("does not treat pending-payment pacts as active or at risk", () => {
+  it("does not treat draft pacts as active or at risk", () => {
     const commitment = makeCommitment({
-      status: "pending_payment",
+      status: "draft",
       startDate: "2026-01-01",
       endDate: "2026-12-31",
     });

@@ -12,7 +12,13 @@ export type CheckInStatus =
   | "rejected"
   | "missed";
 export type ForfeitDestination = CharityDestination;
-export type CommitmentStatus = "pending_payment" | "active" | "deleted";
+export type CommitmentStatus =
+  | "draft"
+  | "pending_payment"
+  | "pending_deposit"
+  | "active"
+  | "ended"
+  | "deleted";
 
 export interface CheckIn {
   id: string;
@@ -44,9 +50,13 @@ export interface Commitment {
   endDate: string; // YYYY-MM-DD
   timezone?: string;
   status?: CommitmentStatus;
+  slotConsumedAt?: string;
   paymentConfirmedAt?: string;
   paymentReference?: string;
   paymentNote?: string;
+  endedAt?: string;
+  earlyEndReason?: string;
+  earlyEndSettlementStatus?: "pending" | "resolved" | "cancelled";
   checkIns: CheckIn[];
   createdAt: string;
   updatedAt?: string;

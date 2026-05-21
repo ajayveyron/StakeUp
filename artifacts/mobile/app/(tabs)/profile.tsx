@@ -1,10 +1,11 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { Feather } from "@expo/vector-icons";
-import { useAction, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -16,9 +17,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { NotificationButton } from "@/components/NotificationButton";
+import { LEGAL_URLS } from "@/constants/links";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { useFirstName } from "@/hooks/useCurrentUser";
+import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 import { api } from "@convex/_generated/api";
 import {
   formatCurrency,
@@ -43,7 +46,12 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const currentUser = useQuery(api.users.current);
   const wallet = useQuery(api.wallet.getMine);
-  const withdrawRefundBalance = useAction(api.payments.withdrawRefundBalance);
+  const slotSummary = useQuery(api.payments.slotSummary);
+  const requestManualPayout = useMutation(api.payments.requestManualPayout);
+  const { buySlot, paying: buyingSlot } = useRazorpayCheckout({
+    onSlotSuccess: () =>
+      Alert.alert("Pact slot ready", "One unused pact slot was added."),
+  });
   const { commitments } = useCommitments();
   const firstName = useFirstName();
   const [withdrawing, setWithdrawing] = useState(false);
@@ -76,18 +84,19 @@ export default function ProfileScreen() {
   const past = commitments.filter(isExpired);
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const availableRefund = wallet?.availableToPayout ?? 0;
+  const payoutRequested = wallet?.payoutRequested ?? 0;
 
   async function handleWithdrawRefund() {
-    if (withdrawing || availableRefund <= 0) return;
+    if (withdrawing || availableRefund <= 0 || payoutRequested > 0) return;
     setWithdrawing(true);
     try {
-      const result = await withdrawRefundBalance({
+      const result = await requestManualPayout({
         amount: availableRefund,
         currency: wallet?.currency ?? "INR",
       });
       Alert.alert(
         "Refund requested",
-        `${formatCurrency(result.amount, result.currency)} is on its way to your account.`
+        `${formatCurrency(result.amount, result.currency)} is queued for manual UPI payout.`
       );
     } catch (error) {
       Alert.alert(
@@ -97,6 +106,10 @@ export default function ProfileScreen() {
     } finally {
       setWithdrawing(false);
     }
+  }
+
+  function handleBuySlot() {
+    void buySlot();
   }
 
   return (
@@ -183,6 +196,48 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
+        <View
+          style={[
+            styles.adminCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.adminLeft}>
+            <View
+              style={[
+                styles.adminIcon,
+                { backgroundColor: colors.primary + "18" },
+              ]}
+            >
+              <Feather name="key" size={15} color={colors.primary} />
+            </View>
+            <View>
+              <Text style={[styles.adminTitle, { color: colors.foreground }]}>
+                Pact slots
+              </Text>
+              <Text style={[styles.adminMeta, { color: colors.mutedForeground }]}>
+                {slotSummary?.available ?? 0} unused · ₹249 each
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={handleBuySlot}
+            disabled={buyingSlot}
+            style={[
+              styles.slotBtn,
+              {
+                backgroundColor: colors.primary,
+                opacity: buyingSlot ? 0.55 : 1,
+              },
+            ]}
+            activeOpacity={0.84}
+          >
+            <Text style={styles.slotBtnText}>
+              {buyingSlot ? "Opening..." : "Buy"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {commitments.length === 0 ? (
           <View style={styles.empty}>
             <Feather
@@ -237,12 +292,14 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
               onPress={handleWithdrawRefund}
-              disabled={withdrawing || availableRefund <= 0}
+              disabled={withdrawing || availableRefund <= 0 || payoutRequested > 0}
               style={[
                 styles.withdrawBtn,
                 {
                   backgroundColor:
-                    availableRefund > 0 ? colors.primary : colors.secondary,
+                    availableRefund > 0 && payoutRequested === 0
+                      ? colors.primary
+                      : colors.secondary,
                   opacity: withdrawing ? 0.55 : 1,
                 },
               ]}
@@ -251,21 +308,29 @@ export default function ProfileScreen() {
               <Feather
                 name="download"
                 size={16}
-                color={availableRefund > 0 ? "#000" : colors.mutedForeground}
+                color={
+                  availableRefund > 0 && payoutRequested === 0
+                    ? "#000"
+                    : colors.mutedForeground
+                }
               />
               <Text
                 style={[
                   styles.withdrawBtnText,
                   {
                     color:
-                      availableRefund > 0 ? "#000" : colors.mutedForeground,
+                      availableRefund > 0 && payoutRequested === 0
+                        ? "#000"
+                        : colors.mutedForeground,
                   },
                 ]}
               >
                 {withdrawing
                   ? "Requesting refund..."
+                  : payoutRequested > 0
+                  ? `${formatCurrency(payoutRequested)} payout requested`
                   : availableRefund > 0
-                  ? "Withdraw kept money"
+                  ? "Request manual UPI refund"
                   : "No refund balance yet"}
               </Text>
             </TouchableOpacity>
@@ -439,6 +504,45 @@ export default function ProfileScreen() {
             )}
           </>
         )}
+        <View
+          style={[
+            styles.legalCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text style={[styles.legalTitle, { color: colors.foreground }]}>
+            Policy record
+          </Text>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity
+              onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.legalLink, { color: colors.primary }]}>
+                Terms
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => void Linking.openURL(LEGAL_URLS.privacy)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.legalLink, { color: colors.primary }]}>
+                Privacy
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => void Linking.openURL(LEGAL_URLS.payments)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.legalLink, { color: colors.primary }]}>
+                Payments and refunds
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={[styles.legalMeta, { color: colors.mutedForeground }]}>
+            Legal pages open on pactraven.com.
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -537,6 +641,19 @@ const styles = StyleSheet.create({
   },
   adminTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   adminMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
+  slotBtn: {
+    minWidth: 62,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  slotBtnText: {
+    color: "#000",
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
   heroRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
   heroCard: {
     flex: 1,
@@ -629,4 +746,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 24,
   },
+  legalCard: {
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 14,
+    marginTop: 18,
+    gap: 10,
+  },
+  legalTitle: { fontSize: 13, fontFamily: "Inter_700Bold" },
+  legalLinks: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  legalLink: { fontSize: 12, fontFamily: "Inter_700Bold" },
+  legalMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });

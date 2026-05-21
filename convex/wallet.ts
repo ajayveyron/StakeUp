@@ -9,6 +9,8 @@ type CurrencyTotals = {
   paidOut: number;
   pendingReview: number;
   forfeited: number;
+  charityTransferred: number;
+  payoutRequested: number;
 };
 
 function getTotals(
@@ -24,6 +26,8 @@ function getTotals(
     paidOut: 0,
     pendingReview: 0,
     forfeited: 0,
+    charityTransferred: 0,
+    payoutRequested: 0,
   };
   map.set(currency, totals);
   return totals;
@@ -50,7 +54,21 @@ export const getMine = query({
         currencyTotals.depositsConfirmed += entry.amount;
       } else if (entry.type === "forfeited") {
         currencyTotals.forfeited += entry.amount;
+      } else if (entry.type === "charity_transfer") {
+        currencyTotals.charityTransferred += entry.amount;
       }
+    }
+
+    const payoutRequests = await ctx.db
+      .query("manualPayoutRequests")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", user._id).eq("status", "pending")
+      )
+      .collect();
+
+    for (const request of payoutRequests) {
+      const currencyTotals = getTotals(totals, request.currency);
+      currencyTotals.payoutRequested += request.amount;
     }
 
     const pendingCheckIns = await ctx.db
@@ -73,7 +91,9 @@ export const getMine = query({
         Math.round(
           Math.max(
             0,
-            currencyTotals.approvedRefundable - currencyTotals.paidOut
+            currencyTotals.approvedRefundable -
+              currencyTotals.paidOut -
+              currencyTotals.payoutRequested
           ) * 100
         ) / 100,
       depositsConfirmed:
@@ -83,6 +103,10 @@ export const getMine = query({
       paidOut: Math.round(currencyTotals.paidOut * 100) / 100,
       pendingReview: Math.round(currencyTotals.pendingReview * 100) / 100,
       forfeited: Math.round(currencyTotals.forfeited * 100) / 100,
+      charityTransferred:
+        Math.round(currencyTotals.charityTransferred * 100) / 100,
+      payoutRequested:
+        Math.round(currencyTotals.payoutRequested * 100) / 100,
     }));
 
     const primary = byCurrency[0] ?? {
@@ -93,6 +117,8 @@ export const getMine = query({
       paidOut: 0,
       pendingReview: 0,
       forfeited: 0,
+      charityTransferred: 0,
+      payoutRequested: 0,
     };
 
     return {

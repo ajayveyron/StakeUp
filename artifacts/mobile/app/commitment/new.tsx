@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -25,11 +25,9 @@ import {
   GoalType,
   useCommitments,
 } from "@/contexts/CommitmentsContext";
-import type { Id } from "@convex/_generated/dataModel";
 import { useColors } from "@/hooks/useColors";
 import { useFirstName } from "@/hooks/useCurrentUser";
 import { usePersistedState } from "@/hooks/usePersistedState";
-import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 import {
   DurationType,
   daysBetween,
@@ -109,11 +107,6 @@ export default function NewCommitmentScreen() {
     0,
   );
   const [creating, setCreating] = useState(false);
-  const { pay, paying } = useRazorpayCheckout({
-    onSuccess: (commitmentId) => router.replace(`/commitment/${commitmentId}`),
-    onDismiss: (commitmentId) => router.replace(`/commitment/${commitmentId}`),
-    onError: (commitmentId) => router.replace(`/commitment/${commitmentId}`),
-  });
   const [form, setForm, , clearForm] = usePersistedState<FormData>(
     "newCommitment.form",
     {
@@ -247,9 +240,7 @@ export default function NewCommitmentScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     clearForm();
     clearStep();
-    // Open Razorpay checkout inline. The hook's callbacks navigate to the
-    // detail page on success/dismiss/error, so we don't navigate ourselves.
-    void pay(commitmentId as Id<"commitments">);
+    router.replace(`/commitment/${commitmentId}`);
   }
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
@@ -362,7 +353,6 @@ export default function NewCommitmentScreen() {
                   onNext={handleNext}
                   canNext={canNext()}
                   creating={creating}
-                  paying={false}
                   isReview={false}
                   colors={colors}
                 />
@@ -488,7 +478,7 @@ export default function NewCommitmentScreen() {
 
             {stepKey === "amount" && (
               <StepQuestion
-                text="How much are you putting on it?"
+                text="How much deposit will stand behind it?"
                 colors={colors}
               >
                 <View style={styles.amountRow}>
@@ -556,7 +546,7 @@ export default function NewCommitmentScreen() {
                 )}
                 {scheduledDays > 0 && parseFloat(form.pactAmount) > 0 && (
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                    {formatCurrency(perDay, form.currency)} refunded per day you show up
+                    {formatCurrency(perDay, form.currency)} refund credit per kept day
                   </Text>
                 )}
               </StepQuestion>
@@ -673,7 +663,7 @@ export default function NewCommitmentScreen() {
                 </View>
 
                 <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                  The pact starts only after you fund it.
+                  Save this as a draft. Starting it needs one pact slot and a separate deposit payment.
                 </Text>
               </View>
             )}
@@ -695,7 +685,6 @@ export default function NewCommitmentScreen() {
               onNext={handleNext}
               canNext={canNext()}
               creating={creating}
-              paying={paying}
               isReview={isReview}
               colors={colors}
             />
@@ -711,7 +700,6 @@ function InlineActions({
   onNext,
   canNext,
   creating,
-  paying,
   isReview,
   colors,
 }: {
@@ -719,18 +707,15 @@ function InlineActions({
   onNext: () => void;
   canNext: boolean;
   creating: boolean;
-  paying: boolean;
   isReview: boolean;
   colors: any;
 }) {
-  const busy = creating || paying;
-  const label = paying
-    ? "Opening checkout..."
-    : creating
-      ? "Creating..."
-      : isReview
-        ? "Make payment"
-        : "Continue";
+  const busy = creating;
+  const label = creating
+    ? "Creating..."
+    : isReview
+      ? "Save draft"
+      : "Continue";
   return (
     <View style={styles.actionsRow}>
       <TouchableOpacity

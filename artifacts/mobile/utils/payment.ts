@@ -12,9 +12,9 @@ export function paymentSetupMessage(commitment: Commitment) {
   return [
     `Hi, I wrote a Pact Raven pact: ${commitment.name}`,
     `Pact ID: ${commitment.id}`,
-    `Money at stake: ${formatCurrency(commitment.pactAmount, commitment.currency)}`,
+    `Refundable deposit: ${formatCurrency(commitment.pactAmount, commitment.currency)}`,
     `Schedule: ${formatDate(commitment.startDate)} to ${formatDate(commitment.endDate)}`,
-    "Please send me the payment link so I can fund the pact and start it.",
+    "Please help me review the pact rules before I lock the deposit.",
   ].join("\n");
 }
 

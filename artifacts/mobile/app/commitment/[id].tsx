@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -12,13 +13,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMutation, useQuery } from "convex/react";
 
 import type { Id } from "@convex/_generated/dataModel";
+import { api } from "@convex/_generated/api";
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentTimeline } from "@/components/CommitmentTimeline";
 import { MonthCalendar } from "@/components/MonthCalendar";
 import { charityName } from "@/constants/charities";
+import { LEGAL_URLS } from "@/constants/links";
 import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
@@ -40,10 +44,15 @@ import {
   getVerifiedCheckIns,
   hasTodayCheckIn,
   isActive,
+  isDraft,
+  isEnded,
   isExpired,
+  isPendingDeposit,
   isPendingPayment,
   isTodayScheduled,
 } from "@/utils/commitment";
+
+const PACT_SLOT_AMOUNT = 249;
 
 export default function CommitmentDetailScreen() {
   const colors = useColors();
@@ -57,6 +66,8 @@ export default function CommitmentDetailScreen() {
     removeCheckIn,
     deleteCommitment,
   } = useCommitments();
+  const slotSummary = useQuery(api.payments.slotSummary);
+  const endEarlyMutation = useMutation(api.commitments.endEarly);
 
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -97,6 +108,9 @@ export default function CommitmentDetailScreen() {
   const active = isActive(commitment);
   const expired = isExpired(commitment);
   const pendingPayment = isPendingPayment(commitment);
+  const draft = isDraft(commitment);
+  const pendingDeposit = isPendingDeposit(commitment);
+  const ended = isEnded(commitment);
   const todayScheduled = isTodayScheduled(commitment);
   const checkedToday = hasTodayCheckIn(commitment);
   const todayCheckIn = getCheckInForDate(commitment, today);
@@ -122,6 +136,37 @@ export default function CommitmentDetailScreen() {
           },
         },
       ]
+    );
+  }
+
+  function handleEndEarly() {
+    Alert.alert(
+      "End this pact?",
+      "The pact slot will stay used. The remaining deposit will go to admin settlement review.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "End pact",
+          style: "destructive",
+          onPress: () => {
+            void endEarlyMutation({
+              id: commitment!.id as Id<"commitments">,
+              reason: "Ended by user",
+            })
+              .then(() => {
+                Haptics.notificationAsync(
+                  Haptics.NotificationFeedbackType.Warning,
+                );
+              })
+              .catch((error) =>
+                Alert.alert(
+                  "Could not end pact",
+                  error instanceof Error ? error.message : "Please try again.",
+                ),
+              );
+          },
+        },
+      ],
     );
   }
 
@@ -272,9 +317,13 @@ export default function CommitmentDetailScreen() {
             ]}
           >
               {pendingPayment
-                ? "Money not locked"
+                ? draft
+                  ? "Draft"
+                  : "Deposit not locked"
                 : expired
                 ? "Closed"
+                : ended
+                ? "Ended"
                 : active
                 ? "Live"
                 : "Upcoming"}
@@ -282,9 +331,13 @@ export default function CommitmentDetailScreen() {
           </View>
           <Text style={[styles.daysLeftTxt, { color: colors.mutedForeground }]}>
             {pendingPayment
-              ? "Lock the money to start"
+              ? pendingDeposit
+                ? "Lock the deposit to start"
+                : "Buy a slot, then lock the deposit"
               : expired
               ? `${rate}% success`
+              : ended
+              ? "Settlement review"
               : active
               ? `${daysLeft} days left`
               : `Starts ${formatDate(commitment.startDate)}`}
@@ -294,6 +347,8 @@ export default function CommitmentDetailScreen() {
         {pendingPayment && (
           <PaymentSetupCard
             commitment={commitment}
+            availableSlots={slotSummary?.available ?? 0}
+            pendingPurchases={slotSummary?.pendingPurchases ?? 0}
             colors={colors}
           />
         )}
@@ -671,6 +726,30 @@ export default function CommitmentDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {active && (
+          <TouchableOpacity
+            onPress={handleEndEarly}
+            style={[
+              styles.endEarlyCard,
+              {
+                backgroundColor: colors.danger + "10",
+                borderColor: colors.danger + "33",
+              },
+            ]}
+            activeOpacity={0.82}
+          >
+            <Feather name="slash" size={15} color={colors.danger} />
+            <View style={styles.charityInfo}>
+              <Text style={[styles.charityLabel, { color: colors.danger }]}>
+                End pact early
+              </Text>
+              <Text style={[styles.charityMeta, { color: colors.mutedForeground }]}>
+                The slot stays used. Admin settles the remaining deposit.
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* ── Action area ── */}
@@ -774,18 +853,41 @@ export default function CommitmentDetailScreen() {
 
 function PaymentSetupCard({
   commitment,
+  availableSlots,
+  pendingPurchases,
   colors,
 }: {
   commitment: Commitment;
+  availableSlots: number;
+  pendingPurchases: number;
   colors: any;
 }) {
-  const platformFee = commitment.platformFeeAmount ?? 499;
-  const totalAmount = commitment.pactAmount + platformFee;
-  const { pay, paying } = useRazorpayCheckout({
-    onSuccess: () =>
-      Alert.alert("Money locked", "Your pact is now live."),
+  const hasSlot = availableSlots > 0;
+  const pendingDeposit = isPendingDeposit(commitment);
+  const { buySlot, payDeposit, paying } = useRazorpayCheckout({
+    onSlotSuccess: () =>
+      Alert.alert("Pact slot ready", "One unused pact slot was added."),
+    onDepositSuccess: () =>
+      Alert.alert("Deposit locked", "Your pact is now live."),
   });
-  const startPayment = () => void pay(commitment.id as Id<"commitments">);
+  const startPayment = () => {
+    if (!hasSlot) {
+      void buySlot();
+      return;
+    }
+    void payDeposit(commitment.id as Id<"commitments">);
+  };
+  const title = hasSlot ? "Lock the deposit" : "Buy a pact slot";
+  const body = hasSlot
+    ? "One slot will be consumed when the refundable deposit is verified."
+    : "A pact slot costs ₹249, is non-refundable, and unlocks one challenge.";
+  const buttonLabel = paying
+    ? "Opening payment..."
+    : hasSlot
+      ? pendingDeposit
+        ? "Pay deposit"
+        : "Start with this slot"
+      : "Buy pact slot";
 
   return (
     <View
@@ -808,31 +910,48 @@ function PaymentSetupCard({
         </View>
         <View style={styles.paymentCopy}>
           <Text style={[styles.paymentTitle, { color: colors.foreground }]}>
-            Lock the money
+            {title}
           </Text>
           <Text style={[styles.paymentText, { color: colors.mutedForeground }]}>
-            Your pact starts only after the deposit and fee are verified.
+            {body}
           </Text>
         </View>
       </View>
       <View style={styles.paymentBreakdown}>
+        {!hasSlot && (
+          <PaymentBreakdownRow
+            label="Pact slot fee"
+            value={formatCurrency(PACT_SLOT_AMOUNT, commitment.currency)}
+            colors={colors}
+          />
+        )}
+        {hasSlot && (
+          <PaymentBreakdownRow
+            label="Unused pact slots"
+            value={String(availableSlots)}
+            colors={colors}
+          />
+        )}
         <PaymentBreakdownRow
-          label="Refundable deposit"
+          label={hasSlot ? "Deposit to lock" : "Deposit comes next"}
           value={formatCurrency(commitment.pactAmount, commitment.currency)}
           colors={colors}
         />
         <PaymentBreakdownRow
-          label="Platform fee"
-          value={formatCurrency(platformFee, commitment.currency)}
-          colors={colors}
-        />
-        <PaymentBreakdownRow
-          label="Total due"
-          value={formatCurrency(totalAmount, commitment.currency)}
+          label={hasSlot ? "Due now" : "Slot due now"}
+          value={formatCurrency(
+            hasSlot ? commitment.pactAmount : PACT_SLOT_AMOUNT,
+            commitment.currency,
+          )}
           colors={colors}
           strong
         />
       </View>
+      {pendingPurchases > 0 && !hasSlot && (
+        <Text style={[styles.paymentMeta, { color: colors.mutedForeground }]}>
+          {pendingPurchases} slot payment request is still pending.
+        </Text>
+      )}
       <TouchableOpacity
         onPress={startPayment}
         disabled={paying}
@@ -843,12 +962,24 @@ function PaymentSetupCard({
         activeOpacity={0.85}
       >
         <Feather name="credit-card" size={15} color="#000" />
-        <Text style={styles.paymentBtnText}>
-          {paying ? "Opening checkout..." : "Make payment"}
-        </Text>
+        <Text style={styles.paymentBtnText}>{buttonLabel}</Text>
       </TouchableOpacity>
       <Text style={[styles.paymentMeta, { color: colors.mutedForeground }]}>
-        Ref: {commitment.id}
+        By paying, you accept the{" "}
+        <Text
+          style={[styles.paymentLink, { color: colors.accent }]}
+          onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
+        >
+          Terms
+        </Text>
+        {" "}and{" "}
+        <Text
+          style={[styles.paymentLink, { color: colors.accent }]}
+          onPress={() => void Linking.openURL(LEGAL_URLS.payments)}
+        >
+          Payment policy
+        </Text>
+        . Ref: {commitment.id}
       </Text>
     </View>
   );
@@ -1114,7 +1245,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: "Inter_700Bold",
   },
-  paymentMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  paymentMeta: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  paymentLink: { fontFamily: "Inter_700Bold" },
   // Refund card
   refundCard: {
     borderRadius: 8,
@@ -1210,6 +1342,14 @@ const styles = StyleSheet.create({
   charityLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
   charityName: { fontSize: 13, fontFamily: "Inter_500Medium" },
   charityMeta: { fontSize: 11, fontFamily: "Inter_400Regular", lineHeight: 16 },
+  endEarlyCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 14,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
   // FAB
   fabArea: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1 },
   fabRow: { flexDirection: "row", gap: 10, alignItems: "center" },

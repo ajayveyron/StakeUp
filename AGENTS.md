@@ -23,6 +23,13 @@
 - The `artifacts/mobile` package has a Replit-specific `dev` script; use the root `dev:mobile` command for local development.
 - `artifacts/mockup-sandbox` is a prototype package and is intentionally excluded from the default typecheck.
 
+## Legal And Policy Pages
+
+- Keep the public legal pages in `artifacts/website/src/App.tsx` updated whenever pact pricing, slot rules, deposit handling, refund/payout flow, proof review, charity forfeits, payment providers, data collection, support contacts, business entity details, GST details, or launch geography changes.
+- The required public policy surfaces are Terms of Use, Privacy Policy, and Payment/Cancellation/Refund/Delivery Policy. Product-specific pact rules, charity details, and support contacts can be summarized on the landing page and inside those policy pages unless counsel asks for separate pages.
+- Do not call deposits `escrow`, `trust`, or `trustee-held` unless the legal/accounting structure has been explicitly reviewed and changed.
+- Before paid public launch, replace placeholder legal entity, registered address, GSTIN, phone, support, legal, and grievance contact details with reviewed production details.
+
 ## Product Copy Voice
 
 - Do not use generic habit-app copy like "great job", "you got this", "complete your task", "submit activity", or bland motivational language.

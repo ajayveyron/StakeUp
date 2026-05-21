@@ -1,12 +1,10 @@
 import { v } from "convex/values";
 
-import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { daysBetween } from "./lib/dates";
-import { notifyPaymentPending } from "./lib/notifications";
-import { PLATFORM_FEE_AMOUNT } from "./lib/payments";
+import { LEGACY_PLATFORM_FEE_AMOUNT } from "./lib/payments";
 
 const goalType = v.union(v.literal("content"), v.literal("workout"));
 const forfeitDestination = v.union(
@@ -34,16 +32,21 @@ async function serializeCommitment(
     targetPerDay: commitment.targetPerDay,
     durationDays: commitment.durationDays,
     pactAmount: commitment.pactAmount,
-    platformFeeAmount: commitment.platformFeeAmount ?? PLATFORM_FEE_AMOUNT,
+    platformFeeAmount:
+      commitment.platformFeeAmount ?? LEGACY_PLATFORM_FEE_AMOUNT,
     currency: commitment.currency,
     forfeitDestination: commitment.forfeitDestination,
     startDate: commitment.startDate,
     endDate: commitment.endDate,
     timezone: commitment.timezone,
     status: commitment.status,
+    slotConsumedAt: commitment.slotConsumedAt,
     paymentConfirmedAt: commitment.paymentConfirmedAt,
     paymentReference: commitment.paymentReference,
     paymentNote: commitment.paymentNote,
+    endedAt: commitment.endedAt,
+    earlyEndReason: commitment.earlyEndReason,
+    earlyEndSettlementStatus: commitment.earlyEndSettlementStatus,
     createdAt: commitment.createdAt,
     updatedAt: commitment.updatedAt,
     checkIns: checkIns
@@ -142,27 +145,64 @@ export const create = mutation({
       targetPerDay: args.targetPerDay,
       durationDays,
       pactAmount: args.pactAmount,
-      platformFeeAmount: PLATFORM_FEE_AMOUNT,
+      platformFeeAmount: LEGACY_PLATFORM_FEE_AMOUNT,
       currency: args.currency,
       forfeitDestination: args.forfeitDestination,
       startDate: args.startDate,
       endDate: args.endDate,
       timezone: args.timezone,
-      status: "pending_payment",
+      status: "draft",
       createdAt: now,
       updatedAt: now,
     });
 
-    const commitment = await ctx.db.get(commitmentId);
-    if (commitment) {
-      await notifyPaymentPending(ctx, { user, commitment });
+    return commitmentId;
+  },
+});
+
+export const endEarly = mutation({
+  args: {
+    id: v.id("commitments"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const commitment = await ctx.db.get(args.id);
+    if (
+      !commitment ||
+      commitment.userId !== user._id ||
+      commitment.status !== "active"
+    ) {
+      throw new Error("Active pact not found");
     }
 
-    await ctx.scheduler.runAfter(0, internal.slack.sendPaymentNotification, {
-      commitmentId,
+    const now = new Date().toISOString();
+    const reason = args.reason?.trim() || undefined;
+    await ctx.db.patch(commitment._id, {
+      status: "ended",
+      endedAt: now,
+      earlyEndReason: reason,
+      earlyEndSettlementStatus: "pending",
+      updatedAt: now,
     });
 
-    return commitmentId;
+    const existing = await ctx.db
+      .query("earlyEndSettlementRequests")
+      .withIndex("by_commitment", (q) => q.eq("commitmentId", commitment._id))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+    if (!existing) {
+      await ctx.db.insert("earlyEndSettlementRequests", {
+        userId: user._id,
+        commitmentId: commitment._id,
+        status: "pending",
+        reason,
+        requestedAt: now,
+        updatedAt: now,
+      });
+    }
+
+    return { ok: true };
   },
 });
 

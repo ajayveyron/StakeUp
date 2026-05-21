@@ -134,14 +134,14 @@ async function replaceSlackReviewMessage(
   const statusLabel = args.status === "approved" ? "Approved" : "Rejected";
   const statusText =
     args.status === "approved"
-      ? `*Approved and marked paid by* ${reviewer}\nThe user's refund/reward is treated as already paid.`
+      ? `*Approved by* ${reviewer}\nThe user's refund credit is waiting for manual UPI payout.`
       : `*Rejected by* ${reviewer}\n*Reason*\n${args.reason ?? "No reason provided"}\nThe amount is treated as forfeited.`;
 
   await postSlackResponse(responseUrl, {
     replace_original: true,
     text:
       args.status === "approved"
-        ? `Pact Raven proof approved and marked paid by ${reviewer}`
+        ? `Pact Raven proof approved by ${reviewer}`
         : `Pact Raven proof rejected by ${reviewer}`,
     blocks: [
       {
@@ -150,7 +150,7 @@ async function replaceSlackReviewMessage(
           type: "plain_text",
           text:
             args.status === "approved"
-              ? "Proof approved + paid"
+              ? "Proof approved"
               : `Proof ${statusLabel.toLowerCase()}`,
           emoji: false,
         },
@@ -180,14 +180,14 @@ async function replaceSlackPaymentMessage(
   await postSlackResponse(responseUrl, {
     replace_original: true,
     text: isActivated
-      ? `Pact Raven payment confirmed and pact activated by ${reviewer}`
+      ? `Pact Raven deposit confirmed and pact activated by ${reviewer}`
       : `Pact Raven pending pact discarded by ${reviewer}`,
     blocks: [
       {
         type: "header",
         text: {
           type: "plain_text",
-          text: isActivated ? "Payment confirmed" : "Pending pact discarded",
+          text: isActivated ? "Deposit confirmed" : "Pending pact discarded",
           emoji: false,
         },
       },
@@ -196,7 +196,7 @@ async function replaceSlackPaymentMessage(
         text: {
           type: "mrkdwn",
           text: isActivated
-            ? `*Activated by* ${reviewer}\nManual payment is treated as received and the pact is now active.`
+            ? `*Activated by* ${reviewer}\nThe pact deposit is treated as received and the pact is now active.`
             : `*Discarded by* ${reviewer}\nThe pending pact was archived without activation.`,
         },
       },

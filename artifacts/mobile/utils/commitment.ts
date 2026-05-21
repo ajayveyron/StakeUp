@@ -233,7 +233,7 @@ export function getTotalRefunded(c: Commitment): number {
 }
 
 export function getAmountAtRisk(c: Commitment): number {
-  if (c.status === "pending_payment") return 0;
+  if (c.status && c.status !== "active" && c.status !== "ended") return 0;
   return Math.max(0, c.pactAmount - getTotalRefunded(c));
 }
 
@@ -269,7 +269,23 @@ export function isExpired(c: Commitment): boolean {
 }
 
 export function isPendingPayment(c: Commitment): boolean {
-  return c.status === "pending_payment";
+  return (
+    c.status === "draft" ||
+    c.status === "pending_payment" ||
+    c.status === "pending_deposit"
+  );
+}
+
+export function isDraft(c: Commitment): boolean {
+  return c.status === "draft";
+}
+
+export function isPendingDeposit(c: Commitment): boolean {
+  return c.status === "pending_deposit" || c.status === "pending_payment";
+}
+
+export function isEnded(c: Commitment): boolean {
+  return c.status === "ended";
 }
 
 export function getDaysRemaining(c: Commitment): number {

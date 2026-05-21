@@ -76,6 +76,32 @@ export async function ensureDepositLedgerEntry(
   });
 }
 
+export async function insertCharityTransferLedgerEntry(
+  ctx: MutationCtx,
+  args: {
+    userId: Id<"users">;
+    commitmentId?: Id<"commitments">;
+    amount: number;
+    currency: string;
+    externalReference?: string;
+    note?: string;
+    createdBy?: Id<"users">;
+  },
+) {
+  return await ctx.db.insert("walletLedgerEntries", {
+    userId: args.userId,
+    commitmentId: args.commitmentId,
+    amount: args.amount,
+    currency: args.currency,
+    type: "charity_transfer",
+    destination: "charity",
+    externalReference: args.externalReference,
+    note: args.note,
+    createdBy: args.createdBy,
+    createdAt: new Date().toISOString(),
+  });
+}
+
 export async function insertManualPayoutLedgerEntry(
   ctx: MutationCtx,
   args: {

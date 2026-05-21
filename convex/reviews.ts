@@ -17,6 +17,7 @@ import {
 } from "./lib/dates";
 import {
   ensureDepositLedgerEntry,
+  insertCharityTransferLedgerEntry,
   insertManualPayoutLedgerEntry,
 } from "./lib/ledger";
 import {
@@ -30,6 +31,46 @@ import {
 
 function userLabel(user: Doc<"users"> | null) {
   return user?.email ?? user?.displayName ?? "Unknown user";
+}
+
+async function slotBalance(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+  const entries = await ctx.db
+    .query("pactSlotLedgerEntries")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .collect();
+  return entries.reduce((total, entry) => total + entry.quantity, 0);
+}
+
+async function consumeSlotForCommitment(
+  ctx: MutationCtx,
+  args: {
+    userId: Id<"users">;
+    commitmentId: Id<"commitments">;
+    externalReference?: string;
+    createdBy?: Id<"users">;
+  },
+) {
+  const existing = await ctx.db
+    .query("pactSlotLedgerEntries")
+    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
+    .filter((q) => q.eq(q.field("type"), "slot_consumed"))
+    .first();
+  if (existing) return existing._id;
+
+  if ((await slotBalance(ctx, args.userId)) < 1) {
+    throw new Error("User has no unused pact slot");
+  }
+
+  return await ctx.db.insert("pactSlotLedgerEntries", {
+    userId: args.userId,
+    commitmentId: args.commitmentId,
+    type: "slot_consumed",
+    quantity: -1,
+    externalReference: args.externalReference,
+    note: "Pact slot consumed by admin deposit confirmation.",
+    createdBy: args.createdBy,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 async function payoutBalanceByCurrency(
@@ -116,13 +157,13 @@ export const adminOverview = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const pendingPaymentCommitments = await ctx.db
+    const pendingDepositCommitments = await ctx.db
       .query("commitments")
-      .withIndex("by_status", (q) => q.eq("status", "pending_payment"))
+      .withIndex("by_status", (q) => q.eq("status", "pending_deposit"))
       .take(100);
 
     const pendingPayments = [];
-    for (const commitment of pendingPaymentCommitments) {
+    for (const commitment of pendingDepositCommitments) {
       const user = await ctx.db.get(commitment.userId);
       pendingPayments.push({
         commitment: {
@@ -137,6 +178,29 @@ export const adminOverview = query({
         },
         user: {
           id: commitment.userId,
+          label: userLabel(user),
+          email: user?.email,
+          phone: user?.phone,
+          displayName: user?.displayName,
+        },
+      });
+    }
+
+    const pendingSlotPurchases = await ctx.db
+      .query("pactSlotPurchases")
+      .withIndex("by_status", (q) => q.eq("status", "pending_payment"))
+      .take(100);
+    const slotPurchases = [];
+    for (const purchase of pendingSlotPurchases) {
+      const user = await ctx.db.get(purchase.userId);
+      slotPurchases.push({
+        id: purchase._id,
+        amount: purchase.amount,
+        currency: purchase.currency,
+        razorpayOrderId: purchase.razorpayOrderId,
+        createdAt: purchase.createdAt,
+        user: {
+          id: purchase.userId,
           label: userLabel(user),
           email: user?.email,
           phone: user?.phone,
@@ -211,6 +275,58 @@ export const adminOverview = query({
       }
     }
 
+    const payoutRequestsRaw = await ctx.db
+      .query("manualPayoutRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(100);
+    const payoutRequests = [];
+    for (const request of payoutRequestsRaw) {
+      const user = await ctx.db.get(request.userId);
+      payoutRequests.push({
+        id: request._id,
+        amount: request.amount,
+        currency: request.currency,
+        createdAt: request.createdAt,
+        note: request.note,
+        user: {
+          id: request.userId,
+          label: userLabel(user),
+          email: user?.email,
+          phone: user?.phone,
+          displayName: user?.displayName,
+        },
+      });
+    }
+
+    const earlyEndRequestsRaw = await ctx.db
+      .query("earlyEndSettlementRequests")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(100);
+    const earlyEndSettlements = [];
+    for (const request of earlyEndRequestsRaw) {
+      const user = await ctx.db.get(request.userId);
+      const commitment = await ctx.db.get(request.commitmentId);
+      if (!commitment) continue;
+      earlyEndSettlements.push({
+        id: request._id,
+        reason: request.reason,
+        requestedAt: request.requestedAt,
+        commitment: {
+          id: commitment._id,
+          name: commitment.name,
+          pactAmount: commitment.pactAmount,
+          currency: commitment.currency,
+        },
+        user: {
+          id: request.userId,
+          label: userLabel(user),
+          email: user?.email,
+          phone: user?.phone,
+          displayName: user?.displayName,
+        },
+      });
+    }
+
     const recentLedgerEntries = await ctx.db
       .query("walletLedgerEntries")
       .withIndex("by_created_at")
@@ -247,6 +363,9 @@ export const adminOverview = query({
     }
 
     return {
+      slotPurchases: slotPurchases.sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt)
+      ),
       pendingPayments: pendingPayments.sort((a, b) =>
         a.commitment.createdAt.localeCompare(b.commitment.createdAt)
       ),
@@ -254,6 +373,12 @@ export const adminOverview = query({
         a.user.label.localeCompare(b.user.label)
       ),
       pendingReviews,
+      payoutRequests: payoutRequests.sort((a, b) =>
+        a.createdAt.localeCompare(b.createdAt)
+      ),
+      earlyEndSettlements: earlyEndSettlements.sort((a, b) =>
+        a.requestedAt.localeCompare(b.requestedAt)
+      ),
       payoutBalances: payoutBalances.sort((a, b) => b.amount - a.amount),
       recentLedger,
     };
@@ -272,8 +397,12 @@ export const confirmPayment = mutation({
     if (!commitment || commitment.status === "deleted") {
       throw new Error("Commitment not found");
     }
-    if (commitment.status !== "pending_payment") {
-      throw new Error("Payment is not pending for this commitment");
+    if (
+      commitment.status !== "pending_deposit" &&
+      commitment.status !== "pending_payment" &&
+      commitment.status !== "draft"
+    ) {
+      throw new Error("Deposit is not pending for this commitment");
     }
 
     const now = new Date().toISOString();
@@ -303,13 +432,20 @@ export const confirmPayment = mutation({
       updatedAt: now,
     });
 
+    await consumeSlotForCommitment(ctx, {
+      userId: commitment.userId,
+      commitmentId: commitment._id,
+      externalReference: reference,
+      createdBy: reviewer._id,
+    });
+
     await ensureDepositLedgerEntry(ctx, {
       userId: commitment.userId,
       commitmentId: commitment._id,
       amount: commitment.pactAmount,
       currency: commitment.currency,
       externalReference: reference,
-      note,
+      note: note ?? "Refundable pact deposit liability confirmed by admin.",
       createdBy: reviewer._id,
     });
 
@@ -327,6 +463,7 @@ export const recordManualPayout = mutation({
     userId: v.id("users"),
     amount: v.number(),
     currency: v.string(),
+    requestId: v.optional(v.id("manualPayoutRequests")),
     reference: v.optional(v.string()),
     note: v.optional(v.string()),
   },
@@ -350,6 +487,20 @@ export const recordManualPayout = mutation({
       createdBy: reviewer._id,
     });
 
+    if (args.requestId) {
+      const request = await ctx.db.get(args.requestId);
+      if (request && request.status === "pending") {
+        await ctx.db.patch(request._id, {
+          status: "processed",
+          externalReference: args.reference?.trim() || undefined,
+          note: args.note?.trim() || request.note,
+          processedAt: new Date().toISOString(),
+          processedBy: reviewer._id,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+
     await notifyManualPayoutRecorded(ctx, {
       user: await ctx.db.get(args.userId),
       amount: Math.round(args.amount * 100) / 100,
@@ -357,6 +508,108 @@ export const recordManualPayout = mutation({
       note: args.note?.trim() || undefined,
     });
 
+    return { ok: true };
+  },
+});
+
+export const resolveEarlyEndSettlement = mutation({
+  args: {
+    requestId: v.id("earlyEndSettlementRequests"),
+    refundAmount: v.number(),
+    forfeitAmount: v.number(),
+    reference: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const reviewer = await requireAdmin(ctx);
+    if (args.refundAmount < 0 || args.forfeitAmount < 0) {
+      throw new Error("Settlement amounts cannot be negative");
+    }
+    if (args.refundAmount === 0 && args.forfeitAmount === 0) {
+      throw new Error("Record a refund or forfeit amount");
+    }
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request || request.status !== "pending") {
+      throw new Error("Settlement request not found");
+    }
+    const commitment = await ctx.db.get(request.commitmentId);
+    if (!commitment) throw new Error("Commitment not found");
+    const total = Math.round((args.refundAmount + args.forfeitAmount) * 100) / 100;
+    if (total > commitment.pactAmount + 0.01) {
+      throw new Error("Settlement exceeds pact deposit");
+    }
+
+    const now = new Date().toISOString();
+    if (args.refundAmount > 0) {
+      await ctx.db.insert("walletLedgerEntries", {
+        userId: request.userId,
+        commitmentId: commitment._id,
+        amount: Math.round(args.refundAmount * 100) / 100,
+        currency: commitment.currency,
+        type: "approved_refund",
+        destination: "user",
+        externalReference: args.reference?.trim() || undefined,
+        note: args.note?.trim() || "Early-end settlement refund payable.",
+        createdBy: reviewer._id,
+        createdAt: now,
+      });
+    }
+    if (args.forfeitAmount > 0) {
+      await ctx.db.insert("walletLedgerEntries", {
+        userId: request.userId,
+        commitmentId: commitment._id,
+        amount: Math.round(args.forfeitAmount * 100) / 100,
+        currency: commitment.currency,
+        type: "forfeited",
+        destination: "charity",
+        externalReference: args.reference?.trim() || undefined,
+        note: args.note?.trim() || "Early-end settlement forfeited to charity.",
+        createdBy: reviewer._id,
+        createdAt: now,
+      });
+    }
+
+    await ctx.db.patch(request._id, {
+      status: "resolved",
+      refundAmount: Math.round(args.refundAmount * 100) / 100,
+      forfeitAmount: Math.round(args.forfeitAmount * 100) / 100,
+      reference: args.reference?.trim() || undefined,
+      note: args.note?.trim() || undefined,
+      resolvedAt: now,
+      resolvedBy: reviewer._id,
+      updatedAt: now,
+    });
+    await ctx.db.patch(commitment._id, {
+      earlyEndSettlementStatus: "resolved",
+      updatedAt: now,
+    });
+
+    return { ok: true };
+  },
+});
+
+export const recordCharityTransfer = mutation({
+  args: {
+    userId: v.id("users"),
+    commitmentId: v.optional(v.id("commitments")),
+    amount: v.number(),
+    currency: v.string(),
+    reference: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const reviewer = await requireAdmin(ctx);
+    if (args.amount <= 0) throw new Error("Transfer amount must be positive");
+    await insertCharityTransferLedgerEntry(ctx, {
+      userId: args.userId,
+      commitmentId: args.commitmentId,
+      amount: Math.round(args.amount * 100) / 100,
+      currency: args.currency,
+      externalReference: args.reference?.trim() || undefined,
+      note: args.note?.trim() || undefined,
+      createdBy: reviewer._id,
+    });
     return { ok: true };
   },
 });

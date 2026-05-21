@@ -24,7 +24,7 @@
       [
         "expo-router",
         {
-          "origin": "https://pactraven.com"
+          "origin": "https://app.pactraven.com"
         }
       ],
       "expo-font",

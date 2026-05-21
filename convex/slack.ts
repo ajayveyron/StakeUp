@@ -19,7 +19,6 @@ import {
   notifyPaymentConfirmed,
   notifyPaymentDiscarded,
 } from "./lib/notifications";
-import { commitmentPlatformFee } from "./lib/payments";
 import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
 type ReviewNotificationData = {
@@ -56,7 +55,6 @@ type PaymentNotificationData = {
   forfeitDestination: CharityDestination;
   currency: string;
   pactAmount: number;
-  platformFeeAmount: number;
   refundPerDay: number;
 };
 
@@ -101,6 +99,47 @@ function forfeitLabel(args: {
   forfeitDestination: CharityDestination;
 }) {
   return charityName(args.forfeitDestination);
+}
+
+async function slotBalance(ctx: any, userId: Id<"users">) {
+  const entries = await ctx.db
+    .query("pactSlotLedgerEntries")
+    .withIndex("by_user", (q: any) => q.eq("userId", userId))
+    .collect();
+  return entries.reduce((total: number, entry: { quantity: number }) => {
+    return total + entry.quantity;
+  }, 0);
+}
+
+async function consumeSlotFromSlack(
+  ctx: any,
+  args: {
+    userId: Id<"users">;
+    commitmentId: Id<"commitments">;
+    externalReference: string;
+    reviewer: string;
+  },
+) {
+  const existing = await ctx.db
+    .query("pactSlotLedgerEntries")
+    .withIndex("by_commitment", (q: any) =>
+      q.eq("commitmentId", args.commitmentId),
+    )
+    .filter((q: any) => q.eq(q.field("type"), "slot_consumed"))
+    .first();
+  if (existing) return existing._id;
+  if ((await slotBalance(ctx, args.userId)) < 1) {
+    throw new Error("User has no unused pact slot");
+  }
+  return await ctx.db.insert("pactSlotLedgerEntries", {
+    userId: args.userId,
+    commitmentId: args.commitmentId,
+    type: "slot_consumed",
+    quantity: -1,
+    externalReference: args.externalReference,
+    note: `Pact slot consumed from Slack by ${args.reviewer}`,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 async function callSlack(method: string, payload: Record<string, unknown>) {
@@ -162,7 +201,7 @@ export const getPaymentNotificationData = internalQuery({
   args: { commitmentId: v.id("commitments") },
   handler: async (ctx, args) => {
     const commitment = await ctx.db.get(args.commitmentId);
-    if (!commitment || commitment.status !== "pending_payment") return null;
+    if (!commitment || commitment.status !== "pending_deposit") return null;
     const user = await ctx.db.get(commitment.userId);
     if (!user) return null;
 
@@ -179,7 +218,6 @@ export const getPaymentNotificationData = internalQuery({
       forfeitDestination: commitment.forfeitDestination,
       currency: commitment.currency,
       pactAmount: commitment.pactAmount,
-      platformFeeAmount: commitmentPlatformFee(commitment),
       refundPerDay: getRefundPerDay(commitment),
     };
   },
@@ -280,7 +318,7 @@ export const sendReviewNotification = internalAction({
           elements: [
             {
               type: "mrkdwn",
-              text: "Approve only after proof matches the pact rules. Approved credits are refunded in Razorpay batches.",
+              text: "Approve only after proof matches the pact rules. Approved credits wait for manual UPI payout.",
             },
           ],
         },
@@ -332,14 +370,14 @@ export const sendPaymentNotification = internalAction({
 
     return await callSlack("chat.postMessage", {
       channel,
-      text: `Payment pending: ${data.commitmentName}`,
+      text: `Deposit pending: ${data.commitmentName}`,
       unfurl_links: false,
       blocks: [
         {
           type: "header",
           text: {
             type: "plain_text",
-            text: "Payment pending",
+            text: "Deposit pending",
             emoji: false,
           },
         },
@@ -364,7 +402,7 @@ export const sendPaymentNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Total to collect*\n${formatMoney(data.currency, data.pactAmount + data.platformFeeAmount)}`,
+              text: `*Refundable deposit to collect*\n${formatMoney(data.currency, data.pactAmount)}`,
             },
             {
               type: "mrkdwn",
@@ -388,7 +426,7 @@ export const sendPaymentNotification = internalAction({
           elements: [
             {
               type: "mrkdwn",
-              text: "Activate only after Razorpay payment is received. Discard archives this pending pact.",
+              text: "Activate only after the pact deposit is verified. Discard archives this pending pact.",
             },
           ],
         },
@@ -467,8 +505,8 @@ export const activateCommitmentFromSlack = internalMutation({
       throw new Error("Commitment not found");
     }
     if (commitment.status === "active") return { ok: true };
-    if (commitment.status !== "pending_payment") {
-      throw new Error("Payment is not pending for this commitment");
+    if (commitment.status !== "pending_deposit") {
+      throw new Error("Deposit is not pending for this commitment");
     }
 
     const now = new Date().toISOString();
@@ -493,7 +531,15 @@ export const activateCommitmentFromSlack = internalMutation({
       paymentConfirmedAt: now,
       paymentReference: `slack:${args.slackUserId}`,
       paymentNote: `Activated from Slack by ${reviewer}`,
+      slotConsumedAt: now,
       updatedAt: now,
+    });
+
+    await consumeSlotFromSlack(ctx, {
+      userId: commitment.userId,
+      commitmentId: commitment._id,
+      externalReference: `slack:${args.slackUserId}`,
+      reviewer,
     });
 
     await ensureDepositLedgerEntry(ctx, {
@@ -502,7 +548,7 @@ export const activateCommitmentFromSlack = internalMutation({
       amount: commitment.pactAmount,
       currency: commitment.currency,
       externalReference: `slack:${args.slackUserId}`,
-      note: `Razorpay payment confirmed from Slack by ${reviewer}`,
+      note: `Refundable pact deposit liability confirmed from Slack by ${reviewer}`,
     });
 
     await notifyPaymentConfirmed(ctx, {
@@ -525,8 +571,8 @@ export const discardCommitmentFromSlack = internalMutation({
     const commitment = await ctx.db.get(args.commitmentId);
     if (!commitment) throw new Error("Commitment not found");
     if (commitment.status === "deleted") return { ok: true };
-    if (commitment.status !== "pending_payment") {
-      throw new Error("Only pending-payment pacts can be discarded");
+    if (commitment.status !== "pending_deposit") {
+      throw new Error("Only pending-deposit pacts can be discarded");
     }
 
     const reviewer = slackReviewerLabel(args);

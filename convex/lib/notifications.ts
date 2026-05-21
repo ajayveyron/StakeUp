@@ -8,6 +8,8 @@ type NotificationType =
   | "payment_pending"
   | "payment_confirmed"
   | "payment_discarded"
+  | "slot_confirmed"
+  | "manual_payout_requested"
   | "check_in_approved"
   | "check_in_rejected"
   | "manual_payout_recorded";
@@ -107,8 +109,8 @@ export async function notifyPaymentPending(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "payment_pending",
-    title: "Money not locked yet",
-    body: `${args.commitment.name} is written. Lock ${amount} through Razorpay to start the pact.`,
+    title: "Deposit not locked yet",
+    body: `${args.commitment.name} is written. Lock the ${amount} refundable deposit to start the pact.`,
     commitmentId: args.commitment._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `payment-pending:${args.commitment._id}`,
@@ -116,11 +118,35 @@ export async function notifyPaymentPending(
       subject: `Lock the money for ${args.commitment.name}`,
       body: `Hi ${name},
 
-Your ${args.commitment.name} pact has been written and is ready for Razorpay Checkout.
+Your ${args.commitment.name} pact has been written and is ready for deposit payment.
 
 Amount due: ${amount}
 
-Open Pact Raven and pay through Razorpay Checkout. The record starts only after payment is verified.`,
+Open Pact Raven and lock the refundable deposit. The record starts only after deposit payment is verified.`,
+    },
+  });
+}
+
+export async function notifySlotConfirmed(
+  ctx: MutationCtx,
+  args: { user: Doc<"users"> | null; amount: number; currency: string },
+) {
+  if (!args.user) return;
+  const amount = formatMoney(args.amount, args.currency);
+  const name = friendlyName(args.user);
+  await createUserNotification(ctx, {
+    userId: args.user._id,
+    type: "slot_confirmed",
+    title: "Pact slot ready",
+    body: `One pact slot has been added. ${amount} is the non-refundable slot fee.`,
+    route: "/profile",
+    email: {
+      subject: "Your pact slot is ready",
+      body: `Hi ${name},
+
+Your ${amount} pact slot payment is confirmed. You now have one unused pact slot.
+
+The slot fee is non-refundable. A separate refundable deposit is collected when you start a pact.`,
     },
   });
 }
@@ -135,7 +161,7 @@ export async function notifyPaymentConfirmed(
     userId: args.user._id,
     type: "payment_confirmed",
     title: "Money locked",
-    body: `${args.commitment.name} is live. The Raven is keeping the record.`,
+    body: `${args.commitment.name} is live. The deposit is recorded as a refundable pact liability.`,
     commitmentId: args.commitment._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `payment-confirmed:${args.commitment._id}`,
@@ -143,7 +169,7 @@ export async function notifyPaymentConfirmed(
       subject: `${args.commitment.name} is live`,
       body: `Hi ${name},
 
-Payment has been confirmed for ${args.commitment.name}. Your pact is live now.
+The deposit has been confirmed for ${args.commitment.name}. Your pact is live now.
 
 Open Pact Raven to view your schedule and show proof on active days.`,
     },
@@ -160,14 +186,14 @@ export async function notifyPaymentDiscarded(
     userId: args.user._id,
     type: "payment_discarded",
     title: "Pact archived",
-    body: `${args.commitment.name} was archived before the money was locked.`,
+    body: `${args.commitment.name} was archived before the deposit was locked.`,
     commitmentId: args.commitment._id,
     dedupeKey: `payment-discarded:${args.commitment._id}`,
     email: {
       subject: `${args.commitment.name} was archived`,
       body: `Hi ${name},
 
-The pending payment request for ${args.commitment.name} was archived before activation.
+The pending deposit request for ${args.commitment.name} was archived before activation.
 
 No pact is live for that request.`,
     },
@@ -262,7 +288,26 @@ export async function notifyManualPayoutRecorded(
       subject: `Refund recorded: ${amount}`,
       body: `Hi ${name},
 
-A Razorpay refund/disbursement of ${amount} was recorded for your Pact Raven account.${noteLine}`,
+A manual UPI refund of ${amount} was recorded for your Pact Raven account.${noteLine}`,
     },
+  });
+}
+
+export async function notifyManualPayoutRequested(
+  ctx: MutationCtx,
+  args: {
+    user: Doc<"users"> | null;
+    amount: number;
+    currency: string;
+  },
+) {
+  if (!args.user) return;
+  const amount = formatMoney(args.amount, args.currency);
+  await createUserNotification(ctx, {
+    userId: args.user._id,
+    type: "manual_payout_requested",
+    title: "Refund request recorded",
+    body: `${amount} refund credit is waiting for manual UPI payout.`,
+    route: "/profile",
   });
 }

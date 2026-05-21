@@ -214,10 +214,10 @@ export default function HomeScreen() {
         {pendingPaymentCommitments.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Money not locked
+              Draft pacts
             </Text>
             <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              These pacts do not start until the money is funded.
+              These pacts start after one slot is used and the deposit is locked.
             </Text>
             {pendingPaymentCommitments.map((c) => (
               <CommitmentCard key={c.id} commitment={c} compact />

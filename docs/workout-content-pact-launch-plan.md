@@ -17,7 +17,7 @@ Pact Raven is a paid accountability challenge.
 
 The user pays:
 
-- A non-refundable platform fee for accountability, review, reminders, operations, and support.
+- A non-refundable pact slot fee for accountability, review, reminders, operations, and support.
 - A refundable commitment deposit that is returned when the user proves consistency.
 
 Suggested public wording:
@@ -37,10 +37,10 @@ Avoid these words in public copy for now:
 Use these words instead:
 
 - Commitment challenge
-- Platform fee
+- pact slot fee
 - Refundable deposit
 - Proof review
-- Razorpay refund
+- manual UPI payout
 - Forfeit destination
 - Success credit
 
@@ -64,12 +64,12 @@ Avoid mass-market positioning in the first 100 users. The first wedge is people 
 
 30-Day Content Consistency Pact
 
-- Platform fee: Rs 499
+- pact slot fee: Rs 249
 - Refundable deposit: Rs 2,000
 - Commitment: 1 public post per day for 30 days
 - Proof: public post URL submitted before the daily deadline
 - Review: manual review by Pact Raven
-- Refund style: weekly or end-of-challenge Razorpay refund/disbursement
+- Refund style: weekly or end-of-challenge manual UPI payout
 
 ### Accepted Proof
 
@@ -107,12 +107,12 @@ Content posting is the strongest first wedge because:
 
 30-Day Workout Pact
 
-- Platform fee: Rs 499
+- pact slot fee: Rs 249
 - Refundable deposit: Rs 3,000
 - Commitment: default 30-day cycle with 5 workouts per week
 - Proof: mobile web camera snap/capture with physical prompt, optional location, and visible gym/home context
 - Review: manual review by Pact Raven
-- Refund style: weekly or end-of-challenge Razorpay refund/disbursement
+- Refund style: weekly or end-of-challenge manual UPI payout
 
 ### Accepted Proof
 
@@ -145,13 +145,13 @@ Pact Raven charges per commitment cycle. A user buys one 30-day cycle at a time.
 
 Starting price:
 
-- Content Posting Pact: Rs 499 fee + Rs 2,000 deposit
-- Workout Pact: Rs 499 fee + Rs 3,000 deposit
+- Content Posting Pact: Rs 249 fee + Rs 2,000 deposit
+- Workout Pact: Rs 249 fee + Rs 3,000 deposit
 
 Abandoned-onboarding recovery:
 
-- If a user completes onboarding but does not start/pay, offer Rs 200 off for the next 6 hours.
-- Discounted platform fee: Rs 299 for that commitment cycle.
+- If a user completes onboarding but does not start/pay, offer Rs 50 off for the next 6 hours.
+- Discounted pact slot fee: Rs 199 for that commitment cycle.
 
 Do not hide the fee. The test is whether users will pay for accountability, not whether they will temporarily park refundable money.
 
@@ -159,25 +159,25 @@ Do not hide the fee. The test is whether users will pay for accountability, not 
 
 After 100 paid users:
 
-- Starter: Rs 499 fee + Rs 2,000 to Rs 3,000 deposit
+- Starter: Rs 249 fee + Rs 2,000 to Rs 3,000 deposit
 - Serious: Rs 999 fee + Rs 5,000 deposit
 - Founder-reviewed: Rs 1,999 fee + Rs 10,000 deposit
 - Cohort/team challenge: custom fee and deposit
 
-Do not launch a subscription yet. Sell one commitment cycle at a time.
+Do not launch a recurring plan yet. Sell one commitment cycle at a time.
 
-## Payment And Refunds
+## Payment And Manual Payouts
 
-Razorpay approval is in place, so v1 can collect money and process refunds/disbursements through Razorpay.
+Razorpay collects money in v1, but user payouts are manual UPI transfers recorded by the operator.
 
 Operational rules:
 
-- Collect platform fee and commitment deposit through Razorpay.
-- Keep the platform fee as revenue for the cycle.
+- Collect pact slot fee and commitment deposit through Razorpay.
+- Keep the pact slot fee as revenue for the cycle.
 - Track the refundable deposit as a deposit liability until approved, forfeited, or refunded.
-- Record Razorpay payment IDs and refund/disbursement IDs in the ledger.
-- Avoid daily automatic refunds in v1; use weekly or end-of-cycle payout batches.
-- Show refund status clearly: pending review, approved refund credit, refund processing, refunded.
+- Record Razorpay payment IDs for collections and UPI references for manual payouts in the ledger.
+- Avoid daily automatic payouts in v1; use weekly or end-of-cycle manual UPI payout batches.
+- Show refund status clearly: pending review, approved refund credit, payout requested, paid by UPI.
 
 ## Funnel For First 100 Customers
 
@@ -219,7 +219,7 @@ Suggested rhythm:
 - Daily: proof due by user deadline.
 - Daily morning: pending-proof reminders.
 - Daily night: missed-deadline checks.
-- Weekly: Razorpay refund/disbursement batch and public progress recap.
+- Weekly: manual UPI payout batch and public progress recap.
 
 Weekly cohorts create urgency and make operations easier.
 
@@ -230,7 +230,7 @@ Early promise:
 - Proof reviewed within 24 hours.
 - Rejection reason is mandatory.
 - Disputed proof can be appealed once.
-- Razorpay refund/disbursement happens weekly or at the end of the cycle.
+- manual UPI payout happens weekly or at the end of the cycle.
 
 Do not promise instant refunds or automatic approval.
 
@@ -238,15 +238,15 @@ Do not promise instant refunds or automatic approval.
 
 Track money as an append-only ledger:
 
-- Platform fee received
+- pact slot fee received
 - Commitment deposit received
 - Daily success credit approved
 - Daily amount forfeited
-- Razorpay refund/disbursement created
-- Razorpay refund/disbursement completed
+- manual UPI payout created
+- manual UPI payout completed
 - Manual adjustment
 
-The commitment deposit should not be treated as revenue while it is refundable. Platform fee is the clean revenue line.
+The commitment deposit should not be treated as revenue while it is refundable. pact slot fee is the clean revenue line.
 
 ### Forfeit Rules
 
@@ -338,7 +338,7 @@ Native app v1 should be a companion verifier, not a full rebuild.
 ### Days 1-3: Setup
 
 - Finalize rules for both pact types.
-- Create payment and refund SOP.
+- Create payment and manual UPI payout SOP.
 - Create forfeiture SOP for the five fixed charity destinations.
 - Create WhatsApp onboarding scripts.
 - Create proof review checklist.
@@ -364,8 +364,8 @@ Native app v1 should be a companion verifier, not a full rebuild.
 ### Days 15-21: Cohort 2
 
 - Open 20-25 slots.
-- Keep the public platform fee at Rs 499.
-- Test the Rs 200 abandoned-onboarding recovery discount for users who complete onboarding but do not start/pay.
+- Keep the public pact slot fee at Rs 249.
+- Test the Rs 50 abandoned-onboarding recovery discount for users who complete onboarding but do not start/pay.
 - Add referral ask.
 - Publish proof-of-work updates.
 
@@ -390,7 +390,7 @@ First 30 days:
 First 90 days:
 
 - 100 paid users
-- 50 users paying Rs 499 platform fee without heavy objection
+- 50 users paying Rs 249 pact slot fee without heavy objection
 - 60%+ completion rate
 - 25%+ repeat or referral rate
 - Review time under 3 minutes per proof
@@ -426,7 +426,7 @@ Later moats:
 Mitigation:
 
 - Avoid "bet" language.
-- Charge a clear platform fee.
+- Charge a clear pact slot fee.
 - Treat deposit as refundable commitment deposit.
 - Let users choose from five charity forfeit destinations.
 - Do not keep forfeited deposits as Pact Raven revenue.

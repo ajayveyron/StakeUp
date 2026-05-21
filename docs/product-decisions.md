@@ -4,14 +4,14 @@
 
 Pact Raven starts as a PWA/web app, while staying inside the Expo codebase so a future native iOS/Android move is easier.
 
-Pact Raven is a commitment-cycle product with payment collection and refunds handled through Razorpay. Users buy one commitment cycle at a time, such as a 30-day workout cycle or a 30-day content-posting cycle. To start a new cycle in the same month or a later month, the user buys another cycle.
+Pact Raven is a pact-slot product with payment collection handled through Razorpay and user payouts handled manually by UPI for the first cohorts. Users buy one non-refundable pact slot at a time. One pact slot unlocks one pact challenge.
 
 Users pay:
 
-- A non-refundable platform fee per commitment cycle.
-- A refundable commitment deposit that is returned when they prove consistency.
+- A non-refundable Rs 249 pact slot fee. This is revenue for access to one pact challenge.
+- A separate refundable pact deposit when they start a pact. This is recorded as a deposit liability, not revenue.
 
-The pact becomes active only after payment is confirmed. Users then submit proof by the daily deadline and wait for review. Approved submissions become refund credits. Rejected or missed days are forfeited to the charity selected when the pact was created.
+Users can draft a pact before buying a slot. The pact becomes active only after the user has an unused slot and the separate deposit payment is confirmed. Starting a pact consumes one slot permanently. Users then submit proof by the daily deadline and wait for review. Approved submissions become refund credits. Rejected or missed days are forfeited to the charity selected when the pact was created.
 
 ## Initial Commitment Types
 
@@ -40,9 +40,9 @@ Workout commitments require a fresh camera snap or short capture from the web ap
 
 ## Payout Rules
 
-Approved credits should not be paid out automatically every day. They should be tracked in the ledger first and refunded or disbursed through Razorpay based on the chosen payout cadence.
+Approved credits should not be paid out automatically every day. They should be tracked in the ledger first and paid manually by UPI when requested or batched by operations.
 
-This avoids unnecessary transaction volume, transaction costs, failed payout handling, and reconciliation complexity. During the first public cohorts, refunds can be weekly or at the end of the commitment cycle, but every Razorpay refund/disbursement reference must be recorded in the ledger.
+This avoids unnecessary transaction volume, transaction costs, failed payout handling, and reconciliation complexity. During the first public cohorts, payouts can be on request, weekly, or at the end of the commitment cycle, but every UPI payout reference must be recorded in the ledger.
 
 ## Forfeit Destinations
 
@@ -60,26 +60,29 @@ Rejected or missed days should be shown as `Forfeited to charity`, with the sele
 
 ## Fee Positioning
 
-Pact Raven charges users per commitment cycle.
+Pact Raven charges users per pact slot.
 
 Starting price:
 
-- Rs 499 platform fee per commitment cycle.
+- Rs 249 non-refundable pact slot fee.
 
 Recovery offer:
 
-- If a user completes onboarding but does not start/pay, offer a Rs 200 discount for the next 6 hours.
-- Discounted price: Rs 299 platform fee for that commitment cycle.
+- Do not discount by default during the first slot test.
 
 Recommended copy:
 
-"Start your 30-day commitment cycle for Rs 499. Your commitment deposit is refundable when your proof is approved. If you miss or your proof is rejected, that day's amount goes to the charity you selected before starting."
+"Buy one pact slot for Rs 249. The slot fee is non-refundable and unlocks one pact challenge. When you start the pact, you lock a separate refundable deposit. Approved proof creates refund credit. Missed or rejected proof is forfeited to the charity you selected before starting."
 
 ## Copy Rules
 
 - Use "Submit for review" when the user submits proof.
 - Use "Approved refund credit" only after manual approval.
-- Use "Refund processing" only after the Razorpay refund/disbursement has been initiated.
+- Use "Manual UPI payout requested" when the user requests money back.
+- Use "Refund sent" only after the UPI reference is recorded.
 - Use "Forfeited to charity" after rejection or missed days.
+- Use "Pact slot" for the Rs 249 non-refundable access purchase.
+- Use "Refundable pact deposit" for the separate deposit liability.
 - Never imply private posts are acceptable proof.
 - Never imply forfeited money becomes Pact Raven revenue.
+- Do not call the deposit revenue in admin/accounting copy. It is a refundable deposit liability until refunded, forfeited, or transferred to charity.

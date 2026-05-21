@@ -1,42 +1,135 @@
 import { v } from "convex/values";
 
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { addDays, daysBetween, todayInTimeZone } from "./lib/dates";
-import {
-  ensureDepositLedgerEntry,
-  insertManualPayoutLedgerEntry,
-} from "./lib/ledger";
-import { notifyPaymentConfirmed } from "./lib/notifications";
-import {
-  commitmentCheckoutAmount,
-  commitmentPlatformFee,
-} from "./lib/payments";
+import { ensureDepositLedgerEntry } from "./lib/ledger";
+import { notifyPaymentConfirmed, notifySlotConfirmed } from "./lib/notifications";
+import { PACT_SLOT_AMOUNT } from "./lib/payments";
 
-async function walletBalanceByCurrency(
-  ctx: MutationCtx,
-  userId: Id<"users">,
-) {
+type PaymentPurpose = "slot_fee" | "pact_deposit";
+
+async function slotBalance(ctx: MutationCtx, userId: Id<"users">) {
   const entries = await ctx.db
-    .query("walletLedgerEntries")
+    .query("pactSlotLedgerEntries")
     .withIndex("by_user", (q) => q.eq("userId", userId))
     .collect();
-
-  const balances = new Map<string, number>();
-  for (const entry of entries) {
-    const current = balances.get(entry.currency) ?? 0;
-    if (entry.type === "approved_refund" && entry.destination === "user") {
-      balances.set(entry.currency, current + entry.amount);
-    } else if (entry.type === "manual_payout") {
-      balances.set(entry.currency, current - entry.amount);
-    }
-  }
-
-  return balances;
+  return entries.reduce((total, entry) => total + entry.quantity, 0);
 }
 
-export const prepareCheckoutOrder = internalMutation({
+async function existingPaidOrderForPurpose(
+  ctx: MutationCtx,
+  args: { commitmentId: Id<"commitments">; purpose: PaymentPurpose },
+) {
+  return await ctx.db
+    .query("paymentOrders")
+    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("status"), "paid"),
+        q.eq(q.field("purpose"), args.purpose),
+      ),
+    )
+    .first();
+}
+
+async function consumeSlotForCommitment(
+  ctx: MutationCtx,
+  args: {
+    userId: Id<"users">;
+    commitmentId: Id<"commitments">;
+    externalReference?: string;
+  },
+) {
+  const existing = await ctx.db
+    .query("pactSlotLedgerEntries")
+    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
+    .filter((q) => q.eq(q.field("type"), "slot_consumed"))
+    .first();
+  if (existing) return existing._id;
+
+  const available = await slotBalance(ctx, args.userId);
+  if (available < 1) throw new Error("Buy a pact slot before starting");
+
+  return await ctx.db.insert("pactSlotLedgerEntries", {
+    userId: args.userId,
+    commitmentId: args.commitmentId,
+    type: "slot_consumed",
+    quantity: -1,
+    externalReference: args.externalReference,
+    note: "Pact slot consumed when this pact started.",
+    createdAt: new Date().toISOString(),
+  });
+}
+
+function shiftCommitmentDates(commitment: Doc<"commitments">) {
+  const today = todayInTimeZone(commitment.timezone);
+  const startsBeforeConfirmation = commitment.startDate < today;
+  const shiftedStartDate = startsBeforeConfirmation
+    ? today
+    : commitment.startDate;
+  const shiftedEndDate = startsBeforeConfirmation
+    ? addDays(commitment.endDate, daysBetween(commitment.startDate, today) - 1)
+    : commitment.endDate;
+
+  return {
+    startDate: shiftedStartDate,
+    endDate: shiftedEndDate,
+    durationDays: daysBetween(shiftedStartDate, shiftedEndDate),
+  };
+}
+
+export const prepareSlotCheckoutOrder = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUser(ctx);
+    const now = new Date().toISOString();
+    const receipt = `slot_${user._id.slice(-12)}_${Date.now()}`;
+    const slotPurchaseId = await ctx.db.insert("pactSlotPurchases", {
+      userId: user._id,
+      amount: PACT_SLOT_AMOUNT,
+      currency: "INR",
+      status: "pending_payment",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const paymentOrderId = await ctx.db.insert("paymentOrders", {
+      userId: user._id,
+      slotPurchaseId,
+      purpose: "slot_fee",
+      razorpayOrderId: `pending:${receipt}`,
+      amount: PACT_SLOT_AMOUNT,
+      depositAmount: 0,
+      platformFeeAmount: PACT_SLOT_AMOUNT,
+      currency: "INR",
+      status: "created",
+      receipt,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await ctx.db.patch(slotPurchaseId, {
+      paymentOrderId,
+      updatedAt: now,
+    });
+
+    return {
+      paymentOrderId,
+      slotPurchaseId,
+      userId: user._id,
+      userName: user.displayName,
+      userEmail: user.email,
+      userPhone: user.phone,
+      amount: PACT_SLOT_AMOUNT,
+      currency: "INR",
+      receipt,
+    };
+  },
+});
+
+export const prepareDepositCheckoutOrder = internalMutation({
   args: { commitmentId: v.id("commitments") },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -44,34 +137,43 @@ export const prepareCheckoutOrder = internalMutation({
     if (
       !commitment ||
       commitment.userId !== user._id ||
-      commitment.status !== "pending_payment"
+      !["draft", "pending_deposit", "pending_payment"].includes(commitment.status)
     ) {
-      throw new Error("Pending commitment not found");
+      throw new Error("Draft pact not found");
+    }
+    if ((await slotBalance(ctx, user._id)) < 1) {
+      throw new Error("Buy a pact slot before starting");
+    }
+    if (await existingPaidOrderForPurpose(ctx, {
+      commitmentId: commitment._id,
+      purpose: "pact_deposit",
+    })) {
+      throw new Error("This pact deposit is already paid");
     }
 
-    const existingPaidOrder = await ctx.db
-      .query("paymentOrders")
-      .withIndex("by_commitment", (q) => q.eq("commitmentId", commitment._id))
-      .filter((q) => q.eq(q.field("status"), "paid"))
-      .first();
-    if (existingPaidOrder) throw new Error("This commitment is already paid");
-
     const now = new Date().toISOString();
-    const amount = commitmentCheckoutAmount(commitment);
-    const receipt = `pact_${commitment._id.slice(-16)}_${Date.now()}`;
+    const receipt = `deposit_${commitment._id.slice(-12)}_${Date.now()}`;
     const paymentOrderId = await ctx.db.insert("paymentOrders", {
       userId: user._id,
       commitmentId: commitment._id,
+      purpose: "pact_deposit",
       razorpayOrderId: `pending:${receipt}`,
-      amount,
+      amount: commitment.pactAmount,
       depositAmount: commitment.pactAmount,
-      platformFeeAmount: commitmentPlatformFee(commitment),
+      platformFeeAmount: 0,
       currency: commitment.currency,
       status: "created",
       receipt,
       createdAt: now,
       updatedAt: now,
     });
+
+    if (commitment.status === "draft" || commitment.status === "pending_payment") {
+      await ctx.db.patch(commitment._id, {
+        status: "pending_deposit",
+        updatedAt: now,
+      });
+    }
 
     return {
       paymentOrderId,
@@ -81,9 +183,7 @@ export const prepareCheckoutOrder = internalMutation({
       userName: user.displayName,
       userEmail: user.email,
       userPhone: user.phone,
-      amount,
-      depositAmount: commitment.pactAmount,
-      platformFeeAmount: commitmentPlatformFee(commitment),
+      amount: commitment.pactAmount,
       currency: commitment.currency,
       receipt,
     };
@@ -96,14 +196,93 @@ export const attachRazorpayOrder = internalMutation({
     razorpayOrderId: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.paymentOrderId, {
+    const order = await ctx.db.get(args.paymentOrderId);
+    if (!order) throw new Error("Payment order not found");
+    await ctx.db.patch(order._id, {
       razorpayOrderId: args.razorpayOrderId,
       updatedAt: new Date().toISOString(),
     });
+    if (order.slotPurchaseId) {
+      await ctx.db.patch(order.slotPurchaseId, {
+        razorpayOrderId: args.razorpayOrderId,
+        updatedAt: new Date().toISOString(),
+      });
+    }
   },
 });
 
-export const markCheckoutPaid = internalMutation({
+export const markSlotCheckoutPaid = internalMutation({
+  args: {
+    razorpayOrderId: v.string(),
+    razorpayPaymentId: v.string(),
+    signature: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+    const paymentOrder = await ctx.db
+      .query("paymentOrders")
+      .withIndex("by_razorpay_order", (q) =>
+        q.eq("razorpayOrderId", args.razorpayOrderId),
+      )
+      .unique();
+    if (
+      !paymentOrder ||
+      paymentOrder.userId !== user._id ||
+      paymentOrder.purpose !== "slot_fee" ||
+      !paymentOrder.slotPurchaseId
+    ) {
+      throw new Error("Slot payment order not found");
+    }
+
+    const now = new Date().toISOString();
+    await ctx.db.patch(paymentOrder._id, {
+      razorpayPaymentId: args.razorpayPaymentId,
+      signature: args.signature,
+      status: "paid",
+      paidAt: now,
+      updatedAt: now,
+    });
+
+    const slotPurchase = await ctx.db.get(paymentOrder.slotPurchaseId);
+    if (!slotPurchase) throw new Error("Slot purchase not found");
+    await ctx.db.patch(slotPurchase._id, {
+      status: "paid",
+      razorpayOrderId: args.razorpayOrderId,
+      razorpayPaymentId: args.razorpayPaymentId,
+      paidAt: now,
+      updatedAt: now,
+    });
+
+    const existingCredit = await ctx.db
+      .query("pactSlotLedgerEntries")
+      .withIndex("by_purchase", (q) => q.eq("slotPurchaseId", slotPurchase._id))
+      .filter((q) => q.eq(q.field("type"), "slot_purchased"))
+      .first();
+    if (!existingCredit) {
+      await ctx.db.insert("pactSlotLedgerEntries", {
+        userId: user._id,
+        slotPurchaseId: slotPurchase._id,
+        type: "slot_purchased",
+        quantity: 1,
+        amount: PACT_SLOT_AMOUNT,
+        currency: slotPurchase.currency,
+        externalReference: args.razorpayPaymentId,
+        note: "Non-refundable pact slot fee collected as revenue.",
+        createdAt: now,
+      });
+    }
+
+    await notifySlotConfirmed(ctx, {
+      user,
+      amount: PACT_SLOT_AMOUNT,
+      currency: slotPurchase.currency,
+    });
+
+    return { ok: true };
+  },
+});
+
+export const markDepositCheckoutPaid = internalMutation({
   args: {
     commitmentId: v.id("commitments"),
     razorpayOrderId: v.string(),
@@ -125,9 +304,10 @@ export const markCheckoutPaid = internalMutation({
     if (
       !paymentOrder ||
       paymentOrder.userId !== user._id ||
-      paymentOrder.commitmentId !== commitment._id
+      paymentOrder.commitmentId !== commitment._id ||
+      paymentOrder.purpose !== "pact_deposit"
     ) {
-      throw new Error("Payment order not found");
+      throw new Error("Deposit payment order not found");
     }
 
     const now = new Date().toISOString();
@@ -139,27 +319,23 @@ export const markCheckoutPaid = internalMutation({
       updatedAt: now,
     });
 
-    if (commitment.status === "pending_payment") {
-      const today = todayInTimeZone(commitment.timezone);
-      const startsBeforeConfirmation = commitment.startDate < today;
-      const shiftedStartDate = startsBeforeConfirmation
-        ? today
-        : commitment.startDate;
-      const shiftedEndDate = startsBeforeConfirmation
-        ? addDays(
-            commitment.endDate,
-            daysBetween(commitment.startDate, today) - 1,
-          )
-        : commitment.endDate;
+    if (commitment.status !== "active") {
+      const shifted = shiftCommitmentDates(commitment);
+      await consumeSlotForCommitment(ctx, {
+        userId: commitment.userId,
+        commitmentId: commitment._id,
+        externalReference: args.razorpayPaymentId,
+      });
 
+      const paymentNote =
+        "Razorpay pact deposit collected. Deposit recorded as refundable pact liability.";
       await ctx.db.patch(commitment._id, {
         status: "active",
-        startDate: shiftedStartDate,
-        endDate: shiftedEndDate,
-        durationDays: daysBetween(shiftedStartDate, shiftedEndDate),
+        ...shifted,
+        slotConsumedAt: now,
         paymentConfirmedAt: now,
         paymentReference: args.razorpayPaymentId,
-        paymentNote: `Verified Razorpay Checkout payment. Order: ${args.razorpayOrderId}`,
+        paymentNote,
         updatedAt: now,
       });
 
@@ -169,7 +345,7 @@ export const markCheckoutPaid = internalMutation({
         amount: commitment.pactAmount,
         currency: commitment.currency,
         externalReference: args.razorpayPaymentId,
-        note: `Refundable deposit received. Platform fee: ${commitmentPlatformFee(commitment)} ${commitment.currency}.`,
+        note: "Refundable pact deposit liability collected through Razorpay.",
       });
 
       await notifyPaymentConfirmed(ctx, {
@@ -177,126 +353,16 @@ export const markCheckoutPaid = internalMutation({
         commitment: {
           ...commitment,
           status: "active",
-          startDate: shiftedStartDate,
-          endDate: shiftedEndDate,
-          durationDays: daysBetween(shiftedStartDate, shiftedEndDate),
+          ...shifted,
+          slotConsumedAt: now,
           paymentConfirmedAt: now,
           paymentReference: args.razorpayPaymentId,
-          paymentNote: `Verified Razorpay Checkout payment. Order: ${args.razorpayOrderId}`,
+          paymentNote,
           updatedAt: now,
         },
       });
     }
 
     return { ok: true };
-  },
-});
-
-export const prepareRefundWithdrawal = internalMutation({
-  args: {
-    amount: v.number(),
-    currency: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
-    const balances = await walletBalanceByCurrency(ctx, user._id);
-    const available = balances.get(args.currency) ?? 0;
-    if (args.amount > available + 0.01) {
-      throw new Error("Refund amount exceeds available balance");
-    }
-
-    const orders = await ctx.db
-      .query("paymentOrders")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const withdrawals = await ctx.db
-      .query("refundWithdrawals")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
-    const paymentOrder = orders
-      .filter(
-        (order) =>
-          order.status === "paid" &&
-          order.currency === args.currency &&
-          order.razorpayPaymentId,
-      )
-      .sort((a, b) => (b.paidAt ?? "").localeCompare(a.paidAt ?? ""))
-      .find((order) => {
-        const alreadyRefunded = withdrawals
-          .filter(
-            (withdrawal) =>
-              withdrawal.paymentOrderId === order._id &&
-              withdrawal.status !== "failed",
-          )
-          .reduce((sum, withdrawal) => sum + withdrawal.amount, 0);
-        return (
-          Math.max(0, order.depositAmount - alreadyRefunded) + 0.01 >=
-          args.amount
-        );
-      });
-    if (!paymentOrder?.razorpayPaymentId) {
-      throw new Error("No refundable Razorpay payment found for this balance");
-    }
-
-    const now = new Date().toISOString();
-    const withdrawalId = await ctx.db.insert("refundWithdrawals", {
-      userId: user._id,
-      paymentOrderId: paymentOrder._id,
-      razorpayPaymentId: paymentOrder.razorpayPaymentId,
-      amount: Math.round(args.amount * 100) / 100,
-      currency: args.currency,
-      status: "processing",
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return {
-      withdrawalId,
-      userId: user._id,
-      razorpayPaymentId: paymentOrder.razorpayPaymentId,
-      amount: Math.round(args.amount * 100) / 100,
-      currency: args.currency,
-    };
-  },
-});
-
-export const markRefundWithdrawalProcessed = internalMutation({
-  args: {
-    withdrawalId: v.id("refundWithdrawals"),
-    razorpayRefundId: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const withdrawal = await ctx.db.get(args.withdrawalId);
-    if (!withdrawal) throw new Error("Refund withdrawal not found");
-    const now = new Date().toISOString();
-
-    await ctx.db.patch(withdrawal._id, {
-      razorpayRefundId: args.razorpayRefundId,
-      status: "processed",
-      processedAt: now,
-      updatedAt: now,
-    });
-
-    await insertManualPayoutLedgerEntry(ctx, {
-      userId: withdrawal.userId,
-      amount: withdrawal.amount,
-      currency: withdrawal.currency,
-      externalReference: args.razorpayRefundId,
-      note: "Razorpay refund API withdrawal",
-    });
-  },
-});
-
-export const markRefundWithdrawalFailed = internalMutation({
-  args: {
-    withdrawalId: v.id("refundWithdrawals"),
-    reason: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.withdrawalId, {
-      status: "failed",
-      failureReason: args.reason,
-      updatedAt: new Date().toISOString(),
-    });
   },
 });

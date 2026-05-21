@@ -16,9 +16,37 @@ const forfeitDestination = v.union(
   v.literal("wildlife_sos"),
 );
 const commitmentStatus = v.union(
+  v.literal("draft"),
   v.literal("pending_payment"),
+  v.literal("pending_deposit"),
   v.literal("active"),
+  v.literal("ended"),
   v.literal("deleted"),
+);
+const pactSlotPurchaseStatus = v.union(
+  v.literal("pending_payment"),
+  v.literal("paid"),
+  v.literal("cancelled"),
+);
+const pactSlotLedgerType = v.union(
+  v.literal("slot_purchased"),
+  v.literal("slot_consumed"),
+  v.literal("slot_adjustment"),
+);
+const earlyEndSettlementStatus = v.union(
+  v.literal("pending"),
+  v.literal("resolved"),
+  v.literal("cancelled"),
+);
+const manualPayoutRequestStatus = v.union(
+  v.literal("pending"),
+  v.literal("processed"),
+  v.literal("cancelled"),
+);
+const paymentPurpose = v.union(
+  v.literal("legacy_checkout"),
+  v.literal("slot_fee"),
+  v.literal("pact_deposit"),
 );
 const paymentOrderStatus = v.union(
   v.literal("created"),
@@ -35,6 +63,8 @@ const notificationType = v.union(
   v.literal("payment_pending"),
   v.literal("payment_confirmed"),
   v.literal("payment_discarded"),
+  v.literal("slot_confirmed"),
+  v.literal("manual_payout_requested"),
   v.literal("check_in_approved"),
   v.literal("check_in_rejected"),
   v.literal("manual_payout_recorded"),
@@ -100,10 +130,14 @@ export default defineSchema({
     endDate: v.string(),
     timezone: v.string(),
     status: commitmentStatus,
+    slotConsumedAt: v.optional(v.string()),
     paymentConfirmedAt: v.optional(v.string()),
     paymentConfirmedBy: v.optional(v.id("users")),
     paymentReference: v.optional(v.string()),
     paymentNote: v.optional(v.string()),
+    endedAt: v.optional(v.string()),
+    earlyEndReason: v.optional(v.string()),
+    earlyEndSettlementStatus: v.optional(earlyEndSettlementStatus),
     createdAt: v.string(),
     updatedAt: v.string(),
     deletedAt: v.optional(v.string()),
@@ -157,6 +191,7 @@ export default defineSchema({
       v.literal("approved_refund"),
       v.literal("forfeited"),
       v.literal("manual_payout"),
+      v.literal("charity_transfer"),
     ),
     destination: v.union(
       v.literal("user"),
@@ -175,12 +210,14 @@ export default defineSchema({
 
   paymentOrders: defineTable({
     userId: v.id("users"),
-    commitmentId: v.id("commitments"),
+    commitmentId: v.optional(v.id("commitments")),
+    slotPurchaseId: v.optional(v.id("pactSlotPurchases")),
+    purpose: v.optional(paymentPurpose),
     razorpayOrderId: v.string(),
     razorpayPaymentId: v.optional(v.string()),
     amount: v.number(),
-    depositAmount: v.number(),
-    platformFeeAmount: v.number(),
+    depositAmount: v.optional(v.number()),
+    platformFeeAmount: v.optional(v.number()),
     currency: v.string(),
     status: paymentOrderStatus,
     receipt: v.string(),
@@ -194,6 +231,79 @@ export default defineSchema({
     .index("by_commitment", ["commitmentId"])
     .index("by_razorpay_order", ["razorpayOrderId"])
     .index("by_razorpay_payment", ["razorpayPaymentId"]),
+
+  pactSlotPurchases: defineTable({
+    userId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+    status: pactSlotPurchaseStatus,
+    paymentOrderId: v.optional(v.id("paymentOrders")),
+    razorpayOrderId: v.optional(v.string()),
+    razorpayPaymentId: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    paidAt: v.optional(v.string()),
+    cancelledAt: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_user_status", ["userId", "status"]),
+
+  pactSlotLedgerEntries: defineTable({
+    userId: v.id("users"),
+    slotPurchaseId: v.optional(v.id("pactSlotPurchases")),
+    commitmentId: v.optional(v.id("commitments")),
+    type: pactSlotLedgerType,
+    quantity: v.number(),
+    amount: v.optional(v.number()),
+    currency: v.optional(v.string()),
+    externalReference: v.optional(v.string()),
+    note: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_commitment", ["commitmentId"])
+    .index("by_purchase", ["slotPurchaseId"])
+    .index("by_created_at", ["createdAt"]),
+
+  manualPayoutRequests: defineTable({
+    userId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+    status: manualPayoutRequestStatus,
+    note: v.optional(v.string()),
+    externalReference: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    processedAt: v.optional(v.string()),
+    processedBy: v.optional(v.id("users")),
+    cancelledAt: v.optional(v.string()),
+    cancelledBy: v.optional(v.id("users")),
+  })
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"])
+    .index("by_user_status", ["userId", "status"])
+    .index("by_created_at", ["createdAt"]),
+
+  earlyEndSettlementRequests: defineTable({
+    userId: v.id("users"),
+    commitmentId: v.id("commitments"),
+    status: earlyEndSettlementStatus,
+    reason: v.optional(v.string()),
+    requestedAt: v.string(),
+    updatedAt: v.string(),
+    resolvedAt: v.optional(v.string()),
+    resolvedBy: v.optional(v.id("users")),
+    refundAmount: v.optional(v.number()),
+    forfeitAmount: v.optional(v.number()),
+    reference: v.optional(v.string()),
+    note: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_commitment", ["commitmentId"])
+    .index("by_status", ["status"])
+    .index("by_requested_at", ["requestedAt"]),
 
   refundWithdrawals: defineTable({
     userId: v.id("users"),

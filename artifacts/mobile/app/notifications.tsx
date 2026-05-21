@@ -23,6 +23,8 @@ type NotificationItem = {
     | "payment_pending"
     | "payment_confirmed"
     | "payment_discarded"
+    | "slot_confirmed"
+    | "manual_payout_requested"
     | "check_in_approved"
     | "check_in_rejected"
     | "manual_payout_recorded";
@@ -35,6 +37,7 @@ type NotificationItem = {
 
 function iconFor(type: NotificationItem["type"]) {
   if (type === "payment_pending") return "credit-card";
+  if (type === "slot_confirmed") return "key";
   if (type === "payment_confirmed") return "unlock";
   if (type === "payment_discarded") return "archive";
   if (type === "check_in_approved") return "check-circle";
@@ -46,7 +49,9 @@ function toneFor(type: NotificationItem["type"], colors: ReturnType<typeof useCo
   if (type === "check_in_rejected" || type === "payment_discarded") {
     return colors.danger;
   }
-  if (type === "payment_pending") return colors.accent;
+  if (type === "payment_pending" || type === "manual_payout_requested") {
+    return colors.accent;
+  }
   return colors.primary;
 }
 

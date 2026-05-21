@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   StyleSheet,
   Text,
@@ -15,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
+import { LEGAL_URLS } from "@/constants/links";
 import { useColors } from "@/hooks/useColors";
 
 type AuthMode = "signIn" | "signUp";
@@ -666,6 +668,23 @@ export function AuthScreen() {
               )}
             </LinearGradient>
           </TouchableOpacity>
+          <Text style={[styles.legalText, { color: colors.mutedForeground }]}>
+            By entering the record, you agree to{" "}
+            <Text
+              style={[styles.legalLink, { color: colors.primary }]}
+              onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
+            >
+              Terms
+            </Text>
+            {" "}and{" "}
+            <Text
+              style={[styles.legalLink, { color: colors.primary }]}
+              onPress={() => void Linking.openURL(LEGAL_URLS.privacy)}
+            >
+              Privacy
+            </Text>
+            .
+          </Text>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -778,6 +797,15 @@ const styles = StyleSheet.create({
   primaryText: {
     color: "#000",
     fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  legalText: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
+    textAlign: "center",
+  },
+  legalLink: {
     fontFamily: "Inter_700Bold",
   },
 });

@@ -47,6 +47,14 @@ type PendingReviewRow = {
 };
 
 type AdminOverview = {
+  slotPurchases: Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    razorpayOrderId?: string;
+    createdAt: string;
+    user: AdminUser;
+  }>;
   pendingPayments: Array<{
     commitment: {
       id: string;
@@ -80,6 +88,26 @@ type AdminOverview = {
     user: AdminUser;
   }>;
   pendingReviews: PendingReviewRow[];
+  payoutRequests: Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    createdAt: string;
+    note?: string;
+    user: AdminUser;
+  }>;
+  earlyEndSettlements: Array<{
+    id: string;
+    reason?: string;
+    requestedAt: string;
+    commitment: {
+      id: string;
+      name: string;
+      pactAmount: number;
+      currency: string;
+    };
+    user: AdminUser;
+  }>;
   payoutBalances: Array<{
     user: AdminUser;
     currency: string;
@@ -91,7 +119,8 @@ type AdminOverview = {
       | "deposit_confirmed"
       | "approved_refund"
       | "forfeited"
-      | "manual_payout";
+      | "manual_payout"
+      | "charity_transfer";
     amount: number;
     currency: string;
     destination: "user" | "charity" | "razorpay";
@@ -114,13 +143,22 @@ type AdminUser = {
   displayName?: string;
 };
 
-type Tab = "payments" | "today" | "reviews" | "refunds" | "ledger";
+type Tab =
+  | "slots"
+  | "payments"
+  | "today"
+  | "reviews"
+  | "refunds"
+  | "settlements"
+  | "ledger";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "payments", label: "Payments" },
+  { key: "slots", label: "Slots" },
+  { key: "payments", label: "Deposits" },
   { key: "today", label: "Today" },
   { key: "reviews", label: "Review" },
   { key: "refunds", label: "Refunds" },
+  { key: "settlements", label: "Settle" },
   { key: "ledger", label: "Ledger" },
 ];
 
@@ -141,6 +179,8 @@ function ledgerLabel(type: AdminOverview["recentLedger"][number]["type"]) {
       return "Forfeited";
     case "manual_payout":
       return "Refund paid";
+    case "charity_transfer":
+      return "Charity paid";
   }
 }
 
@@ -181,6 +221,9 @@ export default function AdminReviewsScreen() {
   ) as AdminOverview | undefined;
   const confirmPayment = useMutation(api.reviews.confirmPayment);
   const recordManualPayout = useMutation(api.reviews.recordManualPayout);
+  const resolveEarlyEndSettlement = useMutation(
+    api.reviews.resolveEarlyEndSettlement
+  );
   const approve = useMutation(api.reviews.approve);
   const reject = useMutation(api.reviews.reject);
 
@@ -190,6 +233,8 @@ export default function AdminReviewsScreen() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [payoutRefs, setPayoutRefs] = useState<Record<string, string>>({});
   const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>({});
+  const [settlementRefunds, setSettlementRefunds] = useState<Record<string, string>>({});
+  const [settlementForfeits, setSettlementForfeits] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
@@ -244,14 +289,20 @@ export default function AdminReviewsScreen() {
     }
   }
 
-  async function handlePayout(userId: string, currency: string, amount: number) {
-    const key = `${userId}:${currency}`;
+  async function handlePayout(
+    userId: string,
+    currency: string,
+    amount: number,
+    requestId?: string
+  ) {
+    const key = requestId ?? `${userId}:${currency}`;
     setBusyId(key);
     try {
       await recordManualPayout({
         userId: userId as Id<"users">,
         amount,
         currency,
+        requestId: requestId as Id<"manualPayoutRequests"> | undefined,
         reference: payoutRefs[key]?.trim() || undefined,
         note: payoutNotes[key]?.trim() || undefined,
       });
@@ -264,11 +315,36 @@ export default function AdminReviewsScreen() {
     }
   }
 
+  async function handleSettlement(requestId: string) {
+    setBusyId(requestId);
+    try {
+      await resolveEarlyEndSettlement({
+        requestId: requestId as Id<"earlyEndSettlementRequests">,
+        refundAmount: Number(settlementRefunds[requestId] || 0),
+        forfeitAmount: Number(settlementForfeits[requestId] || 0),
+        reference: references[requestId]?.trim() || undefined,
+        note: notes[requestId]?.trim() || undefined,
+      });
+      setSettlementRefunds((prev) => ({ ...prev, [requestId]: "" }));
+      setSettlementForfeits((prev) => ({ ...prev, [requestId]: "" }));
+      setReferences((prev) => ({ ...prev, [requestId]: "" }));
+      setNotes((prev) => ({ ...prev, [requestId]: "" }));
+    } catch (error) {
+      Alert.alert("Settlement failed", error instanceof Error ? error.message : "");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const counts = {
+    slots: overview?.slotPurchases.length ?? 0,
     payments: overview?.pendingPayments.length ?? 0,
     today: overview?.todayCheckIns.length ?? 0,
     reviews: overview?.pendingReviews.length ?? 0,
-    refunds: overview?.payoutBalances.length ?? 0,
+    refunds:
+      (overview?.payoutRequests.length ?? 0) +
+      (overview?.payoutBalances.length ?? 0),
+    settlements: overview?.earlyEndSettlements.length ?? 0,
     ledger: overview?.recentLedger.length ?? 0,
   };
 
@@ -292,7 +368,7 @@ export default function AdminReviewsScreen() {
             Admin ops
           </Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-            Razorpay, proof review, refunds
+            Slots, deposits, proof, manual UPI
           </Text>
         </View>
         <View style={styles.iconBtn} />
@@ -371,13 +447,48 @@ export default function AdminReviewsScreen() {
             })}
           </ScrollView>
 
+          {tab === "slots" && (
+            <View style={styles.section}>
+              {overview!.slotPurchases.length === 0 ? (
+                <EmptyState
+                  icon="key"
+                  title="No pending slot payments"
+                  body="Razorpay-confirmed slots credit automatically."
+                  colors={colors}
+                />
+              ) : (
+                overview!.slotPurchases.map((row) => (
+                  <View
+                    key={row.id}
+                    style={[
+                      styles.card,
+                      { backgroundColor: colors.card, borderColor: colors.border },
+                    ]}
+                  >
+                    <CardTop
+                      icon="key"
+                      title={row.user.label}
+                      meta={row.razorpayOrderId ?? formatDate(row.createdAt.slice(0, 10))}
+                      amount={formatCurrency(row.amount, row.currency)}
+                      amountColor={colors.primary}
+                      colors={colors}
+                    />
+                    <Text style={[styles.proofText, { color: colors.mutedForeground }]}>
+                      Non-refundable pact slot fee. If Razorpay verification did not return, inspect this order manually.
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+
           {tab === "payments" && (
             <View style={styles.section}>
               {overview!.pendingPayments.length === 0 ? (
                 <EmptyState
                   icon="check-circle"
-                  title="No pending payments"
-                  body="New payment requests will appear here."
+                  title="No pending deposits"
+                  body="Draft pacts waiting on deposits will appear here."
                   colors={colors}
                 />
               ) : (
@@ -414,7 +525,7 @@ export default function AdminReviewsScreen() {
                             [commitmentId]: value,
                           }))
                         }
-                        placeholder="Razorpay payment id or note"
+                        placeholder="Deposit payment id or note"
                         placeholderTextColor={colors.mutedForeground}
                         style={[
                           styles.input,
@@ -656,15 +767,95 @@ export default function AdminReviewsScreen() {
 
           {tab === "refunds" && (
             <View style={styles.section}>
-              {overview!.payoutBalances.length === 0 ? (
+              {overview!.payoutRequests.length === 0 &&
+              overview!.payoutBalances.length === 0 ? (
                 <EmptyState
                   icon="send"
                   title="No refund balances"
-                  body="Approved refund credits waiting for Razorpay disbursement will appear here."
+                  body="Approved refund credits waiting for manual UPI payout will appear here."
                   colors={colors}
                 />
               ) : (
-                overview!.payoutBalances.map((row) => {
+                <>
+                  {overview!.payoutRequests.map((row) => {
+                    const key = row.id;
+                    const busy = busyId === key;
+                    return (
+                      <View
+                        key={key}
+                        style={[
+                          styles.card,
+                          { backgroundColor: colors.card, borderColor: colors.border },
+                        ]}
+                      >
+                        <CardTop
+                          icon="send"
+                          title={`${row.user.label} requested payout`}
+                          meta={row.user.phone ?? row.user.email ?? "No contact"}
+                          amount={formatCurrency(row.amount, row.currency)}
+                          amountColor={colors.primary}
+                          colors={colors}
+                        />
+                        <TextInput
+                          value={payoutRefs[key] ?? ""}
+                          onChangeText={(value) =>
+                            setPayoutRefs((prev) => ({ ...prev, [key]: value }))
+                          }
+                          placeholder="UPI transaction id"
+                          placeholderTextColor={colors.mutedForeground}
+                          style={[
+                            styles.input,
+                            {
+                              color: colors.foreground,
+                              backgroundColor: colors.input,
+                              borderColor: colors.border,
+                            },
+                          ]}
+                          editable={!busy}
+                        />
+                        <TextInput
+                          value={payoutNotes[key] ?? ""}
+                          onChangeText={(value) =>
+                            setPayoutNotes((prev) => ({ ...prev, [key]: value }))
+                          }
+                          placeholder="Internal note"
+                          placeholderTextColor={colors.mutedForeground}
+                          style={[
+                            styles.input,
+                            {
+                              color: colors.foreground,
+                              backgroundColor: colors.input,
+                              borderColor: colors.border,
+                            },
+                          ]}
+                          editable={!busy}
+                        />
+                        <TouchableOpacity
+                          onPress={() =>
+                            handlePayout(
+                              row.user.id,
+                              row.currency,
+                              row.amount,
+                              row.id,
+                            )
+                          }
+                          disabled={busy}
+                          style={[
+                            styles.primaryBtn,
+                            {
+                              backgroundColor: colors.primary,
+                              opacity: busy ? 0.5 : 1,
+                            },
+                          ]}
+                          activeOpacity={0.84}
+                        >
+                          <Feather name="check" size={15} color="#000" />
+                          <Text style={styles.primaryBtnText}>Record UPI payout</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                  {overview!.payoutBalances.map((row) => {
                   const key = `${row.user.id}:${row.currency}`;
                   const busy = busyId === key;
                   return (
@@ -688,7 +879,7 @@ export default function AdminReviewsScreen() {
                         onChangeText={(value) =>
                           setPayoutRefs((prev) => ({ ...prev, [key]: value }))
                         }
-                        placeholder="Razorpay refund or disbursement id"
+                        placeholder="UPI transaction id"
                         placeholderTextColor={colors.mutedForeground}
                         style={[
                           styles.input,
@@ -732,7 +923,121 @@ export default function AdminReviewsScreen() {
                         activeOpacity={0.84}
                       >
                         <Feather name="check" size={15} color="#000" />
-                        <Text style={styles.primaryBtnText}>Mark refunded</Text>
+                        <Text style={styles.primaryBtnText}>Record UPI payout</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+                </>
+              )}
+            </View>
+          )}
+
+          {tab === "settlements" && (
+            <View style={styles.section}>
+              {overview!.earlyEndSettlements.length === 0 ? (
+                <EmptyState
+                  icon="slash"
+                  title="No early-end settlements"
+                  body="Pacts ended early will wait here for refund and forfeit decisions."
+                  colors={colors}
+                />
+              ) : (
+                overview!.earlyEndSettlements.map((row) => {
+                  const key = row.id;
+                  const busy = busyId === key;
+                  return (
+                    <View
+                      key={key}
+                      style={[
+                        styles.card,
+                        { backgroundColor: colors.card, borderColor: colors.border },
+                      ]}
+                    >
+                      <CardTop
+                        icon="slash"
+                        title={row.commitment.name}
+                        meta={`${row.user.label} · deposit ${formatCurrency(
+                          row.commitment.pactAmount,
+                          row.commitment.currency,
+                        )}`}
+                        amount="Review"
+                        amountColor={colors.accent}
+                        colors={colors}
+                      />
+                      <TextInput
+                        value={settlementRefunds[key] ?? ""}
+                        onChangeText={(value) =>
+                          setSettlementRefunds((prev) => ({
+                            ...prev,
+                            [key]: value.replace(/[^0-9.]/g, ""),
+                          }))
+                        }
+                        placeholder="Refund payable"
+                        placeholderTextColor={colors.mutedForeground}
+                        keyboardType="decimal-pad"
+                        style={[
+                          styles.input,
+                          {
+                            color: colors.foreground,
+                            backgroundColor: colors.input,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                        editable={!busy}
+                      />
+                      <TextInput
+                        value={settlementForfeits[key] ?? ""}
+                        onChangeText={(value) =>
+                          setSettlementForfeits((prev) => ({
+                            ...prev,
+                            [key]: value.replace(/[^0-9.]/g, ""),
+                          }))
+                        }
+                        placeholder="Forfeit payable to charity"
+                        placeholderTextColor={colors.mutedForeground}
+                        keyboardType="decimal-pad"
+                        style={[
+                          styles.input,
+                          {
+                            color: colors.foreground,
+                            backgroundColor: colors.input,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                        editable={!busy}
+                      />
+                      <TextInput
+                        value={notes[key] ?? ""}
+                        onChangeText={(value) =>
+                          setNotes((prev) => ({ ...prev, [key]: value }))
+                        }
+                        placeholder="Settlement note"
+                        placeholderTextColor={colors.mutedForeground}
+                        style={[
+                          styles.input,
+                          {
+                            color: colors.foreground,
+                            backgroundColor: colors.input,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                        editable={!busy}
+                      />
+                      <TouchableOpacity
+                        onPress={() => handleSettlement(key)}
+                        disabled={busy}
+                        style={[
+                          styles.primaryBtn,
+                          {
+                            backgroundColor: colors.primary,
+                            opacity: busy ? 0.5 : 1,
+                          },
+                        ]}
+                        activeOpacity={0.84}
+                      >
+                        <Feather name="check" size={15} color="#000" />
+                        <Text style={styles.primaryBtnText}>Resolve settlement</Text>
                       </TouchableOpacity>
                     </View>
                   );

@@ -100,7 +100,7 @@ export default function CommitmentsScreen() {
                 ]}
               >
                 {t === "pending"
-                  ? `Unfunded (${pending.length})`
+                  ? `Drafts (${pending.length})`
                   : t === "active"
                   ? `Live (${active.length})`
                   : `Closed (${past.length})`}
@@ -118,7 +118,7 @@ export default function CommitmentsScreen() {
             />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               {tab === "pending"
-                ? "No unfunded pacts"
+                ? "No draft pacts"
                 : tab === "active"
                 ? firstName
                   ? `Ready to commit, ${firstName}?`
@@ -127,7 +127,7 @@ export default function CommitmentsScreen() {
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {tab === "pending"
-                ? "Pacts waiting for locked money will appear here."
+                ? "Pacts waiting for a slot and deposit will appear here."
                 : tab === "active"
                 ? "Make a pact you cannot casually ignore."
                 : "Finished records will appear here."}

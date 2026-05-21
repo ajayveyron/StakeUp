@@ -188,7 +188,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
           <Text
             style={[styles.progressText, { color: colors.mutedForeground }]}
           >
-            {pendingPayment ? "Money not locked" : `${verified}/${totalDays}`}
+            {pendingPayment ? "Not started" : `${verified}/${totalDays}`}
           </Text>
         </View>
 
@@ -214,7 +214,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
               >
-                Refund/day
+                Credit/day
               </Text>
             </View>
             <View
@@ -231,7 +231,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
                   },
                 ]}
               >
-                {pendingPayment ? "Locked?" : expired ? "Closed" : `${daysLeft}d left`}
+                {pendingPayment ? "Draft" : expired ? "Closed" : `${daysLeft}d left`}
               </Text>
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
