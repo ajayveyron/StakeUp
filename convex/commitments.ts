@@ -4,7 +4,11 @@ import type { Doc } from "./_generated/dataModel";
 import { mutation, query, type QueryCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { daysBetween } from "./lib/dates";
-import { LEGACY_PLATFORM_FEE_AMOUNT } from "./lib/payments";
+import {
+  LEGACY_PLATFORM_FEE_AMOUNT,
+  MAX_PACT_AMOUNT_INR,
+  MIN_PACT_AMOUNT_INR,
+} from "./lib/payments";
 
 const goalType = v.union(v.literal("content"), v.literal("workout"));
 const forfeitDestination = v.union(
@@ -17,7 +21,7 @@ const forfeitDestination = v.union(
 
 async function serializeCommitment(
   ctx: QueryCtx,
-  commitment: Doc<"commitments">
+  commitment: Doc<"commitments">,
 ) {
   const checkIns = await ctx.db
     .query("checkIns")
@@ -49,22 +53,31 @@ async function serializeCommitment(
     earlyEndSettlementStatus: commitment.earlyEndSettlementStatus,
     createdAt: commitment.createdAt,
     updatedAt: commitment.updatedAt,
-    checkIns: checkIns
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map((checkIn) => ({
-        id: checkIn._id,
-        date: checkIn.date,
-        proofUrl: checkIn.proofUrl,
-        proofPrompt: checkIn.proofPrompt,
-        submissionSignature: checkIn.submissionSignature,
-        submissionStatement: checkIn.submissionStatement,
-        stepCount: checkIn.stepCount,
-        status: checkIn.status,
-        verified: checkIn.verified,
-        rejectionReason: checkIn.rejectionReason,
-        reviewedAt: checkIn.reviewedAt,
-        submittedAt: checkIn.submittedAt ?? checkIn.createdAt,
-      })),
+    checkIns: await Promise.all(
+      checkIns
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map(async (checkIn) => ({
+          id: checkIn._id,
+          date: checkIn.date,
+          proofUrl:
+            checkIn.proofUrl ??
+            (checkIn.proofStorageId
+              ? await ctx.storage.getUrl(checkIn.proofStorageId)
+              : undefined) ??
+            undefined,
+          proofStorageId: checkIn.proofStorageId,
+          proofPrompt: checkIn.proofPrompt,
+          proofLocation: checkIn.proofLocation,
+          submissionSignature: checkIn.submissionSignature,
+          submissionStatement: checkIn.submissionStatement,
+          stepCount: checkIn.stepCount,
+          status: checkIn.status,
+          verified: checkIn.verified,
+          rejectionReason: checkIn.rejectionReason,
+          reviewedAt: checkIn.reviewedAt,
+          submittedAt: checkIn.submittedAt ?? checkIn.createdAt,
+        })),
+    ),
   };
 }
 
@@ -81,7 +94,7 @@ export const listMine = query({
       commitments
         .filter((commitment) => commitment.status !== "deleted")
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .map((commitment) => serializeCommitment(ctx, commitment))
+        .map((commitment) => serializeCommitment(ctx, commitment)),
     );
   },
 });
@@ -129,6 +142,15 @@ export const create = mutation({
     }
     if (args.pactAmount <= 0) {
       throw new Error("Pact amount must be greater than zero");
+    }
+    if (
+      args.currency === "INR" &&
+      (args.pactAmount < MIN_PACT_AMOUNT_INR ||
+        args.pactAmount > MAX_PACT_AMOUNT_INR)
+    ) {
+      throw new Error(
+        `Pact amount must be between INR ${MIN_PACT_AMOUNT_INR} and INR ${MAX_PACT_AMOUNT_INR}`,
+      );
     }
     if (args.startDate > args.endDate) {
       throw new Error("Start date must be before end date");

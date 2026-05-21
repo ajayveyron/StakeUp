@@ -5,27 +5,67 @@ type ScheduleCommitment = Pick<
   "daysOfWeek" | "startDate" | "endDate"
 >;
 
-function dateStrInTimeZone(date: Date, timeZone: string): string {
+type DateTimeParts = {
+  year: string;
+  month: string;
+  day: string;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+function dateTimePartsInTimeZone(date: Date, timeZone: string): DateTimeParts {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
   }).formatToParts(date);
 
   const year = parts.find((part) => part.type === "year")?.value;
   const month = parts.find((part) => part.type === "month")?.value;
   const day = parts.find((part) => part.type === "day")?.value;
+  const hour = parts.find((part) => part.type === "hour")?.value;
+  const minute = parts.find((part) => part.type === "minute")?.value;
+  const second = parts.find((part) => part.type === "second")?.value;
 
-  if (!year || !month || !day) {
+  if (!year || !month || !day || !hour || !minute || !second) {
     throw new Error("Could not format date");
   }
 
-  return `${year}-${month}-${day}`;
+  return {
+    year,
+    month,
+    day,
+    hour: Number(hour),
+    minute: Number(minute),
+    second: Number(second),
+  };
+}
+
+function dateStrInTimeZone(date: Date, timeZone: string): string {
+  const parts = dateTimePartsInTimeZone(date, timeZone);
+  return `${parts.year}-${parts.month}-${parts.day}`;
 }
 
 export function todayInTimeZone(timeZone: string): string {
   return dateStrInTimeZone(new Date(), timeZone);
+}
+
+export function isAfterDailyProofDeadline(
+  date: string,
+  timeZone: string,
+  now = new Date(),
+): boolean {
+  const parts = dateTimePartsInTimeZone(now, timeZone);
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  if (date < today) return true;
+  if (date > today) return false;
+  return parts.hour > 23 || (parts.hour === 23 && parts.minute >= 59);
 }
 
 export function addDays(dateStr: string, days: number): string {
@@ -64,7 +104,9 @@ export function getScheduledDates(c: ScheduleCommitment): string[] {
   return result;
 }
 
-export function getRefundPerDay(c: ScheduleCommitment & { pactAmount: number }) {
+export function getRefundPerDay(
+  c: ScheduleCommitment & { pactAmount: number },
+) {
   const total = getScheduledDates(c).length;
   if (total <= 0) return 0;
   return Math.round((c.pactAmount / total) * 100) / 100;

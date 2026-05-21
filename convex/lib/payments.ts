@@ -2,6 +2,8 @@ import type { Doc } from "../_generated/dataModel";
 
 export const PACT_SLOT_AMOUNT = 249;
 export const LEGACY_PLATFORM_FEE_AMOUNT = 0;
+export const MIN_PACT_AMOUNT_INR = 500;
+export const MAX_PACT_AMOUNT_INR = 3000;
 
 export function commitmentPlatformFee(commitment: Doc<"commitments">) {
   return commitment.platformFeeAmount ?? LEGACY_PLATFORM_FEE_AMOUNT;

@@ -43,6 +43,38 @@ function slackJson(payload: unknown) {
   });
 }
 
+function slackAdminUserIds() {
+  return new Set(
+    (
+      process.env.SLACK_ADMIN_USER_IDS ??
+      process.env.SLACK_ALLOWED_ADMIN_USER_IDS ??
+      ""
+    )
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+  );
+}
+
+function isAuthorizedSlackAdmin(user: SlackUser | undefined) {
+  if (!user?.id) return false;
+  const allowed = slackAdminUserIds();
+  return allowed.size > 0 && allowed.has(user.id);
+}
+
+function unauthorizedSlackResponse(payload: SlackPayload) {
+  if (payload.type === "view_submission") {
+    return slackJson({
+      response_action: "errors",
+      errors: {
+        rejection_reason_block:
+          "This Slack account is not allowed to review Pact Raven proof.",
+      },
+    });
+  }
+  return new Response("Forbidden", { status: 403 });
+}
+
 function toHex(buffer: ArrayBuffer) {
   return [...new Uint8Array(buffer)]
     .map((byte) => byte.toString(16).padStart(2, "0"))
@@ -253,6 +285,9 @@ http.route({
     if (!payloadParam) return new Response("ok");
 
     const payload = JSON.parse(payloadParam) as SlackPayload;
+    if (!isAuthorizedSlackAdmin(payload.user)) {
+      return unauthorizedSlackResponse(payload);
+    }
 
     if (payload.type === "block_actions") {
       const action = payload.actions?.[0];

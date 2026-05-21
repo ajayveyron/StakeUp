@@ -45,6 +45,16 @@ type CheckoutOrderResult = {
 
 type MutationOk = { ok: true };
 
+function normalizeUpiId(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function assertValidUpiId(upiId: string) {
+  if (!/^[a-z0-9.\-_]{2,256}@[a-z0-9.\-_]{2,64}$/i.test(upiId)) {
+    throw new Error("Enter a valid UPI ID before requesting payout");
+  }
+}
+
 function requiredEnv(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set`);
@@ -310,10 +320,15 @@ export const requestManualPayout = mutation({
   args: {
     amount: v.number(),
     currency: v.optional(v.string()),
+    upiId: v.string(),
+    payeeName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
-    const currency = args.currency ?? "INR";
+    const currency = (args.currency ?? "INR").trim().toUpperCase();
+    const upiId = normalizeUpiId(args.upiId);
+    const payeeName = args.payeeName?.trim() || undefined;
+    assertValidUpiId(upiId);
     if (args.amount <= 0) throw new Error("Refund amount must be positive");
 
     const existing = await ctx.db
@@ -350,7 +365,10 @@ export const requestManualPayout = mutation({
       userId: user._id,
       amount,
       currency,
+      upiId,
+      payeeName,
       status: "pending",
+      note: payeeName ? `Payee: ${payeeName}` : undefined,
       createdAt: now,
       updatedAt: now,
     });

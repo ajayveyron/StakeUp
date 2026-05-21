@@ -24,10 +24,7 @@ import {
   notifyManualPayoutRecorded,
   notifyPaymentConfirmed,
 } from "./lib/notifications";
-import {
-  approveCheckInForReview,
-  rejectCheckInForReview,
-} from "./lib/review";
+import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
 function userLabel(user: Doc<"users"> | null) {
   return user?.email ?? user?.displayName ?? "Unknown user";
@@ -75,7 +72,8 @@ async function consumeSlotForCommitment(
 
 async function payoutBalanceByCurrency(
   ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">
+  userId: Id<"users">,
+  options: { reservePendingRequests?: boolean } = {},
 ) {
   const entries = await ctx.db
     .query("walletLedgerEntries")
@@ -89,6 +87,19 @@ async function payoutBalanceByCurrency(
       balances.set(entry.currency, current + entry.amount);
     } else if (entry.type === "manual_payout") {
       balances.set(entry.currency, current - entry.amount);
+    }
+  }
+
+  if (options.reservePendingRequests) {
+    const pendingRequests = await ctx.db
+      .query("manualPayoutRequests")
+      .withIndex("by_user_status", (q) =>
+        q.eq("userId", userId).eq("status", "pending"),
+      )
+      .collect();
+    for (const request of pendingRequests) {
+      const current = balances.get(request.currency) ?? 0;
+      balances.set(request.currency, current - request.amount);
     }
   }
 
@@ -115,8 +126,15 @@ async function pendingReviewRows(ctx: QueryCtx) {
       checkIn: {
         id: checkIn._id,
         date: checkIn.date,
-        proofUrl: checkIn.proofUrl,
+        proofUrl:
+          checkIn.proofUrl ??
+          (checkIn.proofStorageId
+            ? await ctx.storage.getUrl(checkIn.proofStorageId)
+            : undefined) ??
+          undefined,
+        proofStorageId: checkIn.proofStorageId,
         proofPrompt: checkIn.proofPrompt,
+        proofLocation: checkIn.proofLocation,
         submissionSignature: checkIn.submissionSignature,
         submissionStatement: checkIn.submissionStatement,
         stepCount: checkIn.stepCount,
@@ -140,7 +158,7 @@ async function pendingReviewRows(ctx: QueryCtx) {
   }
 
   return rows.sort((a, b) =>
-    a.checkIn.submittedAt.localeCompare(b.checkIn.submittedAt)
+    a.checkIn.submittedAt.localeCompare(b.checkIn.submittedAt),
   );
 }
 
@@ -223,7 +241,7 @@ export const adminOverview = query({
       const checkIn = await ctx.db
         .query("checkIns")
         .withIndex("by_commitment_date", (q) =>
-          q.eq("commitmentId", commitment._id).eq("date", today)
+          q.eq("commitmentId", commitment._id).eq("date", today),
         )
         .unique();
 
@@ -232,8 +250,15 @@ export const adminOverview = query({
         status: checkIn?.status ?? "due",
         submittedAt: checkIn?.submittedAt,
         checkInId: checkIn?._id,
-        proofUrl: checkIn?.proofUrl,
+        proofUrl:
+          checkIn?.proofUrl ??
+          (checkIn?.proofStorageId
+            ? await ctx.storage.getUrl(checkIn.proofStorageId)
+            : undefined) ??
+          undefined,
+        proofStorageId: checkIn?.proofStorageId,
         proofPrompt: checkIn?.proofPrompt,
+        proofLocation: checkIn?.proofLocation,
         submissionSignature: checkIn?.submissionSignature,
         submissionStatement: checkIn?.submissionStatement,
         stepCount: checkIn?.stepCount,
@@ -260,7 +285,9 @@ export const adminOverview = query({
     const users = await ctx.db.query("users").take(300);
     const payoutBalances = [];
     for (const user of users) {
-      const balances = await payoutBalanceByCurrency(ctx, user._id);
+      const balances = await payoutBalanceByCurrency(ctx, user._id, {
+        reservePendingRequests: true,
+      });
       for (const balance of balances) {
         payoutBalances.push({
           user: {
@@ -286,6 +313,8 @@ export const adminOverview = query({
         id: request._id,
         amount: request.amount,
         currency: request.currency,
+        upiId: request.upiId,
+        payeeName: request.payeeName,
         createdAt: request.createdAt,
         note: request.note,
         user: {
@@ -364,20 +393,20 @@ export const adminOverview = query({
 
     return {
       slotPurchases: slotPurchases.sort((a, b) =>
-        a.createdAt.localeCompare(b.createdAt)
+        a.createdAt.localeCompare(b.createdAt),
       ),
       pendingPayments: pendingPayments.sort((a, b) =>
-        a.commitment.createdAt.localeCompare(b.commitment.createdAt)
+        a.commitment.createdAt.localeCompare(b.commitment.createdAt),
       ),
       todayCheckIns: todayCheckIns.sort((a, b) =>
-        a.user.label.localeCompare(b.user.label)
+        a.user.label.localeCompare(b.user.label),
       ),
       pendingReviews,
       payoutRequests: payoutRequests.sort((a, b) =>
-        a.createdAt.localeCompare(b.createdAt)
+        a.createdAt.localeCompare(b.createdAt),
       ),
       earlyEndSettlements: earlyEndSettlements.sort((a, b) =>
-        a.requestedAt.localeCompare(b.requestedAt)
+        a.requestedAt.localeCompare(b.requestedAt),
       ),
       payoutBalances: payoutBalances.sort((a, b) => b.amount - a.amount),
       recentLedger,
@@ -416,7 +445,7 @@ export const confirmPayment = mutation({
     const shiftedEndDate = startsBeforeConfirmation
       ? addDays(
           commitment.endDate,
-          daysBetween(commitment.startDate, today) - 1
+          daysBetween(commitment.startDate, today) - 1,
         )
       : commitment.endDate;
 
@@ -470,41 +499,63 @@ export const recordManualPayout = mutation({
   handler: async (ctx, args) => {
     const reviewer = await requireAdmin(ctx);
     if (args.amount <= 0) throw new Error("Payout amount must be positive");
+    const amount = Math.round(args.amount * 100) / 100;
+    const currency = args.currency.trim().toUpperCase();
 
-    const balances = await payoutBalanceByCurrency(ctx, args.userId);
+    const request = args.requestId ? await ctx.db.get(args.requestId) : null;
+    if (args.requestId) {
+      if (!request || request.status !== "pending") {
+        throw new Error("Pending payout request not found");
+      }
+      if (request.userId !== args.userId) {
+        throw new Error("Payout request does not belong to this user");
+      }
+      if (request.currency !== currency) {
+        throw new Error("Payout request currency does not match");
+      }
+      if (Math.abs(request.amount - amount) > 0.01) {
+        throw new Error("Payout amount must match the request");
+      }
+    }
+
+    const balances = await payoutBalanceByCurrency(ctx, args.userId, {
+      reservePendingRequests: !request,
+    });
     const balance =
-      balances.find((item) => item.currency === args.currency)?.amount ?? 0;
-    if (args.amount > balance + 0.01) {
+      balances.find((item) => item.currency === currency)?.amount ?? 0;
+    if (amount > balance + 0.01) {
       throw new Error("Payout amount exceeds available balance");
     }
 
     await insertManualPayoutLedgerEntry(ctx, {
       userId: args.userId,
-      amount: Math.round(args.amount * 100) / 100,
-      currency: args.currency,
+      amount,
+      currency,
       externalReference: args.reference?.trim() || undefined,
-      note: args.note?.trim() || undefined,
+      note:
+        args.note?.trim() ||
+        (request?.upiId
+          ? `Manual UPI payout to ${request.payeeName ? `${request.payeeName} ` : ""}${request.upiId}`
+          : undefined),
       createdBy: reviewer._id,
     });
 
-    if (args.requestId) {
-      const request = await ctx.db.get(args.requestId);
-      if (request && request.status === "pending") {
-        await ctx.db.patch(request._id, {
-          status: "processed",
-          externalReference: args.reference?.trim() || undefined,
-          note: args.note?.trim() || request.note,
-          processedAt: new Date().toISOString(),
-          processedBy: reviewer._id,
-          updatedAt: new Date().toISOString(),
-        });
-      }
+    if (request) {
+      const now = new Date().toISOString();
+      await ctx.db.patch(request._id, {
+        status: "processed",
+        externalReference: args.reference?.trim() || undefined,
+        note: args.note?.trim() || request.note,
+        processedAt: now,
+        processedBy: reviewer._id,
+        updatedAt: now,
+      });
     }
 
     await notifyManualPayoutRecorded(ctx, {
       user: await ctx.db.get(args.userId),
-      amount: Math.round(args.amount * 100) / 100,
-      currency: args.currency,
+      amount,
+      currency,
       note: args.note?.trim() || undefined,
     });
 
@@ -535,9 +586,23 @@ export const resolveEarlyEndSettlement = mutation({
     }
     const commitment = await ctx.db.get(request.commitmentId);
     if (!commitment) throw new Error("Commitment not found");
-    const total = Math.round((args.refundAmount + args.forfeitAmount) * 100) / 100;
-    if (total > commitment.pactAmount + 0.01) {
-      throw new Error("Settlement exceeds pact deposit");
+    const total =
+      Math.round((args.refundAmount + args.forfeitAmount) * 100) / 100;
+    const existingLedger = await ctx.db
+      .query("walletLedgerEntries")
+      .withIndex("by_commitment", (q) => q.eq("commitmentId", commitment._id))
+      .collect();
+    const alreadyResolved = existingLedger.reduce((sum, entry) => {
+      if (entry.type === "approved_refund" || entry.type === "forfeited") {
+        return sum + entry.amount;
+      }
+      return sum;
+    }, 0);
+    const remainingDeposit =
+      Math.round(Math.max(0, commitment.pactAmount - alreadyResolved) * 100) /
+      100;
+    if (total > remainingDeposit + 0.01) {
+      throw new Error("Settlement exceeds remaining pact deposit");
     }
 
     const now = new Date().toISOString();

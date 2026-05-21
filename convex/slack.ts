@@ -26,6 +26,7 @@ type ReviewNotificationData = {
   date: string;
   proofUrl?: string;
   proofPrompt?: string;
+  proofLocation?: ProofLocation;
   submissionStatement?: string;
   submittedAt: string;
   userEmail?: string;
@@ -40,6 +41,13 @@ type ReviewNotificationData = {
   pactAmount: number;
   currency: string;
   refundPerDay: number;
+};
+
+type ProofLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  capturedAt: string;
 };
 
 type PaymentNotificationData = {
@@ -95,10 +103,17 @@ function goalLabel(args: {
     : `${args.targetPerDay.toLocaleString("en-IN")} content proof/day`;
 }
 
-function forfeitLabel(args: {
-  forfeitDestination: CharityDestination;
-}) {
+function forfeitLabel(args: { forfeitDestination: CharityDestination }) {
   return charityName(args.forfeitDestination);
+}
+
+function locationLabel(location?: ProofLocation) {
+  if (!location) return undefined;
+  const accuracy =
+    typeof location.accuracy === "number"
+      ? ` ±${Math.round(location.accuracy)}m`
+      : "";
+  return `Location: ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}${accuracy}\nMap: https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
 }
 
 async function slotBalance(ctx: any, userId: Id<"users">) {
@@ -177,8 +192,14 @@ export const getReviewNotificationData = internalQuery({
     return {
       checkInId: checkIn._id,
       date: checkIn.date,
-      proofUrl: checkIn.proofUrl,
+      proofUrl:
+        checkIn.proofUrl ??
+        (checkIn.proofStorageId
+          ? await ctx.storage.getUrl(checkIn.proofStorageId)
+          : undefined) ??
+        undefined,
       proofPrompt: checkIn.proofPrompt,
+      proofLocation: checkIn.proofLocation,
       submissionStatement: checkIn.submissionStatement,
       submittedAt: checkIn.submittedAt ?? checkIn.createdAt,
       userEmail: user.email,
@@ -240,7 +261,11 @@ export const sendReviewNotification = internalAction({
     const proofText =
       data.goalType === "content"
         ? (data.proofUrl ?? "No URL")
-        : [data.proofUrl ?? "No proof URL", data.proofPrompt ? `Prompt: ${data.proofPrompt}` : undefined]
+        : [
+            data.proofUrl ?? "No camera upload",
+            data.proofPrompt ? `Prompt: ${data.proofPrompt}` : undefined,
+            locationLabel(data.proofLocation),
+          ]
             .filter(Boolean)
             .join("\n");
     const signedStatement = data.submissionStatement
