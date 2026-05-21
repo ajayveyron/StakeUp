@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -22,7 +23,7 @@ const proofTypes = [
     title: "Workout pact",
     goalType: "workout",
     cta: "Start workout pact",
-    body: "Train on the days you promised. Submit fresh proof with the daily pose or gesture prompt before your deadline.",
+    body: "Train on the days you promised. Submit fresh camera proof with location and the daily pose prompt before your deadline.",
   },
   {
     icon: Link2,
@@ -72,16 +73,36 @@ const moneyRules = [
 
 const faqs = [
   {
-    title: "Can I draft before paying?",
-    body: "Yes. Draft the pact first. Your slot is consumed only when the pact starts after deposit confirmation.",
+    title: "What does Rs 249 pay for?",
+    body: "Rs 249 buys one non-refundable pact slot. It covers the accountability record, manual review, reminders, operations, and support for one pact.",
   },
   {
-    title: "Can I end early?",
-    body: "Yes, but the used slot remains used. The remaining deposit goes to manual settlement review.",
+    title: "Can I draft before paying?",
+    body: "Yes. Draft the pact first. The slot is consumed only when the pact starts after deposit confirmation.",
+  },
+  {
+    title: "Is the deposit a prize pool?",
+    body: "No. The deposit is separate from the slot fee and sits behind your own pact rules. Users do not win another user's money.",
+  },
+  {
+    title: "What proof counts?",
+    body: "Workout pacts need fresh camera proof with location and the daily prompt. Content pacts need the published public link before the deadline. The Raven reviews the record manually.",
+  },
+  {
+    title: "What if proof is late or rejected?",
+    body: "That day is marked missed or rejected. The matching deposit amount is forfeited to the charity selected before the pact started.",
   },
   {
     title: "When do I get money back?",
-    body: "Approved proof creates refund credit. You request payout in the app, then admin pays through UPI and records the reference.",
+    body: "Approved proof creates refund credit. Request payout in the app, then admin pays through UPI and records the reference.",
+  },
+  {
+    title: "Can I end early?",
+    body: "Yes, but the used slot remains used. The remaining deposit goes to manual settlement review under the payment policy.",
+  },
+  {
+    title: "Where does forfeited money go?",
+    body: "Forfeited deposit amounts are recorded for the chosen charity. They are not Pact Raven revenue.",
   },
 ];
 
@@ -90,6 +111,44 @@ const appUrl = "https://app.pactraven.com";
 const appCreateUrl = `${appUrl}/commitment/new`;
 const pactIntentUrl = (goalType: string) =>
   `${appCreateUrl}?type=${goalType}&step=name`;
+const siteOrigin = "https://pactraven.com";
+
+const routeMeta: Record<string, { title: string; description: string }> = {
+  "/": {
+    title: "Pact Raven - Workout and content pacts",
+    description:
+      "Create a workout or content pact, lock a deposit behind the rules, submit proof, and earn refund credit when proof is approved.",
+  },
+  "/terms": {
+    title: "Terms of Use - Pact Raven",
+    description:
+      "Terms for Pact Raven pact slots, deposits, proof review, forfeits, manual payouts, limits, and user responsibilities.",
+  },
+  "/refund-cancellation": {
+    title: "Payment, Cancellation, Refund And Delivery Policy - Pact Raven",
+    description:
+      "Payment, cancellation, refund, delivery, manual UPI payout, pact slot, deposit, proof, and charity forfeit rules for Pact Raven.",
+  },
+  "/privacy": {
+    title: "Privacy Policy - Pact Raven",
+    description:
+      "How Pact Raven collects and uses account, pact, payment, proof, payout, notification, support, and operations data.",
+  },
+  "/proof-rules": {
+    title: "Proof Rules - Pact Raven",
+    description:
+      "Workout and content proof rules for Pact Raven pacts, including deadlines, rejection reasons, and review outcomes.",
+  },
+  "/support": {
+    title: "Support - Pact Raven",
+    description:
+      "Support contacts and response expectations for Pact Raven payment, payout, proof, account, legal, privacy, and grievance requests.",
+  },
+  "/404": {
+    title: "Page Not Found - Pact Raven",
+    description: "The requested Pact Raven page was not found.",
+  },
+};
 
 const legalPages = {
   "/terms": {
@@ -236,9 +295,9 @@ const legalPages = {
         title: "Information We Collect",
         body: [
           "Account data such as name, email, phone number, sign-in identifiers, and profile details.",
-          "Pact data such as goals, schedule, deadline, deposit amount, selected charity, proof prompts, proof submissions, review decisions, payout requests, and support notes.",
+          "Pact data such as goals, schedule, deadline, deposit amount, selected charity, proof prompts, proof submissions, workout proof location, review decisions, payout requests, and support notes.",
           "Payment metadata such as Razorpay order IDs, payment IDs, payment purpose, amount, currency, status, and timestamps. Pact Raven should not store card numbers, UPI PINs, CVV, or payment instrument credentials.",
-          "Manual payout data such as UPI reference IDs, payout notes, amount, currency, and payout status.",
+          "Manual payout data such as UPI IDs, payee names, UPI reference IDs, payout notes, amount, currency, and payout status.",
         ],
       },
       {
@@ -275,6 +334,74 @@ const legalPages = {
       },
     ],
   },
+  "/proof-rules": {
+    title: "Proof Rules",
+    kicker: "Proof review",
+    intro:
+      "These rules explain what proof should show, when it must be submitted, and why proof can be approved or rejected.",
+    sections: [
+      {
+        title: "Deadline",
+        body: [
+          "Proof must be submitted on the scheduled date before the daily deadline shown in the app.",
+          "Late proof may be rejected even if the activity happened. The record depends on timely proof, not memory.",
+        ],
+      },
+      {
+        title: "Workout Proof",
+        body: [
+          "Workout proof must be a fresh in-app camera capture with captured device location and the daily prompt shown in the app.",
+          "The person, pose, equipment, place, or gesture requested by the prompt should be visible enough for manual review.",
+          "Workout proof links, gallery uploads, old photos, edited proof, vague proof, copied proof, missing location, or proof from another person may be rejected.",
+        ],
+      },
+      {
+        title: "Content Proof",
+        body: [
+          "Content pacts require a public post link matching the pact rules.",
+          "Private, deleted, inaccessible, reposted, or unrelated content may be rejected.",
+          "The user is responsible for keeping the post accessible until review is complete.",
+        ],
+      },
+      {
+        title: "Review Outcome",
+        body: [
+          "Approved proof creates refund credit according to the pact's refund schedule.",
+          "Missed, late, unclear, private, deleted, or rejected proof may forfeit that day's deposit credit to the selected charity.",
+        ],
+      },
+    ],
+  },
+  "/support": {
+    title: "Support",
+    kicker: "Contact",
+    intro:
+      "Use these contacts for account, payment, payout, proof, legal, privacy, and grievance requests.",
+    sections: [
+      {
+        title: "Support Contacts",
+        body: [
+          "Support email: support@pactraven.com.",
+          "Legal and policy email: legal@pactraven.com.",
+          "Privacy and grievance email: grievance@pactraven.com.",
+        ],
+      },
+      {
+        title: "Response Window",
+        body: [
+          "Payment, payout, proof, and account support requests should receive an initial response within 3 business days.",
+          "Payouts may be processed in batches and depend on correct UPI details, bank/UPI availability, fraud checks, disputes, and manual review load.",
+        ],
+      },
+      {
+        title: "Launch Details",
+        body: [
+          "Legal entity, registered address, GSTIN, and phone number must be inserted before paid public launch.",
+          "Users should not submit sensitive proof beyond what the pact requires.",
+        ],
+      },
+    ],
+  },
 } as const;
 
 type LegalPath = keyof typeof legalPages;
@@ -283,10 +410,46 @@ function isLegalPath(pathname: string): pathname is LegalPath {
   return pathname in legalPages;
 }
 
+function normalizedPathname(pathname: string) {
+  const withoutHtml = pathname.endsWith(".html")
+    ? pathname.slice(0, -".html".length)
+    : pathname;
+  return withoutHtml.replace(/\/$/, "") || "/";
+}
+
 function App() {
-  const pathname = window.location.pathname;
+  const pathname = normalizedPathname(window.location.pathname);
+  useEffect(() => {
+    const meta = routeMeta[pathname] ?? {
+      title: "Page Not Found - Pact Raven",
+      description: "The requested Pact Raven page was not found.",
+    };
+    document.title = meta.title;
+    document
+      .querySelector('meta[name="description"]')
+      ?.setAttribute("content", meta.description);
+    document
+      .querySelector('meta[property="og:title"]')
+      ?.setAttribute("content", meta.title);
+    document
+      .querySelector('meta[property="og:description"]')
+      ?.setAttribute("content", meta.description);
+    document
+      .querySelector('link[rel="canonical"]')
+      ?.setAttribute(
+        "href",
+        `${siteOrigin}${pathname === "/" ? "" : pathname}`,
+      );
+  }, [pathname]);
+
   if (isLegalPath(pathname)) {
     return <LegalPage path={pathname} />;
+  }
+  if (pathname === "/404") {
+    return <NotFoundPage />;
+  }
+  if (pathname !== "/") {
+    return <NotFoundPage />;
   }
 
   return (
@@ -301,6 +464,8 @@ function App() {
             <a href="#pacts">Choose pact</a>
             <a href="#money">Money rules</a>
             <a href="#charity">Charity</a>
+            <a href="#faq">FAQ</a>
+            <a href="/proof-rules">Proof rules</a>
           </div>
         </nav>
 
@@ -314,8 +479,8 @@ function App() {
             <h1>Make a pact you cannot casually break.</h1>
             <p className="lede">
               Choose a 30-day challenge, buy one pact slot, lock a refundable
-              deposit, and submit proof. Successful days unlock refund credit. Missed
-              days forfeit to the charity you chose.
+              deposit, and submit proof. Successful days unlock refund credit.
+              Missed days forfeit to the charity you chose.
             </p>
             <div className="hero-actions">
               <a
@@ -428,10 +593,10 @@ function App() {
         </div>
       </section>
 
-      <section className="policy-band" id="questions">
+      <section className="policy-band" id="faq">
         <div className="section-heading">
-          <p className="stamp">Before you pay</p>
-          <h2>Know the slot, deposit, proof, and payout rules.</h2>
+          <p className="stamp">FAQ</p>
+          <h2>Questions before you sign the pact.</h2>
         </div>
         <div className="faq-grid">
           {faqs.map((faq) => (
@@ -461,6 +626,8 @@ function App() {
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
           <a href="/refund-cancellation">Payments and refunds</a>
+          <a href="/proof-rules">Proof rules</a>
+          <a href="/support">Support</a>
         </nav>
       </footer>
     </main>
@@ -513,8 +680,33 @@ function LegalPage({ path }: { path: LegalPath }) {
           <a href="/terms">Terms</a>
           <a href="/privacy">Privacy</a>
           <a href="/refund-cancellation">Payments and refunds</a>
+          <a href="/proof-rules">Proof rules</a>
+          <a href="/support">Support</a>
         </nav>
       </footer>
+    </main>
+  );
+}
+
+function NotFoundPage() {
+  return (
+    <main className="legal-shell">
+      <nav className="legal-nav" aria-label="Legal navigation">
+        <a className="brand" href="/" aria-label="Pact Raven home">
+          PACT RAVEN
+        </a>
+      </nav>
+      <article className="legal-page">
+        <p className="stamp">404</p>
+        <h1>Page not found</h1>
+        <p className="legal-intro">
+          This page is not part of the Pact Raven record.
+        </p>
+        <a className="button primary" href="/">
+          Return home
+          <ArrowRight size={20} />
+        </a>
+      </article>
     </main>
   );
 }
