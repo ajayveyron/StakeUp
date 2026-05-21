@@ -1,3 +1,5 @@
+/// <reference lib="dom" />
+
 import { ImageResponse } from "@vercel/og";
 import * as React from "react";
 
