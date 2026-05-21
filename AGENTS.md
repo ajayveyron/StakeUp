@@ -23,6 +23,16 @@
 - The `artifacts/mobile` package has a Replit-specific `dev` script; use the root `dev:mobile` command for local development.
 - `artifacts/mockup-sandbox` is a prototype package and is intentionally excluded from the default typecheck.
 
+## Local Image Generation Helper
+
+- `tmp/vertex-imagegen/` is an ignored, local-only workspace for operator image generation helpers.
+- Use scripts in this folder only from the repo root when an operator intentionally needs to create or refresh reviewed static assets for this repo. They may read Vertex/GCP credentials from the separate local `creative-generator-playground` project.
+- `tmp/vertex-imagegen/generate-images.mjs` supports generic `--prompt=... --out=...` generation and may also contain repo-specific presets for repeatable asset batches.
+- Choose the Vertex/Gemini image model for the specific asset before generation. Do not blindly reuse the script default for every request; pass `--model=...` when quality, cost, latency, format support, or current model availability matters.
+- Do not import, bundle, expose, copy, or call this script from client-side code, user-facing code, server routes, Convex functions, admin UI, CI, or production runtime.
+- Do not print, commit, or move credentials, `.env` values, service account JSON, generated scratch files, or helper scripts out of the ignored `tmp/vertex-imagegen` path.
+- Keep generated assets static and reviewed before use; the app should never generate images dynamically for users.
+
 ## Legal And Policy Pages
 
 - Keep the public legal pages in `artifacts/website/src/App.tsx` updated whenever pact pricing, slot rules, deposit handling, refund/payout flow, proof review, charity forfeits, payment providers, data collection, support contacts, business entity details, GST details, or launch geography changes.

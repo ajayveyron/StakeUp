@@ -2,6 +2,9 @@
 
 # compiled output
 dist
+# Local-only Vertex helper scripts and generated scratch files.
+# Do not commit keys, env snapshots, or image-generation utilities from here.
+tmp/vertex-imagegen/
 tmp
 out-tsc
 *.tsbuildinfo

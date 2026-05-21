@@ -29,10 +29,18 @@ pnpm test:mobile    # run focused mobile logic tests
 
 The root `build` script exists, but do not run builds unless you specifically need one.
 
+Important backend env:
+
+- `ADMIN_EMAILS` - comma-separated Clerk emails that can use in-app admin ops.
+- `SLACK_ADMIN_USER_IDS` - comma-separated Slack user IDs allowed to use Slack approve/reject/activate/discard actions.
+- `SLACK_SIGNING_SECRET`, `SLACK_BOT_TOKEN`, `SLACK_REVIEW_CHANNEL_ID`, `SLACK_PAYMENT_CHANNEL_ID` - Slack review/payment notifications.
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` - Razorpay order creation and payment verification.
+
 ## Repository Map
 
 - `artifacts/mobile` - active Expo app.
-- `artifacts/api-server` - backend package scaffold; not required for local-only v1.
+- `convex` - active backend for users, commitments, check-ins, reviews, payments, ledger, notifications, and Slack/admin operations.
+- `artifacts/api-server` - legacy backend scaffold; not part of the current product flow.
 - `artifacts/mockup-sandbox` - Vite mockup/prototype package; excluded from the default typecheck.
 - `lib` - shared workspace packages.
 - `scripts` - workspace scripts and shared tooling.
@@ -46,20 +54,21 @@ Key files:
 - `artifacts/mobile/app/(tabs)` - Home, Commitments, and Profile tabs.
 - `artifacts/mobile/app/commitment/new.tsx` - commitment creation flow.
 - `artifacts/mobile/app/commitment/[id].tsx` - commitment detail and check-in flow.
-- `artifacts/mobile/contexts/CommitmentsContext.tsx` - local commitment state and AsyncStorage persistence.
+- `artifacts/mobile/contexts/CommitmentsContext.tsx` - Convex-backed commitment operations and app context.
 - `artifacts/mobile/utils/commitment.ts` - schedule, refund, date, and status helpers.
 - `artifacts/mobile/constants/colors.ts` - dark financial color system.
 
 ## Product Decisions
 
-- v1 is local-only and uses AsyncStorage.
-- No backend or env vars are required for the mobile app.
-- Supported goal types are Content Creation and Step Count.
+- v1 is web/PWA-first in the Expo app and uses Convex + Clerk.
+- Supported pact types are content posting and workout proof.
 - Submitted proof enters manual review and counts as submitted while review is pending.
 - Content check-ins require a public HTTP URL; private posts are not valid proof.
-- Step check-ins require meeting or exceeding the daily target.
-- Approved refunds are credited to the user's in-app wallet.
-- Rejected or missed days are forfeited to the chosen friend beneficiary or the reward pool.
+- Workout check-ins require fresh proof matching the daily prompt. Direct image upload is wired through Convex storage, with proof links as a fallback.
+- Approved proof creates refund credit in the user's ledger.
+- Rejected or missed days forfeit that day's deposit credit to the chosen charity.
+- User payouts are manual UPI payouts requested from the app and recorded by admin with the UPI reference.
+- Slack review actions require a signed Slack request and a configured Slack admin user allowlist.
 - Refund language is intentional: users get their own pact amount back for approved days.
 - Scheduled-day deadlines are local time.
 - Product rules are captured in `docs/product-decisions.md`.

@@ -36,13 +36,13 @@ For v1, verification is manual.
 
 Content commitments require a public post URL. Private posts, stories, inaccessible links, wrong content, deleted posts, or late submissions should be rejected with a reason.
 
-Workout commitments require a fresh camera snap or short capture from the web app with a physical prompt: hand gesture, facial expression, body pose, or equipment-position cue. Old gallery photos, screenshots without context, unclear proof, late proof, or proof that does not match the declared workout rule should be rejected with a reason.
+Workout commitments require a fresh in-app camera capture, captured device location, and the daily physical prompt: hand gesture, facial expression, body pose, or equipment-position cue. Workout proof links, gallery uploads, old photos, screenshots without context, unclear proof, late proof, missing location, or proof that does not match the declared workout rule should be rejected with a reason.
 
 ## Payout Rules
 
 Approved credits should not be paid out automatically every day. They should be tracked in the ledger first and paid manually by UPI when requested or batched by operations.
 
-This avoids unnecessary transaction volume, transaction costs, failed payout handling, and reconciliation complexity. During the first public cohorts, payouts can be on request, weekly, or at the end of the commitment cycle, but every UPI payout reference must be recorded in the ledger.
+This avoids unnecessary transaction volume, transaction costs, failed payout handling, and reconciliation complexity. During the first public cohorts, payouts can be on request, weekly, or at the end of the commitment cycle, but every payout request must capture the user's UPI ID and every completed payout must record the UPI reference in the ledger.
 
 ## Forfeit Destinations
 

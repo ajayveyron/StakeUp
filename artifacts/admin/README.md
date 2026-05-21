@@ -1,6 +1,8 @@
 # Pact Raven Admin
 
-Private beta-ops dashboard for tracking existing paid users, submissions, and refunds.
+Legacy private beta-ops dashboard for tracking the original manually managed beta cohort.
+
+The current product admin surface is `artifacts/mobile/app/admin/reviews.tsx` backed by the main Convex `reviews`, `payments`, and ledger functions. Use this package only when you intentionally need the old beta cohort tools.
 
 ## Environment
 
