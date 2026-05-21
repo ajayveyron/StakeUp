@@ -8,16 +8,21 @@
  * @module
  */
 
+import type * as betaOps from "../betaOps.js";
 import type * as checkIns from "../checkIns.js";
 import type * as commitments from "../commitments.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_charities from "../lib/charities.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as lib_ledger from "../lib/ledger.js";
 import type * as lib_notifications from "../lib/notifications.js";
+import type * as lib_payments from "../lib/payments.js";
 import type * as lib_review from "../lib/review.js";
 import type * as notifications from "../notifications.js";
+import type * as payments from "../payments.js";
+import type * as paymentsInternal from "../paymentsInternal.js";
 import type * as reviews from "../reviews.js";
 import type * as slack from "../slack.js";
 import type * as users from "../users.js";
@@ -30,16 +35,21 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  betaOps: typeof betaOps;
   checkIns: typeof checkIns;
   commitments: typeof commitments;
   crons: typeof crons;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/charities": typeof lib_charities;
   "lib/dates": typeof lib_dates;
   "lib/ledger": typeof lib_ledger;
   "lib/notifications": typeof lib_notifications;
+  "lib/payments": typeof lib_payments;
   "lib/review": typeof lib_review;
   notifications: typeof notifications;
+  payments: typeof payments;
+  paymentsInternal: typeof paymentsInternal;
   reviews: typeof reviews;
   slack: typeof slack;
   users: typeof users;

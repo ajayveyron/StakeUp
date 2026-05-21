@@ -1,21 +1,34 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-const goalType = v.union(v.literal("content"), v.literal("steps"));
+const goalType = v.union(v.literal("content"), v.literal("workout"));
 const checkInStatus = v.union(
   v.literal("under_review"),
   v.literal("approved"),
   v.literal("rejected"),
-  v.literal("missed")
+  v.literal("missed"),
 );
 const forfeitDestination = v.union(
-  v.literal("friend"),
-  v.literal("reward_pool")
+  v.literal("akshaya_patra"),
+  v.literal("goonj"),
+  v.literal("cry"),
+  v.literal("helpage_india"),
+  v.literal("wildlife_sos"),
 );
 const commitmentStatus = v.union(
   v.literal("pending_payment"),
   v.literal("active"),
-  v.literal("deleted")
+  v.literal("deleted"),
+);
+const paymentOrderStatus = v.union(
+  v.literal("created"),
+  v.literal("paid"),
+  v.literal("failed"),
+);
+const refundWithdrawalStatus = v.union(
+  v.literal("processing"),
+  v.literal("processed"),
+  v.literal("failed"),
 );
 const userRole = v.union(v.literal("user"), v.literal("admin"));
 const notificationType = v.union(
@@ -24,13 +37,38 @@ const notificationType = v.union(
   v.literal("payment_discarded"),
   v.literal("check_in_approved"),
   v.literal("check_in_rejected"),
-  v.literal("manual_payout_recorded")
+  v.literal("manual_payout_recorded"),
 );
 const notificationDeliveryStatus = v.union(
   v.literal("pending"),
   v.literal("sent"),
   v.literal("skipped"),
-  v.literal("failed")
+  v.literal("failed"),
+);
+const betaCommitmentCategory = v.union(
+  v.literal("fasting"),
+  v.literal("exercise"),
+  v.literal("content"),
+  v.literal("custom"),
+);
+const betaCommitmentStatus = v.union(
+  v.literal("active"),
+  v.literal("paused"),
+  v.literal("completed"),
+  v.literal("deleted"),
+);
+const betaSubmissionStatus = v.union(
+  v.literal("submitted"),
+  v.literal("approved"),
+  v.literal("missed"),
+  v.literal("skipped"),
+);
+const betaLedgerEntryType = v.union(
+  v.literal("payment_received"),
+  v.literal("refund_earned"),
+  v.literal("refund_paid"),
+  v.literal("forfeited"),
+  v.literal("adjustment"),
 );
 
 export default defineSchema({
@@ -55,10 +93,9 @@ export default defineSchema({
     targetPerDay: v.number(),
     durationDays: v.number(),
     pactAmount: v.number(),
+    platformFeeAmount: v.optional(v.number()),
     currency: v.string(),
     forfeitDestination: forfeitDestination,
-    friendName: v.optional(v.string()),
-    friendContact: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
     timezone: v.string(),
@@ -80,6 +117,9 @@ export default defineSchema({
     commitmentId: v.id("commitments"),
     date: v.string(),
     proofUrl: v.optional(v.string()),
+    proofPrompt: v.optional(v.string()),
+    submissionSignature: v.optional(v.string()),
+    submissionStatement: v.optional(v.string()),
     stepCount: v.optional(v.number()),
     status: checkInStatus,
     verified: v.boolean(),
@@ -116,13 +156,12 @@ export default defineSchema({
       v.literal("deposit_confirmed"),
       v.literal("approved_refund"),
       v.literal("forfeited"),
-      v.literal("manual_payout")
+      v.literal("manual_payout"),
     ),
     destination: v.union(
       v.literal("user"),
-      v.literal("friend"),
-      v.literal("reward_pool"),
-      v.literal("admin_upi")
+      v.literal("charity"),
+      v.literal("razorpay"),
     ),
     externalReference: v.optional(v.string()),
     note: v.optional(v.string()),
@@ -132,6 +171,118 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_check_in", ["checkInId"])
     .index("by_commitment", ["commitmentId"])
+    .index("by_created_at", ["createdAt"]),
+
+  paymentOrders: defineTable({
+    userId: v.id("users"),
+    commitmentId: v.id("commitments"),
+    razorpayOrderId: v.string(),
+    razorpayPaymentId: v.optional(v.string()),
+    amount: v.number(),
+    depositAmount: v.number(),
+    platformFeeAmount: v.number(),
+    currency: v.string(),
+    status: paymentOrderStatus,
+    receipt: v.string(),
+    signature: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    paidAt: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_commitment", ["commitmentId"])
+    .index("by_razorpay_order", ["razorpayOrderId"])
+    .index("by_razorpay_payment", ["razorpayPaymentId"]),
+
+  refundWithdrawals: defineTable({
+    userId: v.id("users"),
+    paymentOrderId: v.id("paymentOrders"),
+    razorpayPaymentId: v.string(),
+    razorpayRefundId: v.optional(v.string()),
+    amount: v.number(),
+    currency: v.string(),
+    status: refundWithdrawalStatus,
+    failureReason: v.optional(v.string()),
+    note: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    processedAt: v.optional(v.string()),
+  })
+    .index("by_user", ["userId"])
+    .index("by_payment_order", ["paymentOrderId"])
+    .index("by_created_at", ["createdAt"]),
+
+  betaUsers: defineTable({
+    slug: v.string(),
+    name: v.string(),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  }).index("by_slug", ["slug"]),
+
+  betaCommitments: defineTable({
+    userId: v.id("betaUsers"),
+    slug: v.string(),
+    title: v.string(),
+    category: betaCommitmentCategory,
+    frequencyLabel: v.string(),
+    frequencyPerWeek: v.number(),
+    daysOfWeek: v.array(v.number()),
+    plannedSubmissions: v.number(),
+    totalAmount: v.number(),
+    amountPerSubmission: v.number(),
+    currency: v.string(),
+    cycleStartDate: v.string(),
+    cycleEndDate: v.string(),
+    timezone: v.string(),
+    status: betaCommitmentStatus,
+    notes: v.optional(v.string()),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    deletedAt: v.optional(v.string()),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_user", ["userId"])
+    .index("by_status", ["status"]),
+
+  betaSubmissions: defineTable({
+    userId: v.id("betaUsers"),
+    commitmentId: v.id("betaCommitments"),
+    date: v.string(),
+    status: betaSubmissionStatus,
+    proofUrl: v.optional(v.string()),
+    note: v.optional(v.string()),
+    submittedAt: v.optional(v.string()),
+    reviewedAt: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+  })
+    .index("by_commitment", ["commitmentId"])
+    .index("by_commitment_date", ["commitmentId", "date"])
+    .index("by_user_date", ["userId", "date"])
+    .index("by_status_date", ["status", "date"]),
+
+  betaLedgerEntries: defineTable({
+    userId: v.id("betaUsers"),
+    commitmentId: v.optional(v.id("betaCommitments")),
+    submissionId: v.optional(v.id("betaSubmissions")),
+    type: betaLedgerEntryType,
+    amount: v.number(),
+    currency: v.string(),
+    occurredAt: v.optional(v.string()),
+    externalReference: v.optional(v.string()),
+    note: v.optional(v.string()),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.string(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_commitment", ["commitmentId"])
+    .index("by_submission", ["submissionId"])
     .index("by_created_at", ["createdAt"]),
 
   notifications: defineTable({

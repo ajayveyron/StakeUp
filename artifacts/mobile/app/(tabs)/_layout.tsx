@@ -20,11 +20,11 @@ function NativeTabLayout() {
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="commitments">
         <Icon sf={{ default: "target", selected: "target" }} />
-        <Label>Commitments</Label>
+        <Label>Pacts</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Stats</Label>
+        <Label>Ledger</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -54,7 +54,7 @@ function ClassicTabLayout() {
           isIOS ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={["transparent", "#00C853", "#00E676", "#FF9F0A", "transparent"]}
+                colors={["transparent", "#FFD800", "#FFD800", "#F8F3D4", "transparent"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
@@ -68,7 +68,7 @@ function ClassicTabLayout() {
           ) : isWeb ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={["transparent", "#00C853", "#00E676", "#FF9F0A", "transparent"]}
+                colors={["transparent", "#FFD800", "#FFD800", "#F8F3D4", "transparent"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
@@ -95,7 +95,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="commitments"
         options={{
-          title: "Commitments",
+          title: "Pacts",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="target" tintColor={color} size={24} />
@@ -107,7 +107,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Stats",
+          title: "Ledger",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="chart.bar" tintColor={color} size={24} />

@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
   dot: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   mysteryBox: {
     width: 36,
     height: 36,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1.5,
     alignItems: "center",
     justifyContent: "center",
@@ -245,6 +245,6 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontFamily: "Inter_600SemiBold",
     textTransform: "uppercase",
-    letterSpacing: 0.3,
+    letterSpacing: 0,
   },
 });

@@ -1,10 +1,11 @@
+import type { CharityDestination } from "./charities";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
 export function forfeitDestinationToLedger(
-  destination: "friend" | "reward_pool",
-): "friend" | "reward_pool" {
-  return destination === "friend" ? "friend" : "reward_pool";
+  _destination: CharityDestination,
+): "charity" {
+  return "charity";
 }
 
 export async function ensureWalletLedgerEntry(
@@ -16,7 +17,8 @@ export async function ensureWalletLedgerEntry(
     amount: number;
     currency: string;
     type: "approved_refund" | "forfeited";
-    destination: "user" | "friend" | "reward_pool";
+    destination: "user" | "charity";
+    note?: string;
   },
 ) {
   const existing = await ctx.db
@@ -35,6 +37,7 @@ export async function ensureWalletLedgerEntry(
     currency: args.currency,
     type: args.type,
     destination: args.destination,
+    note: args.note,
     createdAt: new Date().toISOString(),
   });
 }
@@ -65,7 +68,7 @@ export async function ensureDepositLedgerEntry(
     amount: args.amount,
     currency: args.currency,
     type: "deposit_confirmed",
-    destination: "admin_upi",
+    destination: "razorpay",
     externalReference: args.externalReference,
     note: args.note,
     createdBy: args.createdBy,

@@ -14,10 +14,31 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { useColors } from "@/hooks/useColors";
 
 type AuthMode = "signIn" | "signUp";
+type SignInStep = "first" | "second";
+type SecondFactorStrategy =
+  | "phone_code"
+  | "email_code"
+  | "totp"
+  | "backup_code";
+
+type SecondFactorState = {
+  strategy: SecondFactorStrategy;
+  emailAddressId?: string;
+  phoneNumberId?: string;
+  safeIdentifier?: string;
+};
+
 const RESEND_COOLDOWN_MS = 30_000;
+const SECOND_FACTOR_PRIORITY: SecondFactorStrategy[] = [
+  "totp",
+  "phone_code",
+  "email_code",
+  "backup_code",
+];
 
 function errorMessage(error: unknown): string {
   if (
@@ -47,14 +68,43 @@ function getEmailCodeFactor(resource: unknown) {
   const factors = (resource as { supportedFirstFactors?: unknown[] })
     ?.supportedFirstFactors;
   if (!Array.isArray(factors)) return null;
-  return (
-    factors.find(
-      (factor) =>
-        factor &&
-        typeof factor === "object" &&
-        (factor as { strategy?: string }).strategy === "email_code"
-    ) ?? null
-  ) as { emailAddressId?: string } | null;
+  return (factors.find(
+    (factor) =>
+      factor &&
+      typeof factor === "object" &&
+      (factor as { strategy?: string }).strategy === "email_code",
+  ) ?? null) as { emailAddressId?: string } | null;
+}
+
+function getSecondFactor(resource: unknown): SecondFactorState | null {
+  const factors = (resource as { supportedSecondFactors?: unknown[] })
+    ?.supportedSecondFactors;
+  if (!Array.isArray(factors)) return null;
+
+  for (const strategy of SECOND_FACTOR_PRIORITY) {
+    const factor = factors.find(
+      (candidate) =>
+        candidate &&
+        typeof candidate === "object" &&
+        (candidate as { strategy?: string }).strategy === strategy,
+    );
+
+    if (factor && typeof factor === "object") {
+      const typed = factor as SecondFactorState;
+      return {
+        strategy,
+        emailAddressId: typed.emailAddressId,
+        phoneNumberId: typed.phoneNumberId,
+        safeIdentifier: typed.safeIdentifier,
+      };
+    }
+  }
+
+  return null;
+}
+
+function isCodeDeliverySecondFactor(factor: SecondFactorState | null) {
+  return factor?.strategy === "phone_code" || factor?.strategy === "email_code";
 }
 
 export function AuthScreen() {
@@ -69,6 +119,10 @@ export function AuthScreen() {
   const [pendingCode, setPendingCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [signInStep, setSignInStep] = useState<SignInStep>("first");
+  const [secondFactor, setSecondFactor] = useState<SecondFactorState | null>(
+    null,
+  );
   const [signInEmailAddressId, setSignInEmailAddressId] = useState<
     string | null
   >(null);
@@ -82,7 +136,7 @@ export function AuthScreen() {
     if (!lastCodeSentAt) return 0;
     return Math.max(
       0,
-      Math.ceil((RESEND_COOLDOWN_MS - (clockTick - lastCodeSentAt)) / 1000)
+      Math.ceil((RESEND_COOLDOWN_MS - (clockTick - lastCodeSentAt)) / 1000),
     );
   }, [clockTick, lastCodeSentAt]);
 
@@ -95,6 +149,8 @@ export function AuthScreen() {
   function resetCodeState() {
     setPendingCode(false);
     setCode("");
+    setSignInStep("first");
+    setSecondFactor(null);
     setSignInEmailAddressId(null);
     setLastCodeSentAt(null);
     setClockTick(Date.now());
@@ -143,10 +199,33 @@ export function AuthScreen() {
 
     await signIn.prepareFirstFactor({
       strategy: "email_code",
-      ...(signInEmailAddressId
-        ? { emailAddressId: signInEmailAddressId }
-        : {}),
+      ...(signInEmailAddressId ? { emailAddressId: signInEmailAddressId } : {}),
     } as any);
+  }
+
+  async function prepareSignInSecondFactor(factor: SecondFactorState) {
+    if (!signIn) throw new Error("Sign-in is not ready. Try again.");
+    if (factor.strategy === "phone_code") {
+      await signIn.prepareSecondFactor({
+        strategy: "phone_code",
+        ...(factor.phoneNumberId
+          ? { phoneNumberId: factor.phoneNumberId }
+          : {}),
+      } as any);
+      return true;
+    }
+
+    if (factor.strategy === "email_code") {
+      await signIn.prepareSecondFactor({
+        strategy: "email_code",
+        ...(factor.emailAddressId
+          ? { emailAddressId: factor.emailAddressId }
+          : {}),
+      } as any);
+      return true;
+    }
+
+    return false;
   }
 
   async function requestCode({ resend = false } = {}) {
@@ -169,6 +248,9 @@ export function AuthScreen() {
         await signUp.prepareEmailAddressVerification({
           strategy: "email_code",
         } as any);
+      } else if (signInStep === "second" && secondFactor) {
+        const didSendCode = await prepareSignInSecondFactor(secondFactor);
+        if (!didSendCode) return;
       } else {
         await prepareOrResendSignInCode();
       }
@@ -183,6 +265,37 @@ export function AuthScreen() {
     }
   }
 
+  async function activateCompleteResult(result: {
+    status: string | null;
+    createdSessionId: string | null;
+  }) {
+    if (result.status === "complete" && result.createdSessionId) {
+      if (!setActive) throw new Error("Sign-in is not ready. Try again.");
+      await setActive({ session: result.createdSessionId });
+      return true;
+    }
+    return false;
+  }
+
+  async function continueToSecondFactor(result: unknown) {
+    const factor = getSecondFactor(result);
+    if (!factor) {
+      setError("This account needs a second verification method.");
+      return;
+    }
+
+    const didSendCode = await prepareSignInSecondFactor(factor);
+    setSecondFactor(factor);
+    setSignInStep("second");
+    setCode("");
+    setError(null);
+
+    if (didSendCode) {
+      setLastCodeSentAt(Date.now());
+      setClockTick(Date.now());
+    }
+  }
+
   async function verifyCode() {
     if (!loaded || !code.trim()) return;
     setSubmitting(true);
@@ -193,17 +306,45 @@ export function AuthScreen() {
           ? await signUp.attemptEmailAddressVerification({
               code: code.trim(),
             } as any)
-          : await signIn.attemptFirstFactor({
-              strategy: "email_code",
-              code: code.trim(),
-            } as any);
+          : signInStep === "second" && secondFactor
+            ? await signIn.attemptSecondFactor({
+                strategy: secondFactor.strategy,
+                code: code.trim(),
+              } as any)
+            : await signIn.attemptFirstFactor({
+                strategy: "email_code",
+                code: code.trim(),
+              } as any);
 
-      if (result.status === "complete" && result.createdSessionId) {
-        await setActive({ session: result.createdSessionId });
+      if (await activateCompleteResult(result)) {
         return;
       }
 
-      setError("Verification needs another step. Try again.");
+      if (mode === "signIn" && result.status === "needs_second_factor") {
+        await continueToSecondFactor(result);
+        return;
+      }
+
+      if (mode === "signIn" && result.status === "needs_new_password") {
+        setError("This account needs a password reset before sign-in.");
+        return;
+      }
+
+      if (
+        mode === "signUp" &&
+        result.status === "missing_requirements" &&
+        "missingFields" in result &&
+        Array.isArray(result.missingFields) &&
+        result.missingFields.includes("password")
+      ) {
+        resetCodeState();
+        setError(
+          "Clerk is still requiring passwords. Disable password sign-up in Clerk, then send a new code.",
+        );
+        return;
+      }
+
+      setError("Verification could not be completed. Try again.");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -212,16 +353,43 @@ export function AuthScreen() {
   }
 
   const topPadding = Platform.OS === "web" ? 72 : insets.top + 24;
+  const isSecondFactorStep = mode === "signIn" && signInStep === "second";
+  const canResendCurrentCode =
+    !isSecondFactorStep || isCodeDeliverySecondFactor(secondFactor);
+  const codeLabel =
+    isSecondFactorStep && secondFactor?.strategy === "backup_code"
+      ? "Backup code"
+      : isSecondFactorStep
+        ? "Second verification code"
+        : "Verification code";
+  const codeNoticeText = (() => {
+    if (!isSecondFactorStep) return `Code sent to ${normalizedEmail}`;
+    if (secondFactor?.strategy === "totp") {
+      return "Enter the code from your authenticator app";
+    }
+    if (secondFactor?.strategy === "backup_code") {
+      return "Enter one of your backup codes";
+    }
+    return `Second code sent to ${
+      secondFactor?.safeIdentifier ?? normalizedEmail
+    }`;
+  })();
+  const primaryButtonText = isSecondFactorStep
+    ? "Verify second step"
+    : pendingCode
+      ? "Enter the record"
+      : "Send access code";
 
   return (
     <KeyboardAvoidingView
       style={[styles.root, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <BrutalistBackdrop />
       <View style={[styles.content, { paddingTop: topPadding }]}>
         <View style={styles.brandBlock}>
           <LinearGradient
-            colors={["#00C853", "#00E676"]}
+            colors={["#FFD800", "#FFD800"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.logo}
@@ -232,7 +400,7 @@ export function AuthScreen() {
             Pact Raven
           </Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Sign in to manage your pacts and review history.
+            Pact Raven does not motivate you. It remembers what you agreed to.
           </Text>
         </View>
 
@@ -355,16 +523,14 @@ export function AuthScreen() {
                 ]}
               >
                 <Feather name="mail" size={15} color={colors.primary} />
-                <Text
-                  style={[styles.noticeText, { color: colors.foreground }]}
-                >
-                  Code sent to {normalizedEmail}
+                <Text style={[styles.noticeText, { color: colors.foreground }]}>
+                  {codeNoticeText}
                 </Text>
               </View>
 
               <View style={styles.field}>
                 <Text style={[styles.label, { color: colors.mutedForeground }]}>
-                  Verification code
+                  {codeLabel}
                 </Text>
                 <View
                   style={[
@@ -383,11 +549,29 @@ export function AuthScreen() {
                   <TextInput
                     style={[styles.input, { color: colors.foreground }]}
                     value={code}
-                    onChangeText={(value) =>
-                      setCode(value.replace(/[^0-9]/g, ""))
+                    onChangeText={(value) => {
+                      if (
+                        isSecondFactorStep &&
+                        secondFactor?.strategy === "backup_code"
+                      ) {
+                        setCode(value.replace(/\s/g, ""));
+                        return;
+                      }
+                      setCode(value.replace(/[^0-9]/g, ""));
+                    }}
+                    keyboardType={
+                      isSecondFactorStep &&
+                      secondFactor?.strategy === "backup_code"
+                        ? "default"
+                        : "number-pad"
                     }
-                    keyboardType="number-pad"
-                    placeholder="123456"
+                    autoCapitalize="none"
+                    placeholder={
+                      isSecondFactorStep &&
+                      secondFactor?.strategy === "backup_code"
+                        ? "backup code"
+                        : "123456"
+                    }
                     placeholderTextColor={colors.mutedForeground}
                     editable={!submitting}
                     autoFocus
@@ -396,27 +580,29 @@ export function AuthScreen() {
               </View>
 
               <View style={styles.secondaryActions}>
-                <TouchableOpacity
-                  onPress={() => requestCode({ resend: true })}
-                  disabled={submitting || resendCooldownSeconds > 0}
-                  activeOpacity={0.75}
-                >
-                  <Text
-                    style={[
-                      styles.secondaryAction,
-                      {
-                        color:
-                          submitting || resendCooldownSeconds > 0
-                            ? colors.mutedForeground
-                            : colors.primary,
-                      },
-                    ]}
+                {canResendCurrentCode && (
+                  <TouchableOpacity
+                    onPress={() => requestCode({ resend: true })}
+                    disabled={submitting || resendCooldownSeconds > 0}
+                    activeOpacity={0.75}
                   >
-                    {resendCooldownSeconds > 0
-                      ? `Resend in ${resendCooldownSeconds}s`
-                      : "Resend code"}
-                  </Text>
-                </TouchableOpacity>
+                    <Text
+                      style={[
+                        styles.secondaryAction,
+                        {
+                          color:
+                            submitting || resendCooldownSeconds > 0
+                              ? colors.mutedForeground
+                              : colors.primary,
+                        },
+                      ]}
+                    >
+                      {resendCooldownSeconds > 0
+                        ? `Resend in ${resendCooldownSeconds}s`
+                        : "Resend code"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   onPress={() => {
                     resetCodeState();
@@ -456,7 +642,7 @@ export function AuthScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={["#00C853", "#00E676"]}
+              colors={["#FFD800", "#FFD800"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -476,9 +662,7 @@ export function AuthScreen() {
               {submitting ? (
                 <ActivityIndicator color="#000" />
               ) : (
-                <Text style={styles.primaryText}>
-                  {pendingCode ? "Verify code" : "Send code"}
-                </Text>
+                <Text style={styles.primaryText}>{primaryButtonText}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
@@ -500,7 +684,7 @@ const styles = StyleSheet.create({
   logo: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -514,19 +698,19 @@ const styles = StyleSheet.create({
   },
   panel: {
     borderWidth: 1,
-    borderRadius: 18,
+    borderRadius: 8,
     padding: 16,
     gap: 16,
   },
   segment: {
     flexDirection: "row",
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 4,
     gap: 4,
   },
   segmentBtn: {
     flex: 1,
-    borderRadius: 9,
+    borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
   },
@@ -539,13 +723,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   inputRow: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 14,
     gap: 10,
   },
@@ -562,7 +746,7 @@ const styles = StyleSheet.create({
   },
   notice: {
     minHeight: 42,
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
     flexDirection: "row",
@@ -587,7 +771,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     height: 50,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },

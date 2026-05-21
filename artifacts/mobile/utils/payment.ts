@@ -10,11 +10,11 @@ function adminWhatsAppNumber() {
 
 export function paymentSetupMessage(commitment: Commitment) {
   return [
-    `Hi, I created a Pact Raven commitment: ${commitment.name}`,
-    `Commitment ID: ${commitment.id}`,
-    `Amount: ${formatCurrency(commitment.pactAmount, commitment.currency)}`,
+    `Hi, I wrote a Pact Raven pact: ${commitment.name}`,
+    `Pact ID: ${commitment.id}`,
+    `Money at stake: ${formatCurrency(commitment.pactAmount, commitment.currency)}`,
     `Schedule: ${formatDate(commitment.startDate)} to ${formatDate(commitment.endDate)}`,
-    "Please send me the UPI QR/code so I can complete payment.",
+    "Please send me the payment link so I can fund the pact and start it.",
   ].join("\n");
 }
 

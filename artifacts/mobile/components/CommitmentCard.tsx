@@ -35,7 +35,7 @@ interface Props {
 
 const GOAL_ICONS: Record<string, string> = {
   content: "video",
-  steps: "activity",
+  workout: "activity",
 };
 
 export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
@@ -81,11 +81,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
         <View style={styles.header}>
           {active ? (
             <LinearGradient
-              colors={
-                c.goalType === "content"
-                  ? ["rgba(0,200,83,0.22)", "rgba(0,230,118,0.08)"]
-                  : ["rgba(255,159,10,0.22)", "rgba(255,179,64,0.08)"]
-              }
+              colors={["rgba(255,216,0,0.22)", "rgba(255,216,0,0.08)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.iconBox}
@@ -192,7 +188,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
           <Text
             style={[styles.progressText, { color: colors.mutedForeground }]}
           >
-            {pendingPayment ? "Pending payment" : `${verified}/${totalDays}`}
+            {pendingPayment ? "Money not locked" : `${verified}/${totalDays}`}
           </Text>
         </View>
 
@@ -205,7 +201,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
               >
-                Approved
+                Kept
               </Text>
             </View>
             <View
@@ -218,7 +214,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
               >
-                Per day
+                Refund/day
               </Text>
             </View>
             <View
@@ -235,12 +231,12 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
                   },
                 ]}
               >
-                {pendingPayment ? "Pending" : expired ? "Done" : `${daysLeft}d left`}
+                {pendingPayment ? "Locked?" : expired ? "Closed" : `${daysLeft}d left`}
               </Text>
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
               >
-                {expired ? "Status" : "Remaining"}
+                {expired ? "Record" : "Remaining"}
               </Text>
             </View>
           </View>
@@ -252,12 +248,12 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
 
 const styles = StyleSheet.create({
   gradBorder: {
-    borderRadius: 17,
+    borderRadius: 8,
     padding: 1,
     marginBottom: 12,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 16,
   },
   header: {
@@ -269,7 +265,7 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 38,
     height: 38,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -288,7 +284,7 @@ const styles = StyleSheet.create({
   actionBtn: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },

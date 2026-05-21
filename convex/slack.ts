@@ -14,29 +14,30 @@ import {
   todayInTimeZone,
 } from "./lib/dates";
 import { ensureDepositLedgerEntry } from "./lib/ledger";
+import { charityName, type CharityDestination } from "./lib/charities";
 import {
   notifyPaymentConfirmed,
   notifyPaymentDiscarded,
 } from "./lib/notifications";
+import { commitmentPlatformFee } from "./lib/payments";
 import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
 type ReviewNotificationData = {
   checkInId: Id<"checkIns">;
   date: string;
   proofUrl?: string;
-  stepCount?: number;
+  proofPrompt?: string;
+  submissionStatement?: string;
   submittedAt: string;
   userEmail?: string;
   userName?: string;
   userPhone?: string;
   commitmentName: string;
-  goalType: "content" | "steps";
+  goalType: "content" | "workout";
   targetPerDay: number;
   startDate: string;
   endDate: string;
-  forfeitDestination: "friend" | "reward_pool";
-  friendName?: string;
-  friendContact?: string;
+  forfeitDestination: CharityDestination;
   pactAmount: number;
   currency: string;
   refundPerDay: number;
@@ -48,15 +49,14 @@ type PaymentNotificationData = {
   userName?: string;
   userPhone?: string;
   commitmentName: string;
-  goalType: "content" | "steps";
+  goalType: "content" | "workout";
   targetPerDay: number;
   startDate: string;
   endDate: string;
-  forfeitDestination: "friend" | "reward_pool";
-  friendName?: string;
-  friendContact?: string;
+  forfeitDestination: CharityDestination;
   currency: string;
   pactAmount: number;
+  platformFeeAmount: number;
   refundPerDay: number;
 };
 
@@ -89,22 +89,18 @@ function contactLabel(args: { userEmail?: string; userPhone?: string }) {
 }
 
 function goalLabel(args: {
-  goalType: "content" | "steps";
+  goalType: "content" | "workout";
   targetPerDay: number;
 }) {
-  return args.goalType === "steps"
-    ? `${args.targetPerDay.toLocaleString("en-IN")} steps/day`
+  return args.goalType === "workout"
+    ? "Workout proof on scheduled days"
     : `${args.targetPerDay.toLocaleString("en-IN")} content proof/day`;
 }
 
 function forfeitLabel(args: {
-  forfeitDestination: "friend" | "reward_pool";
-  friendName?: string;
-  friendContact?: string;
+  forfeitDestination: CharityDestination;
 }) {
-  if (args.forfeitDestination === "reward_pool") return "Reward pool";
-  const friend = args.friendName ?? "Friend";
-  return args.friendContact ? `${friend}\n${args.friendContact}` : friend;
+  return charityName(args.forfeitDestination);
 }
 
 async function callSlack(method: string, payload: Record<string, unknown>) {
@@ -143,7 +139,8 @@ export const getReviewNotificationData = internalQuery({
       checkInId: checkIn._id,
       date: checkIn.date,
       proofUrl: checkIn.proofUrl,
-      stepCount: checkIn.stepCount,
+      proofPrompt: checkIn.proofPrompt,
+      submissionStatement: checkIn.submissionStatement,
       submittedAt: checkIn.submittedAt ?? checkIn.createdAt,
       userEmail: user.email,
       userName: user.displayName,
@@ -154,8 +151,6 @@ export const getReviewNotificationData = internalQuery({
       startDate: commitment.startDate,
       endDate: commitment.endDate,
       forfeitDestination: commitment.forfeitDestination,
-      friendName: commitment.friendName,
-      friendContact: commitment.friendContact,
       pactAmount: commitment.pactAmount,
       currency: commitment.currency,
       refundPerDay: getRefundPerDay(commitment),
@@ -182,10 +177,9 @@ export const getPaymentNotificationData = internalQuery({
       startDate: commitment.startDate,
       endDate: commitment.endDate,
       forfeitDestination: commitment.forfeitDestination,
-      friendName: commitment.friendName,
-      friendContact: commitment.friendContact,
       currency: commitment.currency,
       pactAmount: commitment.pactAmount,
+      platformFeeAmount: commitmentPlatformFee(commitment),
       refundPerDay: getRefundPerDay(commitment),
     };
   },
@@ -208,7 +202,12 @@ export const sendReviewNotification = internalAction({
     const proofText =
       data.goalType === "content"
         ? (data.proofUrl ?? "No URL")
-        : `${data.stepCount?.toLocaleString("en-IN") ?? "Not provided"} / ${data.targetPerDay.toLocaleString("en-IN")} steps`;
+        : [data.proofUrl ?? "No proof URL", data.proofPrompt ? `Prompt: ${data.proofPrompt}` : undefined]
+            .filter(Boolean)
+            .join("\n");
+    const signedStatement = data.submissionStatement
+      ? `\n\n*Signed statement*\n${data.submissionStatement}`
+      : "";
     const user = userLabel(data);
     const contact = contactLabel(data);
     const payout = formatMoney(data.currency, data.refundPerDay);
@@ -251,7 +250,7 @@ export const sendReviewNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Payout on approval*\n${payout}`,
+              text: `*Refund credit on approval*\n${payout}`,
             },
             {
               type: "mrkdwn",
@@ -272,8 +271,8 @@ export const sendReviewNotification = internalAction({
             type: "mrkdwn",
             text:
               data.goalType === "content"
-                ? `*Proof URL*\n${proofText}`
-                : `*Steps*\n${proofText}`,
+                ? `*Proof URL*\n${proofText}${signedStatement}`
+                : `*Workout proof*\n${proofText}${signedStatement}`,
           },
         },
         {
@@ -281,7 +280,7 @@ export const sendReviewNotification = internalAction({
           elements: [
             {
               type: "mrkdwn",
-              text: "Approve only after the user's refund/reward has been paid manually.",
+              text: "Approve only after proof matches the pact rules. Approved credits are refunded in Razorpay batches.",
             },
           ],
         },
@@ -292,7 +291,7 @@ export const sendReviewNotification = internalAction({
               type: "button",
               text: {
                 type: "plain_text",
-                text: "Approve + mark paid",
+                text: "Approve proof",
                 emoji: false,
               },
               style: "primary",
@@ -365,7 +364,7 @@ export const sendPaymentNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Deposit to confirm*\n${formatMoney(data.currency, data.pactAmount)}`,
+              text: `*Total to collect*\n${formatMoney(data.currency, data.pactAmount + data.platformFeeAmount)}`,
             },
             {
               type: "mrkdwn",
@@ -373,7 +372,7 @@ export const sendPaymentNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Payout per approval*\n${formatMoney(data.currency, data.refundPerDay)}`,
+              text: `*Refund credit per approval*\n${formatMoney(data.currency, data.refundPerDay)}`,
             },
             {
               type: "mrkdwn",
@@ -389,7 +388,7 @@ export const sendPaymentNotification = internalAction({
           elements: [
             {
               type: "mrkdwn",
-              text: "Activate only after manual payment is received. Discard archives this pending pact.",
+              text: "Activate only after Razorpay payment is received. Discard archives this pending pact.",
             },
           ],
         },
@@ -503,7 +502,7 @@ export const activateCommitmentFromSlack = internalMutation({
       amount: commitment.pactAmount,
       currency: commitment.currency,
       externalReference: `slack:${args.slackUserId}`,
-      note: `Manual payment confirmed from Slack by ${reviewer}`,
+      note: `Razorpay payment confirmed from Slack by ${reviewer}`,
     });
 
     await notifyPaymentConfirmed(ctx, {

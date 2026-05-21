@@ -7,6 +7,7 @@ import {
   ensureWalletLedgerEntry,
   forfeitDestinationToLedger,
 } from "./lib/ledger";
+import { charityName } from "./lib/charities";
 
 export const markMissedCheckIns = internalMutation({
   args: {},
@@ -63,6 +64,7 @@ export const markMissedCheckIns = internalMutation({
           currency: commitment.currency,
           type: "forfeited",
           destination: forfeitDestinationToLedger(commitment.forfeitDestination),
+          note: `Forfeited to ${charityName(commitment.forfeitDestination)}`,
         });
         ledgerEntriesEnsured += 1;
       }

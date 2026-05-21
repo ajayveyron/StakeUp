@@ -3,17 +3,20 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) if [ -n \"$VERCEL\" ]; then exit 0; fi; echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "dev:admin": "corepack pnpm --filter @workspace/admin run dev",
     "dev:mobile": "corepack pnpm --filter @workspace/mobile exec expo start --lan --port 8081",
+    "dev:website": "corepack pnpm --filter @workspace/website run dev",
     "test:mobile": "corepack pnpm --dir scripts exec tsx --test ../tests/mobile/**/*.test.ts",
     "build": "corepack pnpm run typecheck && corepack pnpm --filter @workspace/mobile run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm --filter @workspace/mobile --filter @workspace/api-server --filter @workspace/scripts --if-present run typecheck",
+    "typecheck": "corepack pnpm run typecheck:libs && corepack pnpm --filter @workspace/mobile --filter @workspace/admin --filter @workspace/api-server --filter @workspace/scripts --filter @workspace/website --if-present run typecheck",
     "typecheck:all": "corepack pnpm run typecheck:libs && corepack pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "devDependencies": {
     "convex": "^1.38.0",
+    "lightningcss-darwin-arm64": "^1.32.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   }

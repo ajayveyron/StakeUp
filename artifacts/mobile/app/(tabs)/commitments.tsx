@@ -12,9 +12,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CommitmentCard } from "@/components/CommitmentCard";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
+import { useFirstName } from "@/hooks/useCurrentUser";
 import { isActive, isExpired, isPendingPayment } from "@/utils/commitment";
 
 type Tab = "pending" | "active" | "past";
@@ -24,6 +26,7 @@ export default function CommitmentsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { commitments } = useCommitments();
+  const firstName = useFirstName();
   const [tab, setTab] = useState<Tab>("active");
 
   const pending = commitments.filter(isPendingPayment);
@@ -34,6 +37,7 @@ export default function CommitmentsScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <BrutalistBackdrop />
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -46,14 +50,14 @@ export default function CommitmentsScreen() {
       >
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            Commitments
+            Pacts
           </Text>
           <TouchableOpacity
             onPress={() => router.push("/commitment/new")}
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={["#00C853", "#00E676"]}
+              colors={["#FFD800", "#FFD800"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.addBtn}
@@ -79,7 +83,7 @@ export default function CommitmentsScreen() {
             >
               {tab === t && (
                 <LinearGradient
-                  colors={["#00C853", "#00E676"]}
+                  colors={["#FFD800", "#FFD800"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={StyleSheet.absoluteFill}
@@ -96,10 +100,10 @@ export default function CommitmentsScreen() {
                 ]}
               >
                 {t === "pending"
-                  ? `Pending (${pending.length})`
+                  ? `Unfunded (${pending.length})`
                   : t === "active"
-                  ? `Active (${active.length})`
-                  : `Past (${past.length})`}
+                  ? `Live (${active.length})`
+                  : `Closed (${past.length})`}
               </Text>
             </TouchableOpacity>
           ))}
@@ -114,17 +118,19 @@ export default function CommitmentsScreen() {
             />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
               {tab === "pending"
-                ? "No pending payments"
+                ? "No unfunded pacts"
                 : tab === "active"
-                ? "No active pacts"
-                : "No past pacts"}
+                ? firstName
+                  ? `Ready to commit, ${firstName}?`
+                  : "No live pacts"
+                : "No closed pacts"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {tab === "pending"
-                ? "Payment requests waiting for confirmation will appear here."
+                ? "Pacts waiting for locked money will appear here."
                 : tab === "active"
-                ? "Create a pact and start getting refunds for every day you show up."
-                : "Completed pacts will appear here."}
+                ? "Make a pact you cannot casually ignore."
+                : "Finished records will appear here."}
             </Text>
             {tab === "active" && (
               <TouchableOpacity
@@ -132,12 +138,12 @@ export default function CommitmentsScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={["#00C853", "#00E676"]}
+                  colors={["#FFD800", "#FFD800"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.createBtn}
                 >
-                  <Text style={styles.createBtnText}>New Pact</Text>
+                  <Text style={styles.createBtnText}>Make a Pact</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -167,13 +173,13 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   tabBar: {
     flexDirection: "row",
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 4,
     borderWidth: 1,
     marginBottom: 20,
@@ -181,7 +187,7 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     paddingVertical: 8,
-    borderRadius: 9,
+    borderRadius: 8,
     alignItems: "center",
   },
   tabText: { fontSize: 13 },
@@ -206,7 +212,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 28,
     paddingVertical: 13,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   createBtnText: {
     fontSize: 14,

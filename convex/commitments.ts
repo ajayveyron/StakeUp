@@ -6,11 +6,15 @@ import { mutation, query, type QueryCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { daysBetween } from "./lib/dates";
 import { notifyPaymentPending } from "./lib/notifications";
+import { PLATFORM_FEE_AMOUNT } from "./lib/payments";
 
-const goalType = v.union(v.literal("content"), v.literal("steps"));
+const goalType = v.union(v.literal("content"), v.literal("workout"));
 const forfeitDestination = v.union(
-  v.literal("friend"),
-  v.literal("reward_pool")
+  v.literal("akshaya_patra"),
+  v.literal("goonj"),
+  v.literal("cry"),
+  v.literal("helpage_india"),
+  v.literal("wildlife_sos"),
 );
 
 async function serializeCommitment(
@@ -30,10 +34,9 @@ async function serializeCommitment(
     targetPerDay: commitment.targetPerDay,
     durationDays: commitment.durationDays,
     pactAmount: commitment.pactAmount,
+    platformFeeAmount: commitment.platformFeeAmount ?? PLATFORM_FEE_AMOUNT,
     currency: commitment.currency,
     forfeitDestination: commitment.forfeitDestination,
-    friendName: commitment.friendName,
-    friendContact: commitment.friendContact,
     startDate: commitment.startDate,
     endDate: commitment.endDate,
     timezone: commitment.timezone,
@@ -49,6 +52,9 @@ async function serializeCommitment(
         id: checkIn._id,
         date: checkIn.date,
         proofUrl: checkIn.proofUrl,
+        proofPrompt: checkIn.proofPrompt,
+        submissionSignature: checkIn.submissionSignature,
+        submissionStatement: checkIn.submissionStatement,
         stepCount: checkIn.stepCount,
         status: checkIn.status,
         verified: checkIn.verified,
@@ -103,8 +109,6 @@ export const create = mutation({
     pactAmount: v.number(),
     currency: v.string(),
     forfeitDestination,
-    friendName: v.optional(v.string()),
-    friendContact: v.optional(v.string()),
     startDate: v.string(),
     endDate: v.string(),
     timezone: v.string(),
@@ -138,10 +142,9 @@ export const create = mutation({
       targetPerDay: args.targetPerDay,
       durationDays,
       pactAmount: args.pactAmount,
+      platformFeeAmount: PLATFORM_FEE_AMOUNT,
       currency: args.currency,
       forfeitDestination: args.forfeitDestination,
-      friendName: args.friendName?.trim() || undefined,
-      friendContact: args.friendContact?.trim() || undefined,
       startDate: args.startDate,
       endDate: args.endDate,
       timezone: args.timezone,

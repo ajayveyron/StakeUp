@@ -1,11 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import * as Linking from "expo-linking";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
+  Image,
   Modal,
+  PanResponder,
   Platform,
   StyleSheet,
   Text,
@@ -13,8 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Svg, { Polyline } from "react-native-svg";
 
 import { Commitment } from "@/contexts/CommitmentsContext";
+import { selectWorkoutProofPrompt } from "@/constants/workoutProofPrompts";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCountdown,
@@ -28,9 +30,27 @@ interface Props {
   commitment: Commitment | null;
   date: string;
   onClose: () => void;
-  onSubmitContent: (commitmentId: string, date: string, url: string) => void;
-  onSubmitSteps: (commitmentId: string, date: string, steps: number) => void;
+  onSubmitContent: (
+    commitmentId: string,
+    date: string,
+    url: string,
+    submissionSignature?: string,
+    submissionStatement?: string
+  ) => void;
+  onSubmitWorkout: (
+    commitmentId: string,
+    date: string,
+    proofUrl: string,
+    proofPrompt?: string,
+    submissionSignature?: string,
+    submissionStatement?: string
+  ) => void;
 }
+
+type SignaturePoint = { x: number; y: number };
+type SignatureStroke = SignaturePoint[];
+
+const SUBMISSION_STATEMENT = "I did today's submission";
 
 export function CheckInModal({
   visible,
@@ -38,14 +58,22 @@ export function CheckInModal({
   date,
   onClose,
   onSubmitContent,
-  onSubmitSteps,
+  onSubmitWorkout,
 }: Props) {
   const colors = useColors();
   const [url, setUrl] = useState("");
-  const [steps, setSteps] = useState("");
+  const [workoutProofUrl, setWorkoutProofUrl] = useState("");
+  const [referenceImageFailed, setReferenceImageFailed] = useState(false);
+  const [signatureStrokes, setSignatureStrokes] = useState<SignatureStroke[]>(
+    []
+  );
+  const proofPrompt = useMemo(
+    () => selectWorkoutProofPrompt(commitment?.id, date),
+    [commitment?.id, date]
+  );
   const [countdown, setCountdown] = useState(getMsUntilDeadline());
   const urlRef = useRef<TextInput>(null);
-  const stepsRef = useRef<TextInput>(null);
+  const workoutRef = useRef<TextInput>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -57,10 +85,12 @@ export function CheckInModal({
   useEffect(() => {
     if (visible) {
       setUrl("");
-      setSteps("");
+      setWorkoutProofUrl("");
+      setReferenceImageFailed(false);
+      setSignatureStrokes([]);
       setTimeout(() => {
         if (commitment?.goalType === "content") urlRef.current?.focus();
-        else stepsRef.current?.focus();
+        else workoutRef.current?.focus();
       }, 300);
     }
   }, [visible, commitment?.goalType]);
@@ -69,19 +99,72 @@ export function CheckInModal({
 
   const refundPerDay = getRefundPerDay(commitment);
   const isContent = commitment.goalType === "content";
-  const stepCount = parseInt(steps) || 0;
-  const stepsGoalMet = stepCount >= commitment.targetPerDay;
-  const canSubmit = isContent
+  const proofReady = isContent
     ? url.trim().startsWith("http")
-    : stepsGoalMet;
+    : workoutProofUrl.trim().startsWith("http");
+  const hasSignature = signatureStrokes.some((stroke) => stroke.length > 1);
+  const canSubmit = proofReady && hasSignature;
+  const signaturePadResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => proofReady,
+        onMoveShouldSetPanResponder: () => proofReady,
+        onPanResponderGrant: (event) => {
+          if (!proofReady) return;
+          const { locationX, locationY } = event.nativeEvent;
+          setSignatureStrokes((prev) => [
+            ...prev,
+            [{ x: Math.max(0, locationX), y: Math.max(0, locationY) }],
+          ]);
+        },
+        onPanResponderMove: (event) => {
+          if (!proofReady) return;
+          const { locationX, locationY } = event.nativeEvent;
+          setSignatureStrokes((prev) => {
+            if (prev.length === 0) {
+              return [[{ x: Math.max(0, locationX), y: Math.max(0, locationY) }]];
+            }
+            const next = [...prev];
+            const last = next[next.length - 1];
+            next[next.length - 1] = [
+              ...last,
+              { x: Math.max(0, locationX), y: Math.max(0, locationY) },
+            ];
+            return next;
+          });
+        },
+      }),
+    [proofReady]
+  );
+
+  function signaturePayload() {
+    return JSON.stringify({
+      statement: SUBMISSION_STATEMENT,
+      strokes: signatureStrokes,
+      signedAt: new Date().toISOString(),
+    });
+  }
 
   function handleSubmit() {
     if (!canSubmit) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     if (isContent) {
-      onSubmitContent(commitment!.id, date, url.trim());
+      onSubmitContent(
+        commitment!.id,
+        date,
+        url.trim(),
+        signaturePayload(),
+        SUBMISSION_STATEMENT
+      );
     } else {
-      onSubmitSteps(commitment!.id, date, stepCount);
+      onSubmitWorkout(
+        commitment!.id,
+        date,
+        workoutProofUrl.trim(),
+        proofPrompt.text,
+        signaturePayload(),
+        SUBMISSION_STATEMENT
+      );
     }
     onClose();
   }
@@ -118,7 +201,7 @@ export function CheckInModal({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={[styles.title, { color: colors.foreground }]}>
-                {isContent ? "Submit Proof" : "Submit Steps"}
+                {isContent ? "Show Proof" : "Show Workout Proof"}
               </Text>
               <Text style={[styles.commitName, { color: colors.mutedForeground }]} numberOfLines={1}>
                 {commitment.name}
@@ -169,10 +252,10 @@ export function CheckInModal({
           {isContent && (
             <View style={styles.section}>
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Public post link
+                Public proof link
               </Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Paste the link to your published post (Instagram, YouTube, TikTok, etc.)
+                Post it publicly. Paste the link. Stand by it.
               </Text>
               <View
                 style={[
@@ -208,15 +291,14 @@ export function CheckInModal({
             </View>
           )}
 
-          {/* Steps: count input */}
+          {/* Workout proof input */}
           {!isContent && (
             <View style={styles.section}>
               <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Steps today
+                Workout proof
               </Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Enter your step count. Goal:{" "}
-                {commitment.targetPerDay.toLocaleString("en-IN")} steps
+                Match the prompt. No old photos. No vague proof: {proofPrompt.text}
               </Text>
               <View
                 style={[
@@ -224,55 +306,84 @@ export function CheckInModal({
                   { backgroundColor: colors.input, borderColor: colors.border },
                 ]}
               >
-                <Feather name="activity" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
+                <Feather name="camera" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
                 <TextInput
-                  ref={stepsRef}
-                  style={[styles.input, styles.stepsInput, { color: colors.foreground }]}
-                  placeholder={`e.g. ${commitment.targetPerDay.toLocaleString("en-IN")}`}
+                  ref={workoutRef}
+                  style={[styles.input, { color: colors.foreground }]}
+                  placeholder="Paste camera proof link"
                   placeholderTextColor={colors.mutedForeground}
-                  value={steps}
-                  onChangeText={(v) => setSteps(v.replace(/[^0-9]/g, ""))}
-                  keyboardType="number-pad"
+                  value={workoutProofUrl}
+                  onChangeText={setWorkoutProofUrl}
+                  keyboardType="url"
                   returnKeyType="done"
                   onSubmitEditing={handleSubmit}
+                  autoCapitalize="none"
+                  autoCorrect={false}
                 />
               </View>
 
-              {steps.length > 0 && (
-                <View
+              {workoutProofUrl.trim().length > 0 &&
+                !workoutProofUrl.trim().startsWith("http") && (
+                  <Text style={[styles.errorText, { color: colors.danger }]}>
+                    Must be a valid proof link starting with http
+                  </Text>
+                )}
+
+              <View
+                style={[
+                  styles.proofPromptBox,
+                  {
+                    backgroundColor: colors.primary + "14",
+                    borderColor: colors.primary + "33",
+                  },
+                ]}
+              >
+                <Feather name="camera" size={14} color={colors.primary} />
+                <Text
                   style={[
-                    styles.stepsResult,
-                    {
-                      backgroundColor: stepsGoalMet
-                        ? colors.primary + "14"
-                        : colors.danger + "14",
-                      borderColor: stepsGoalMet
-                        ? colors.primary + "33"
-                        : colors.danger + "33",
-                    },
+                    styles.proofPromptText,
+                    { color: colors.primary },
                   ]}
                 >
-                  <Feather
-                    name={stepsGoalMet ? "check-circle" : "x-circle"}
-                    size={14}
-                    color={stepsGoalMet ? colors.primary : colors.danger}
-                  />
-                  <Text
-                    style={[
-                      styles.stepsResultText,
-                      {
-                        color: stepsGoalMet ? colors.primary : colors.danger,
-                      },
-                    ]}
-                  >
-                    {stepsGoalMet
-                      ? `Goal met! +${stepCount - commitment.targetPerDay >= 0 ? (stepCount - commitment.targetPerDay).toLocaleString("en-IN") : 0} extra steps`
-                      : `${(commitment.targetPerDay - stepCount).toLocaleString("en-IN")} steps short of goal`}
-                  </Text>
-                </View>
-              )}
+                  Fresh proof must clearly show: {proofPrompt.text}
+                </Text>
+              </View>
 
-              {/* Health App placeholder */}
+              <View
+                style={[
+                  styles.referenceImageBox,
+                  { backgroundColor: colors.secondary, borderColor: colors.border },
+                ]}
+              >
+                {!referenceImageFailed ? (
+                  <Image
+                    source={{ uri: proofPrompt.referenceImage.uri }}
+                    accessibilityLabel={proofPrompt.referenceImage.alt}
+                    onError={() => setReferenceImageFailed(true)}
+                    style={styles.referenceImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.referenceFallback}>
+                    <Feather
+                      name="image"
+                      size={18}
+                      color={colors.mutedForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.referenceFallbackText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Add {proofPrompt.referenceImage.assetKey}.png to show a
+                      reference image.
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Camera capture placeholder */}
               <View
                 style={[
                   styles.healthBox,
@@ -281,8 +392,89 @@ export function CheckInModal({
               >
                 <Feather name="smartphone" size={14} color={colors.mutedForeground} />
                 <Text style={[styles.healthText, { color: colors.mutedForeground }]}>
-                  Auto-sync from Apple Health / Google Fit available in the full app build.
+                  PWA camera upload will attach directly here once storage is wired. For now, paste the proof link and sign the submission.
                 </Text>
+              </View>
+            </View>
+          )}
+
+          {proofReady && (
+            <View style={styles.section}>
+              <View style={styles.signatureHeader}>
+                <View style={styles.signatureTitleWrap}>
+                  <Text
+                    style={[
+                      styles.fieldLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Stand by it
+                  </Text>
+                  <Text
+                    style={[
+                      styles.signatureStatement,
+                      { color: colors.foreground },
+                    ]}
+                  >
+                    {SUBMISSION_STATEMENT}
+                  </Text>
+                </View>
+                {signatureStrokes.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setSignatureStrokes([])}
+                    activeOpacity={0.75}
+                    style={[
+                      styles.clearSignatureBtn,
+                      { backgroundColor: colors.secondary },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.clearSignatureText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Clear
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <View
+                {...signaturePadResponder.panHandlers}
+                style={[
+                  styles.signaturePad,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: hasSignature ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                {signatureStrokes.length === 0 ? (
+                  <Text
+                    style={[
+                      styles.signaturePlaceholder,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Sign here with your finger
+                  </Text>
+                ) : (
+                  <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+                    {signatureStrokes.map((stroke, index) => (
+                      <Polyline
+                        key={`${stroke.length}:${index}`}
+                        points={stroke
+                          .map((point) => `${point.x},${point.y}`)
+                          .join(" ")}
+                        fill="none"
+                        stroke={colors.primary}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                      />
+                    ))}
+                  </Svg>
+                )}
               </View>
             </View>
           )}
@@ -296,13 +488,13 @@ export function CheckInModal({
           >
             <Feather name="rotate-ccw" size={14} color={colors.primary} />
             <Text style={[styles.refundText, { color: colors.primary }]}>
-              {isContent && canSubmit
-                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} becomes available for manual payout`
-                : !isContent && stepsGoalMet
-                ? `If approved, ${formatCurrency(refundPerDay, commitment.currency)} becomes available for manual payout`
-                : !isContent && stepCount > 0 && !stepsGoalMet
-                ? `This is below target. You need ${commitment.targetPerDay.toLocaleString("en-IN")} steps to submit.`
-                : `Submit by the deadline for manual review`}
+              {proofReady && !hasSignature
+                ? `Sign "${SUBMISSION_STATEMENT}" to lock this into the record`
+                : isContent && canSubmit
+                ? `If kept, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                : !isContent && canSubmit
+                ? `If kept, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                : `Show proof by the deadline. The Raven keeps the record.`}
             </Text>
           </View>
 
@@ -325,7 +517,7 @@ export function CheckInModal({
                 { color: canSubmit ? "#000" : colors.mutedForeground },
               ]}
             >
-              Submit for Review
+              Sign and Submit
             </Text>
           </TouchableOpacity>
         </View>
@@ -344,8 +536,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
   },
   sheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     borderWidth: 1,
     borderBottomWidth: 0,
     padding: 20,
@@ -403,7 +595,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0,
   },
   fieldHint: {
     fontSize: 12,
@@ -415,7 +607,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     gap: 10,
@@ -428,15 +620,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
-  stepsInput: {
-    fontSize: 22,
-    fontFamily: "Inter_700Bold",
-  },
   errorText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
   },
-  stepsResult: {
+  proofPromptBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -444,9 +632,67 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
   },
-  stepsResultText: {
+  proofPromptText: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
+  },
+  referenceImageBox: {
+    height: 112,
+    overflow: "hidden",
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  referenceImage: {
+    width: "100%",
+    height: "100%",
+  },
+  referenceFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 16,
+  },
+  referenceFallbackText: {
+    textAlign: "center",
+    fontSize: 12,
+    lineHeight: 17,
+    fontFamily: "Inter_400Regular",
+  },
+  signatureHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  signatureTitleWrap: {
+    flex: 1,
+    gap: 3,
+  },
+  signatureStatement: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+  },
+  clearSignatureBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  clearSignatureText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  signaturePad: {
+    height: 96,
+    overflow: "hidden",
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  signaturePlaceholder: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
   },
   healthBox: {
     flexDirection: "row",
@@ -467,7 +713,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 8,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
   },
   refundText: {
@@ -478,7 +724,7 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 8,
     alignItems: "center",
   },
   submitText: {

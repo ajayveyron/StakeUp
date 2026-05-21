@@ -2,10 +2,10 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { getRefundPerDay } from "./dates";
 import {
-  ensureManualPayoutLedgerEntry,
   ensureWalletLedgerEntry,
   forfeitDestinationToLedger,
 } from "./ledger";
+import { charityName } from "./charities";
 import {
   notifyCheckInApproved,
   notifyCheckInRejected,
@@ -38,14 +38,6 @@ export async function approveCheckInForReview(
       currency: commitment.currency,
       type: "approved_refund",
       destination: "user",
-    });
-    await ensureManualPayoutLedgerEntry(ctx, {
-      userId: checkIn.userId,
-      commitmentId: checkIn.commitmentId,
-      checkInId: checkIn._id,
-      amount,
-      currency: commitment.currency,
-      note: "Approved check-in payout marked paid",
     });
     return { ok: true };
   }
@@ -80,17 +72,6 @@ export async function approveCheckInForReview(
     currency: commitment.currency,
     type: "approved_refund",
     destination: "user",
-  });
-
-  await ensureManualPayoutLedgerEntry(ctx, {
-    userId: checkIn.userId,
-    commitmentId: checkIn.commitmentId,
-    checkInId: checkIn._id,
-    amount,
-    currency: commitment.currency,
-    note: args.reviewer.reviewerLabel
-      ? `Approved and paid by ${args.reviewer.reviewerLabel}`
-      : "Approved check-in payout marked paid",
   });
 
   await notifyCheckInApproved(ctx, {
@@ -154,6 +135,7 @@ export async function rejectCheckInForReview(
     currency: commitment.currency,
     type: "forfeited",
     destination: forfeitDestinationToLedger(commitment.forfeitDestination),
+    note: `Forfeited to ${charityName(commitment.forfeitDestination)}`,
   });
 
   if (!wasAlreadyRejected) {

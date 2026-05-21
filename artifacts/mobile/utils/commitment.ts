@@ -36,10 +36,11 @@ export function daysBetween(startDate: string, endDate: string): number {
 // ── Formatting helpers ────────────────────────────────────────────────────
 export function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T00:00:00");
+  const sameYear = d.getFullYear() === new Date().getFullYear();
   return d.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
-    year: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
   });
 }
 
@@ -55,11 +56,11 @@ export function formatCurrency(amount: number, currency = "INR"): string {
 }
 
 export function goalTypeLabel(type: GoalType): string {
-  return type === "content" ? "Content Creation" : "Step Count";
+  return type === "content" ? "Content Posting" : "Workout";
 }
 
 export function goalTypeUnit(type: GoalType): string {
-  return type === "content" ? "post" : "steps";
+  return type === "content" ? "post" : "workout proof";
 }
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

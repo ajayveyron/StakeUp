@@ -2,9 +2,25 @@
 
 ## Core Product Model
 
-Pact Raven is a commitment app with manual payment confirmation and manual proof review.
+Pact Raven starts as a PWA/web app, while staying inside the Expo codebase so a future native iOS/Android move is easier.
 
-Users create a pact, contact the admin on WhatsApp for UPI payment, and wait for admin confirmation. The pact becomes active only after the admin confirms payment. Users then submit proof by the daily deadline and wait for review. Approved submissions become available for manual payout. Rejected or missed days are forfeited based on the beneficiary option chosen when the pact was created.
+Pact Raven is a commitment-cycle product with payment collection and refunds handled through Razorpay. Users buy one commitment cycle at a time, such as a 30-day workout cycle or a 30-day content-posting cycle. To start a new cycle in the same month or a later month, the user buys another cycle.
+
+Users pay:
+
+- A non-refundable platform fee per commitment cycle.
+- A refundable commitment deposit that is returned when they prove consistency.
+
+The pact becomes active only after payment is confirmed. Users then submit proof by the daily deadline and wait for review. Approved submissions become refund credits. Rejected or missed days are forfeited to the charity selected when the pact was created.
+
+## Initial Commitment Types
+
+V1 starts with two commitment types only:
+
+1. Workout commitments.
+2. Content-posting commitments.
+
+Do not add step-count commitments in v1. Step counts require native health integrations and should wait until the web-first validation loop proves demand.
 
 ## Submission States
 
@@ -20,44 +36,50 @@ For v1, verification is manual.
 
 Content commitments require a public post URL. Private posts, stories, inaccessible links, wrong content, deleted posts, or late submissions should be rejected with a reason.
 
-Step commitments can use manual entry for now, with health app sync planned later. The submitted step count must meet or exceed the committed daily target.
+Workout commitments require a fresh camera snap or short capture from the web app with a physical prompt: hand gesture, facial expression, body pose, or equipment-position cue. Old gallery photos, screenshots without context, unclear proof, late proof, or proof that does not match the declared workout rule should be rejected with a reason.
 
 ## Payout Rules
 
-Approved credits should not be paid out automatically every day. They should be tracked in the ledger first.
+Approved credits should not be paid out automatically every day. They should be tracked in the ledger first and refunded or disbursed through Razorpay based on the chosen payout cadence.
 
-This avoids unnecessary transaction volume, transaction costs, failed payout handling, and reconciliation complexity. During the concierge beta, admin makes payouts manually over UPI and records the payout reference in Convex.
+This avoids unnecessary transaction volume, transaction costs, failed payout handling, and reconciliation complexity. During the first public cohorts, refunds can be weekly or at the end of the commitment cycle, but every Razorpay refund/disbursement reference must be recorded in the ledger.
 
 ## Forfeit Destinations
 
-Users choose one forfeit destination when creating a pact.
+Users choose one charity destination when creating a pact. Forfeited money goes to the selected charity, not to Pact Raven as revenue.
 
-### Friend Beneficiary
+V1 offers exactly five charity options:
 
-If the user misses or gets rejected, that day's amount goes to the chosen friend manually. The friend must sign up before any payout is made.
+1. The Akshaya Patra Foundation: child nutrition and school meals.
+2. Goonj: rural development, disaster relief, and dignity-led community work.
+3. Child Rights and You (CRY): child rights, education, and protection.
+4. HelpAge India: elderly care and support.
+5. Wildlife SOS: wildlife rescue, animal welfare, and conservation.
 
-Users who choose friend forfeits are not eligible for rewards funded by the community reward pool.
-
-### Reward Pool
-
-If the user misses or gets rejected, that day's amount funds rewards for consistent users and helps maintain Pact Raven.
-
-Reward-pool eligibility should only apply to users who also route forfeits into the reward pool and meet the program rules.
+Rejected or missed days should be shown as `Forfeited to charity`, with the selected charity name visible in the user ledger.
 
 ## Fee Positioning
 
-During beta, Pact Raven should not charge a platform fee.
+Pact Raven charges users per commitment cycle.
+
+Starting price:
+
+- Rs 499 platform fee per commitment cycle.
+
+Recovery offer:
+
+- If a user completes onboarding but does not start/pay, offer a Rs 200 discount for the next 6 hours.
+- Discounted price: Rs 299 platform fee for that commitment cycle.
 
 Recommended copy:
 
-"Pact Raven does not charge a platform fee during beta. Withdrawal provider fees may apply in the future, and we will show them before withdrawal."
-
-Later, consider minimum withdrawal thresholds to keep payout costs under control.
+"Start your 30-day commitment cycle for Rs 499. Your commitment deposit is refundable when your proof is approved. If you miss or your proof is rejected, that day's amount goes to the charity you selected before starting."
 
 ## Copy Rules
 
 - Use "Submit for review" when the user submits proof.
-- Use "Approved refund" only after manual approval.
-- Use "Available for manual payout" instead of implying an external bank transfer.
-- Use "Forfeited to friend" or "Forfeited to reward pool" after rejection or missed days.
+- Use "Approved refund credit" only after manual approval.
+- Use "Refund processing" only after the Razorpay refund/disbursement has been initiated.
+- Use "Forfeited to charity" after rejection or missed days.
 - Never imply private posts are acceptable proof.
+- Never imply forfeited money becomes Pact Raven revenue.

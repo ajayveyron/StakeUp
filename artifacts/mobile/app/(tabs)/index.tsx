@@ -3,6 +3,8 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+
+import { useCurrentUser, useFirstName } from "@/hooks/useCurrentUser";
 import {
   Platform,
   ScrollView,
@@ -13,6 +15,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentCard } from "@/components/CommitmentCard";
 import { NotificationButton } from "@/components/NotificationButton";
@@ -40,7 +43,7 @@ export default function HomeScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { commitments, submitContentCheckIn, submitStepsCheckIn } =
+  const { commitments, submitContentCheckIn, submitWorkoutCheckIn } =
     useCommitments();
 
   const [selectedCommitment, setSelectedCommitment] =
@@ -78,6 +81,9 @@ export default function HomeScreen() {
     0
   );
 
+  const currentUser = useCurrentUser();
+  const displayName = currentUser?.displayName?.trim();
+  const firstName = useFirstName();
   const hour = new Date().getHours();
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
@@ -90,14 +96,40 @@ export default function HomeScreen() {
     setModalVisible(true);
   }
 
-  function handleSubmitContent(id: string, date: string, url: string) {
-    submitContentCheckIn(id, date, url);
+  function handleSubmitContent(
+    id: string,
+    date: string,
+    url: string,
+    submissionSignature?: string,
+    submissionStatement?: string
+  ) {
+    submitContentCheckIn(
+      id,
+      date,
+      url,
+      submissionSignature,
+      submissionStatement
+    );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setModalVisible(false);
   }
 
-  function handleSubmitSteps(id: string, date: string, steps: number) {
-    submitStepsCheckIn(id, date, steps);
+  function handleSubmitWorkout(
+    id: string,
+    date: string,
+    proofUrl: string,
+    proofPrompt?: string,
+    submissionSignature?: string,
+    submissionStatement?: string
+  ) {
+    submitWorkoutCheckIn(
+      id,
+      date,
+      proofUrl,
+      proofPrompt,
+      submissionSignature,
+      submissionStatement
+    );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setModalVisible(false);
   }
@@ -107,6 +139,7 @@ export default function HomeScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <BrutalistBackdrop />
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -124,7 +157,7 @@ export default function HomeScreen() {
               {greeting}
             </Text>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              Your Pacts
+              {displayName ?? "Welcome"}
             </Text>
           </View>
           <View style={styles.headerActions}>
@@ -134,7 +167,7 @@ export default function HomeScreen() {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={["#00C853", "#00E676"]}
+                colors={["#FFD800", "#FFD800"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.addBtn}
@@ -155,7 +188,7 @@ export default function HomeScreen() {
           >
             <SumStat
               value={formatCurrency(totalRefunded)}
-              label="Approved"
+              label="Kept"
               color={colors.primary}
               colors={colors}
             />
@@ -181,10 +214,10 @@ export default function HomeScreen() {
         {pendingPaymentCommitments.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Payment pending
+              Money not locked
             </Text>
             <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              These pacts unlock after manual UPI confirmation.
+              These pacts do not start until the money is funded.
             </Text>
             {pendingPaymentCommitments.map((c) => (
               <CommitmentCard key={c.id} commitment={c} compact />
@@ -230,7 +263,7 @@ export default function HomeScreen() {
                 { color: isUrgent ? colors.danger : colors.mutedForeground },
               ]}
             >
-              {formatCountdown(countdown)} · Submit by 11:59 PM
+              The pact closes in {formatCountdown(countdown)} · proof due by 11:59 PM
             </Text>
           </View>
         )}
@@ -247,14 +280,14 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Submitted today */}
+        {/* Kept today */}
         {todayDone.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Submitted today
+              In the record today
             </Text>
             <Text style={[styles.sectionSub, { color: colors.primary }]}>
-              {todayDone.length} submitted
+              {todayDone.length} signed
             </Text>
             {todayDone.map((c) => (
               <CommitmentCard key={c.id} commitment={c} compact />
@@ -269,7 +302,7 @@ export default function HomeScreen() {
               Rest day
             </Text>
             <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              These commitments don't run today
+              These pacts do not judge today.
             </Text>
             {todayNotScheduled.map((c) => (
               <CommitmentCard key={c.id} commitment={c} compact />
@@ -289,23 +322,22 @@ export default function HomeScreen() {
               <Feather name="target" size={32} color={colors.primary} />
             </View>
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              No pacts yet
+              {firstName ? `No pacts yet, ${firstName}` : "No pacts on record"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Make a pact with yourself. Show up, submit proof, and get your
-              money back.
+              Make one you cannot casually ignore. The Raven will keep the record.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={["#00C853", "#00E676"]}
+                colors={["#FFD800", "#FFD800"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.createBtn}
               >
-                <Text style={styles.createBtnText}>Create your first pact</Text>
+                <Text style={styles.createBtnText}>Make first pact</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -318,7 +350,7 @@ export default function HomeScreen() {
         date={today}
         onClose={() => setModalVisible(false)}
         onSubmitContent={handleSubmitContent}
-        onSubmitSteps={handleSubmitSteps}
+        onSubmitWorkout={handleSubmitWorkout}
       />
     </View>
   );
@@ -395,7 +427,7 @@ function ActiveWidget({
               },
             ]}
           >
-            {commitment.goalType === "content" ? "Content" : "Steps"}
+            {commitment.goalType === "content" ? "Content" : "Workout"}
           </Text>
         </View>
         <View style={wStyles.topRight}>
@@ -419,14 +451,14 @@ function ActiveWidget({
             <View style={wStyles.countdownRow}>
               <Feather name="clock" size={11} color={colors.accent} />
               <Text style={[wStyles.countdown, { color: colors.accent }]}>
-                Under review
+                With the Raven
               </Text>
             </View>
           ) : todayStatus === "approved" ? (
             <View style={wStyles.countdownRow}>
               <Feather name="check-circle" size={11} color={colors.primary} />
               <Text style={[wStyles.countdown, { color: colors.primary }]}>
-                Approved today
+                Kept today
               </Text>
             </View>
           ) : (
@@ -453,7 +485,7 @@ function ActiveWidget({
       {/* Progress */}
       <View style={[wStyles.progressBg, { backgroundColor: colors.border }]}>
         <LinearGradient
-          colors={["#00C853", "#00E676"]}
+          colors={["#FFD800", "#FFD800"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[
@@ -470,7 +502,7 @@ function ActiveWidget({
             {formatCurrency(totalRefunded, commitment.currency)}
           </Text>
           <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
-            approved
+            kept
           </Text>
         </View>
         <View style={wStyles.statDivider} />
@@ -479,7 +511,7 @@ function ActiveWidget({
             {verified}/{totalDays}
           </Text>
           <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
-            days done
+            days kept
           </Text>
         </View>
         <View style={wStyles.statDivider} />
@@ -505,7 +537,7 @@ function ActiveWidget({
             style={{ flex: 1 }}
           >
             <LinearGradient
-              colors={["#00C853", "#00E676"]}
+              colors={["#FFD800", "#FFD800"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={wStyles.checkInBtn}
@@ -518,8 +550,8 @@ function ActiveWidget({
               <Text style={wStyles.checkInTxt}>
                 {commitment.goalType === "content"
                   ? "Submit post link"
-                  : "Log steps"}{" "}
-                · review
+                  : "Show proof"}{" "}
+                · sign
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -542,7 +574,7 @@ function ActiveWidget({
             style={{ flex: 1 }}
           >
             <LinearGradient
-              colors={["#00C853", "#00E676"]}
+              colors={["#FFD800", "#FFD800"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[wStyles.detailBtn, { flex: 1 }]}
@@ -582,7 +614,7 @@ function SumStat({
 
 const wStyles = StyleSheet.create({
   card: {
-    borderRadius: 18,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 18,
     marginBottom: 16,
@@ -599,7 +631,7 @@ const wStyles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 9,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 8,
   },
   typeChipTxt: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   topRight: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -629,7 +661,7 @@ const wStyles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     paddingVertical: 13,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   checkInTxt: {
     fontSize: 13,
@@ -643,7 +675,7 @@ const wStyles = StyleSheet.create({
     gap: 6,
     paddingVertical: 13,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   detailTxt: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
@@ -667,12 +699,12 @@ const styles = StyleSheet.create({
   addBtn: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   summaryCard: {
-    borderRadius: 16,
+    borderRadius: 8,
     padding: 16,
     borderWidth: 1,
     marginBottom: 16,
@@ -689,7 +721,7 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     marginBottom: 18,
   },
@@ -709,7 +741,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     width: 72,
     height: 72,
-    borderRadius: 20,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -727,7 +759,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 28,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 8,
   },
   createBtnText: {
     fontSize: 15,

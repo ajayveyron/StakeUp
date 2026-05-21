@@ -1,6 +1,7 @@
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { commitmentCheckoutAmount } from "./payments";
 import { getRefundPerDay } from "./dates";
 
 type NotificationType =
@@ -98,25 +99,28 @@ export async function notifyPaymentPending(
   ctx: MutationCtx,
   args: { user: Doc<"users">; commitment: Doc<"commitments"> }
 ) {
-  const amount = formatMoney(args.commitment.pactAmount, args.commitment.currency);
+  const amount = formatMoney(
+    commitmentCheckoutAmount(args.commitment),
+    args.commitment.currency,
+  );
   const name = friendlyName(args.user);
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "payment_pending",
-    title: "Payment request created",
-    body: `${args.commitment.name} is waiting for manual payment confirmation. Amount due: ${amount}.`,
+    title: "Money not locked yet",
+    body: `${args.commitment.name} is written. Lock ${amount} through Razorpay to start the pact.`,
     commitmentId: args.commitment._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `payment-pending:${args.commitment._id}`,
     email: {
-      subject: `Payment request created for ${args.commitment.name}`,
+      subject: `Lock the money for ${args.commitment.name}`,
       body: `Hi ${name},
 
-Your ${args.commitment.name} pact has been created and is waiting for manual payment confirmation.
+Your ${args.commitment.name} pact has been written and is ready for Razorpay Checkout.
 
 Amount due: ${amount}
 
-Open Pact Raven and use the UPI payment step for this pact. Your check-ins will start after an admin confirms the payment.`,
+Open Pact Raven and pay through Razorpay Checkout. The record starts only after payment is verified.`,
     },
   });
 }
@@ -130,18 +134,18 @@ export async function notifyPaymentConfirmed(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "payment_confirmed",
-    title: "Payment received",
-    body: `${args.commitment.name} is active now. Check-ins are unlocked.`,
+    title: "Money locked",
+    body: `${args.commitment.name} is live. The Raven is keeping the record.`,
     commitmentId: args.commitment._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `payment-confirmed:${args.commitment._id}`,
     email: {
-      subject: `${args.commitment.name} is active`,
+      subject: `${args.commitment.name} is live`,
       body: `Hi ${name},
 
-Payment has been confirmed for ${args.commitment.name}. Your pact is active now.
+Payment has been confirmed for ${args.commitment.name}. Your pact is live now.
 
-Open Pact Raven to view your schedule and submit check-ins on active days.`,
+Open Pact Raven to view your schedule and show proof on active days.`,
     },
   });
 }
@@ -155,17 +159,17 @@ export async function notifyPaymentDiscarded(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "payment_discarded",
-    title: "Payment request discarded",
-    body: `${args.commitment.name} was archived without activation.`,
+    title: "Pact archived",
+    body: `${args.commitment.name} was archived before the money was locked.`,
     commitmentId: args.commitment._id,
     dedupeKey: `payment-discarded:${args.commitment._id}`,
     email: {
       subject: `${args.commitment.name} was archived`,
       body: `Hi ${name},
 
-The pending payment request for ${args.commitment.name} was archived without activation.
+The pending payment request for ${args.commitment.name} was archived before activation.
 
-No pact is active for that request.`,
+No pact is live for that request.`,
     },
   });
 }
@@ -184,19 +188,19 @@ export async function notifyCheckInApproved(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "check_in_approved",
-    title: "Check-in approved + paid",
-    body: `${args.commitment.name} for ${args.checkIn.date} was approved. ${amount} has been marked paid to you.`,
+    title: "Kept",
+    body: `${args.commitment.name} for ${args.checkIn.date} was kept. ${amount} is now refund credit.`,
     commitmentId: args.commitment._id,
     checkInId: args.checkIn._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `check-in-approved:${args.checkIn._id}`,
     email: {
-      subject: `Check-in approved: ${args.commitment.name}`,
+      subject: `Kept: ${args.commitment.name}`,
       body: `Hi ${name},
 
-Your ${args.commitment.name} check-in for ${args.checkIn.date} was approved.
+Your ${args.commitment.name} submission for ${args.checkIn.date} was kept.
 
-${amount} has been marked paid to you.`,
+${amount} is now a refund credit.`,
     },
   });
 }
@@ -216,21 +220,21 @@ export async function notifyCheckInRejected(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "check_in_rejected",
-    title: "Check-in rejected",
-    body: `${args.commitment.name} for ${args.checkIn.date} was rejected. Reason: ${args.reason}`,
+    title: "Pact not met",
+    body: `${args.commitment.name} for ${args.checkIn.date} was not accepted. Reason: ${args.reason}`,
     commitmentId: args.commitment._id,
     checkInId: args.checkIn._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `check-in-rejected:${args.checkIn._id}`,
     email: {
-      subject: `Check-in rejected: ${args.commitment.name}`,
+      subject: `Pact not met: ${args.commitment.name}`,
       body: `Hi ${name},
 
-Your ${args.commitment.name} check-in for ${args.checkIn.date} was rejected.
+Your ${args.commitment.name} submission for ${args.checkIn.date} was not accepted.
 
 Reason: ${args.reason}
 
-${amount} has been forfeited for this check-in.`,
+${amount} has been forfeited to your selected charity for this day.`,
     },
   });
 }
@@ -251,14 +255,14 @@ export async function notifyManualPayoutRecorded(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "manual_payout_recorded",
-    title: "Payout recorded",
-    body: `${amount} was marked paid to you.${noteLine}`,
+    title: "Refund recorded",
+    body: `${amount} was marked refunded to you.${noteLine}`,
     route: "/profile",
     email: {
-      subject: `Payout recorded: ${amount}`,
+      subject: `Refund recorded: ${amount}`,
       body: `Hi ${name},
 
-A manual payout of ${amount} was recorded for your Pact Raven account.${noteLine}`,
+A Razorpay refund/disbursement of ${amount} was recorded for your Pact Raven account.${noteLine}`,
     },
   });
 }

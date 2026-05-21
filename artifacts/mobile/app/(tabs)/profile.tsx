@@ -1,9 +1,10 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -13,9 +14,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { NotificationButton } from "@/components/NotificationButton";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
+import { useFirstName } from "@/hooks/useCurrentUser";
 import { api } from "@convex/_generated/api";
 import {
   formatCurrency,
@@ -40,7 +43,10 @@ export default function ProfileScreen() {
   const { signOut } = useAuth();
   const currentUser = useQuery(api.users.current);
   const wallet = useQuery(api.wallet.getMine);
+  const withdrawRefundBalance = useAction(api.payments.withdrawRefundBalance);
   const { commitments } = useCommitments();
+  const firstName = useFirstName();
+  const [withdrawing, setWithdrawing] = useState(false);
 
   const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
   const totalCommitted = confirmedCommitments.reduce(
@@ -69,9 +75,33 @@ export default function ProfileScreen() {
 
   const past = commitments.filter(isExpired);
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const availableRefund = wallet?.availableToPayout ?? 0;
+
+  async function handleWithdrawRefund() {
+    if (withdrawing || availableRefund <= 0) return;
+    setWithdrawing(true);
+    try {
+      const result = await withdrawRefundBalance({
+        amount: availableRefund,
+        currency: wallet?.currency ?? "INR",
+      });
+      Alert.alert(
+        "Refund requested",
+        `${formatCurrency(result.amount, result.currency)} is on its way to your account.`
+      );
+    } catch (error) {
+      Alert.alert(
+        "Refund failed",
+        error instanceof Error ? error.message : "Please try again."
+      );
+    } finally {
+      setWithdrawing(false);
+    }
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <BrutalistBackdrop />
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -84,7 +114,7 @@ export default function ProfileScreen() {
       >
         <View style={styles.headerRow}>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            Stats
+            The Ledger
           </Text>
           <View style={styles.headerActions}>
             <NotificationButton />
@@ -141,7 +171,7 @@ export default function ProfileScreen() {
                     { color: colors.mutedForeground },
                   ]}
                 >
-                  Payments, check-ins, reviews, payouts
+                  Payments, check-ins, reviews, refunds
                 </Text>
               </View>
             </View>
@@ -161,10 +191,10 @@ export default function ProfileScreen() {
               color={colors.mutedForeground}
             />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              Nothing yet
+              {firstName ? `No record yet, ${firstName}` : "No record yet"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Create a pact and your stats will appear here.
+              Make a pact. Keep it. The record will appear here.
             </Text>
           </View>
         ) : (
@@ -184,7 +214,7 @@ export default function ProfileScreen() {
                   {formatCurrency(wallet?.availableToPayout ?? totalRefunded)}
                 </Text>
                 <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-                  Pending Payout
+                  Refund Credit
                 </Text>
               </View>
               <View
@@ -200,10 +230,45 @@ export default function ProfileScreen() {
                   {formatCurrency(totalAtRisk)}
                 </Text>
                 <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-                  At Risk
+                  Still at Risk
                 </Text>
               </View>
             </View>
+
+            <TouchableOpacity
+              onPress={handleWithdrawRefund}
+              disabled={withdrawing || availableRefund <= 0}
+              style={[
+                styles.withdrawBtn,
+                {
+                  backgroundColor:
+                    availableRefund > 0 ? colors.primary : colors.secondary,
+                  opacity: withdrawing ? 0.55 : 1,
+                },
+              ]}
+              activeOpacity={0.84}
+            >
+              <Feather
+                name="download"
+                size={16}
+                color={availableRefund > 0 ? "#000" : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.withdrawBtnText,
+                  {
+                    color:
+                      availableRefund > 0 ? "#000" : colors.mutedForeground,
+                  },
+                ]}
+              >
+                {withdrawing
+                  ? "Requesting refund..."
+                  : availableRefund > 0
+                  ? "Withdraw kept money"
+                  : "No refund balance yet"}
+              </Text>
+            </TouchableOpacity>
 
             {/* Detail stats */}
             <View
@@ -214,7 +279,7 @@ export default function ProfileScreen() {
             >
               <StatRow
                 icon="layers"
-                label="Total committed"
+                label="Total locked"
                 value={formatCurrency(totalCommitted)}
                 colors={colors}
               />
@@ -228,28 +293,28 @@ export default function ProfileScreen() {
               <Div colors={colors} />
               <StatRow
                 icon="send"
-                label="Paid manually"
+                label="Refunded"
                 value={formatCurrency(wallet?.paidOut ?? 0)}
                 colors={colors}
               />
               <Div colors={colors} />
               <StatRow
                 icon="check-circle"
-                label="Total check-ins"
+                label="Days kept"
                 value={totalCheckIns.toString()}
                 colors={colors}
               />
               <Div colors={colors} />
               <StatRow
                 icon="target"
-                label="Commitments"
+                label="Pacts"
                 value={commitments.length.toString()}
                 colors={colors}
               />
               <Div colors={colors} />
               <StatRow
                 icon="trending-up"
-                label="Avg success rate"
+                label="Avg kept rate"
                 value={`${avgRate}%`}
                 colors={colors}
                 valueColor={
@@ -264,7 +329,7 @@ export default function ProfileScreen() {
                 <Text
                   style={[styles.sectionTitle, { color: colors.foreground }]}
                 >
-                  History
+                  Closed records
                 </Text>
                 {past.map((c) => {
                   const refunded = getTotalRefunded(c);
@@ -363,7 +428,7 @@ export default function ProfileScreen() {
                           { color: colors.mutedForeground },
                         ]}
                       >
-                        {verified}/{total} days · {rate}% success ·{" "}
+                        {verified}/{total} days kept · {rate}% kept ·{" "}
                         {formatCurrency(perDay, c.currency)}/day ·{" "}
                         {formatDate(c.startDate)} – {formatDate(c.endDate)}
                       </Text>
@@ -442,7 +507,7 @@ const styles = StyleSheet.create({
   signOutBtn: {
     minWidth: 92,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 8,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -454,7 +519,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   adminCard: {
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
     marginBottom: 14,
@@ -466,7 +531,7 @@ const styles = StyleSheet.create({
   adminIcon: {
     width: 32,
     height: 32,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -475,15 +540,28 @@ const styles = StyleSheet.create({
   heroRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
   heroCard: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 16,
     gap: 4,
   },
   heroValue: { fontSize: 20, fontFamily: "Inter_700Bold" },
   heroLabel: { fontSize: 11, fontFamily: "Inter_400Regular" },
+  withdrawBtn: {
+    minHeight: 46,
+    borderRadius: 8,
+    marginBottom: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  withdrawBtnText: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
   statsCard: {
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -496,7 +574,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   historyCard: {
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 14,
     borderWidth: 1,
     gap: 8,

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { useColors } from "@/hooks/useColors";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -80,6 +81,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <BrutalistBackdrop />
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -103,7 +105,7 @@ export default function NotificationsScreen() {
               Inbox
             </Text>
             <Text style={[styles.title, { color: colors.foreground }]}>
-              Notifications
+              The Raven's Notes
             </Text>
           </View>
           <TouchableOpacity
@@ -138,11 +140,10 @@ export default function NotificationsScreen() {
           <View style={styles.empty}>
             <Feather name="bell" size={38} color={colors.mutedForeground} />
             <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              No notifications
+              No notes yet
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Payment updates, review decisions, and payout receipts will appear
-              here.
+              Payment updates, proof decisions, and refund receipts will be recorded here.
             </Text>
           </View>
         ) : (
@@ -237,7 +238,7 @@ const styles = StyleSheet.create({
   iconBtn: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
   markBtn: {
     height: 38,
-    borderRadius: 19,
+    borderRadius: 8,
     paddingHorizontal: 12,
     flexDirection: "row",
     alignItems: "center",
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
   list: { gap: 12 },
   card: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: 8,
     padding: 14,
     flexDirection: "row",
     alignItems: "flex-start",
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },

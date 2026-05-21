@@ -1,0 +1,11 @@
+{
+  "installCommand": "corepack pnpm install --frozen-lockfile --ignore-scripts",
+  "buildCommand": "corepack pnpm --filter @workspace/mobile exec expo export --platform web",
+  "outputDirectory": "artifacts/mobile/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

@@ -29,6 +29,9 @@ async function replaceOrCreateUnderReview(
         commitmentId: Id<"commitments">;
         date: string;
         proofUrl: string;
+        proofPrompt?: string;
+        submissionSignature?: string;
+        submissionStatement?: string;
         stepCount?: undefined;
       }
     | {
@@ -36,6 +39,8 @@ async function replaceOrCreateUnderReview(
         date: string;
         stepCount: number;
         proofUrl?: undefined;
+        submissionSignature?: undefined;
+        submissionStatement?: undefined;
       }
 ) {
   const { user, commitment } = await requireOwnedActiveCommitment(
@@ -45,7 +50,9 @@ async function replaceOrCreateUnderReview(
   const today = todayInTimeZone(commitment.timezone);
 
   if (args.proofUrl !== undefined && commitment.goalType !== "content") {
-    throw new Error("This commitment does not accept content proof");
+    if (commitment.goalType !== "workout") {
+      throw new Error("This commitment does not accept this proof");
+    }
   }
   if (args.date > today) {
     throw new Error("Cannot submit proof for a future date");
@@ -71,6 +78,11 @@ async function replaceOrCreateUnderReview(
     commitmentId: commitment._id,
     date: args.date,
     proofUrl: args.proofUrl,
+    proofPrompt: "proofPrompt" in args ? args.proofPrompt : undefined,
+    submissionSignature:
+      "submissionSignature" in args ? args.submissionSignature : undefined,
+    submissionStatement:
+      "submissionStatement" in args ? args.submissionStatement : undefined,
     stepCount: args.stepCount,
     status: "under_review" as const,
     verified: false,
@@ -97,6 +109,8 @@ export const submitContent = mutation({
     commitmentId: v.id("commitments"),
     date: v.string(),
     proofUrl: v.string(),
+    submissionSignature: v.optional(v.string()),
+    submissionStatement: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const proofUrl = args.proofUrl.trim();
@@ -106,6 +120,8 @@ export const submitContent = mutation({
     const checkInId = await replaceOrCreateUnderReview(ctx, {
       ...args,
       proofUrl,
+      submissionSignature: args.submissionSignature?.trim() || undefined,
+      submissionStatement: args.submissionStatement?.trim() || undefined,
     });
     await ctx.scheduler.runAfter(0, internal.slack.sendReviewNotification, {
       checkInId,
@@ -114,24 +130,35 @@ export const submitContent = mutation({
   },
 });
 
-export const submitSteps = mutation({
+export const submitWorkout = mutation({
   args: {
     commitmentId: v.id("commitments"),
     date: v.string(),
-    stepCount: v.number(),
+    proofUrl: v.string(),
+    proofPrompt: v.optional(v.string()),
+    submissionSignature: v.optional(v.string()),
+    submissionStatement: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { commitment } = await requireOwnedActiveCommitment(
       ctx,
       args.commitmentId
     );
-    if (commitment.goalType !== "steps") {
-      throw new Error("This commitment does not accept step check-ins");
+    if (commitment.goalType !== "workout") {
+      throw new Error("This commitment does not accept workout proof");
     }
-    if (args.stepCount < commitment.targetPerDay) {
-      throw new Error("Step count is below the daily target");
+    const proofUrl = args.proofUrl.trim();
+    if (!proofUrl.startsWith("http")) {
+      throw new Error("Proof URL must start with http");
     }
-    const checkInId = await replaceOrCreateUnderReview(ctx, args);
+    const checkInId = await replaceOrCreateUnderReview(ctx, {
+      commitmentId: args.commitmentId,
+      date: args.date,
+      proofUrl,
+      proofPrompt: args.proofPrompt?.trim() || undefined,
+      submissionSignature: args.submissionSignature?.trim() || undefined,
+      submissionStatement: args.submissionStatement?.trim() || undefined,
+    });
     await ctx.scheduler.runAfter(0, internal.slack.sendReviewNotification, {
       checkInId,
     });

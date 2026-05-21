@@ -36,14 +36,14 @@ const styles = StyleSheet.create({
   button: {
     width: 42,
     height: 42,
-    borderRadius: 21,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   badge: {
     minWidth: 17,
     height: 17,
-    borderRadius: 8.5,
+    borderRadius: 8,
     paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",

@@ -15,6 +15,7 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -29,9 +30,37 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommitmentsProvider } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { api } from "@convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useConvexAuth, useMutation } from "convex/react";
 
 SplashScreen.preventAutoHideAsync();
+
+const WEB_MAX_WIDTH = 480;
+
+function WebFrame({ children }: { children: React.ReactNode }) {
+  const colors = useColors();
+  if (Platform.OS !== "web") return <>{children}</>;
+  return (
+    <View
+      style={{
+        flex: 1,
+        width: "100%",
+        alignItems: "center",
+        backgroundColor: colors.background,
+      }}
+    >
+      <View
+        style={{
+          flex: 1,
+          width: "100%",
+          maxWidth: WEB_MAX_WIDTH,
+          overflow: "hidden",
+        }}
+      >
+        {children}
+      </View>
+    </View>
+  );
+}
 
 const queryClient = new QueryClient();
 const clerkPublishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -49,10 +78,7 @@ function RootLayoutNav() {
           presentation: "modal",
         }}
       />
-      <Stack.Screen
-        name="commitment/[id]"
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="commitment/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
     </Stack>
@@ -90,7 +116,7 @@ function AuthenticatedApp() {
   const colors = useColors();
   const upsertCurrentUser = useMutation(api.users.upsertCurrentUser);
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading"
+    "loading",
   );
   const [attempt, setAttempt] = useState(0);
 
@@ -147,9 +173,14 @@ function AuthenticatedApp() {
 
 function AppGate() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { isLoading: convexAuthLoading, isAuthenticated: convexAuthenticated } =
+    useConvexAuth();
 
   if (!isLoaded) return <LoadingScreen />;
   if (!isSignedIn) return <AuthScreen />;
+  if (convexAuthLoading || !convexAuthenticated) {
+    return <LoadingScreen message="Preparing session" />;
+  }
   return <AuthenticatedApp />;
 }
 
@@ -173,7 +204,9 @@ export default function RootLayout() {
     return (
       <SafeAreaProvider>
         <ErrorBoundary>
-          <SetupRequiredScreen />
+          <WebFrame>
+            <SetupRequiredScreen />
+          </WebFrame>
         </ErrorBoundary>
       </SafeAreaProvider>
     );
@@ -188,7 +221,9 @@ export default function RootLayout() {
             tokenCache={tokenCache}
           >
             <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
-              <AppGate />
+              <WebFrame>
+                <AppGate />
+              </WebFrame>
             </ConvexProviderWithClerk>
           </ClerkProvider>
         </QueryClientProvider>
@@ -222,7 +257,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
   },
   retryBtn: {
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 18,
     paddingVertical: 10,
     marginTop: 8,

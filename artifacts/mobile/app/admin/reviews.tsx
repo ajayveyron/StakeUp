@@ -25,6 +25,8 @@ type PendingReviewRow = {
     id: string;
     date: string;
     proofUrl?: string;
+    proofPrompt?: string;
+    submissionStatement?: string;
     stepCount?: number;
     submittedAt: string;
     status: "under_review";
@@ -32,7 +34,7 @@ type PendingReviewRow = {
   commitment: {
     id: string;
     name: string;
-    goalType: "content" | "steps";
+    goalType: "content" | "workout";
     targetPerDay: number;
     currency: string;
     refundPerDay: number;
@@ -49,7 +51,7 @@ type AdminOverview = {
     commitment: {
       id: string;
       name: string;
-      goalType: "content" | "steps";
+      goalType: "content" | "workout";
       startDate: string;
       endDate: string;
       pactAmount: number;
@@ -64,11 +66,13 @@ type AdminOverview = {
     submittedAt?: string;
     checkInId?: string;
     proofUrl?: string;
+    proofPrompt?: string;
+    submissionStatement?: string;
     stepCount?: number;
     commitment: {
       id: string;
       name: string;
-      goalType: "content" | "steps";
+      goalType: "content" | "workout";
       targetPerDay: number;
       currency: string;
       refundPerDay: number;
@@ -90,7 +94,7 @@ type AdminOverview = {
       | "manual_payout";
     amount: number;
     currency: string;
-    destination: "user" | "friend" | "reward_pool" | "admin_upi";
+    destination: "user" | "charity" | "razorpay";
     externalReference?: string;
     note?: string;
     createdAt: string;
@@ -110,13 +114,13 @@ type AdminUser = {
   displayName?: string;
 };
 
-type Tab = "payments" | "today" | "reviews" | "payouts" | "ledger";
+type Tab = "payments" | "today" | "reviews" | "refunds" | "ledger";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "payments", label: "Payments" },
   { key: "today", label: "Today" },
   { key: "reviews", label: "Review" },
-  { key: "payouts", label: "Payouts" },
+  { key: "refunds", label: "Refunds" },
   { key: "ledger", label: "Ledger" },
 ];
 
@@ -136,8 +140,34 @@ function ledgerLabel(type: AdminOverview["recentLedger"][number]["type"]) {
     case "forfeited":
       return "Forfeited";
     case "manual_payout":
-      return "Payout";
+      return "Refund paid";
   }
+}
+
+function proofLabel(args: {
+  goalType: "content" | "workout";
+  proofUrl?: string;
+  proofPrompt?: string;
+  submissionStatement?: string;
+  stepCount?: number;
+}) {
+  const suffix = signedLabel(args.submissionStatement);
+  if (args.proofUrl && args.proofPrompt) {
+    return `${args.proofUrl} · prompt ${args.proofPrompt}${suffix}`;
+  }
+  if (args.proofUrl) return `${args.proofUrl}${suffix}`;
+  if (args.stepCount !== undefined) {
+    return `${args.stepCount.toLocaleString("en-IN")} legacy steps${suffix}`;
+  }
+  return `${
+    args.goalType === "content"
+      ? "Waiting for public post link"
+      : "Waiting for workout camera proof"
+  }${suffix}`;
+}
+
+function signedLabel(statement?: string) {
+  return statement ? ` · signed "${statement}"` : "";
 }
 
 export default function AdminReviewsScreen() {
@@ -238,7 +268,7 @@ export default function AdminReviewsScreen() {
     payments: overview?.pendingPayments.length ?? 0,
     today: overview?.todayCheckIns.length ?? 0,
     reviews: overview?.pendingReviews.length ?? 0,
-    payouts: overview?.payoutBalances.length ?? 0,
+    refunds: overview?.payoutBalances.length ?? 0,
     ledger: overview?.recentLedger.length ?? 0,
   };
 
@@ -262,7 +292,7 @@ export default function AdminReviewsScreen() {
             Admin ops
           </Text>
           <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-            Payments, check-ins, payouts
+            Razorpay, proof review, refunds
           </Text>
         </View>
         <View style={styles.iconBtn} />
@@ -384,7 +414,7 @@ export default function AdminReviewsScreen() {
                             [commitmentId]: value,
                           }))
                         }
-                        placeholder="UPI UTR or note"
+                        placeholder="Razorpay payment id or note"
                         placeholderTextColor={colors.mutedForeground}
                         style={[
                           styles.input,
@@ -482,10 +512,13 @@ export default function AdminReviewsScreen() {
                         style={[styles.proofText, { color: colors.foreground }]}
                         numberOfLines={2}
                       >
-                        {row.proofUrl ??
-                          (row.stepCount !== undefined
-                            ? `${row.stepCount.toLocaleString("en-IN")} steps`
-                            : "Waiting for user submission")}
+                        {proofLabel({
+                          goalType: row.commitment.goalType,
+                          proofUrl: row.proofUrl,
+                          proofPrompt: row.proofPrompt,
+                          submissionStatement: row.submissionStatement,
+                          stepCount: row.stepCount,
+                        })}
                       </Text>
                     </View>
                   </View>
@@ -552,8 +585,13 @@ export default function AdminReviewsScreen() {
                           style={[styles.proofText, { color: colors.foreground }]}
                           numberOfLines={2}
                         >
-                          {row.checkIn.proofUrl ??
-                            `${row.checkIn.stepCount?.toLocaleString("en-IN")} steps`}
+                          {proofLabel({
+                            goalType: row.commitment.goalType,
+                            proofUrl: row.checkIn.proofUrl,
+                            proofPrompt: row.checkIn.proofPrompt,
+                            submissionStatement: row.checkIn.submissionStatement,
+                            stepCount: row.checkIn.stepCount,
+                          })}
                         </Text>
                       </View>
                       <TextInput
@@ -616,13 +654,13 @@ export default function AdminReviewsScreen() {
             </View>
           )}
 
-          {tab === "payouts" && (
+          {tab === "refunds" && (
             <View style={styles.section}>
               {overview!.payoutBalances.length === 0 ? (
                 <EmptyState
                   icon="send"
-                  title="No payout balances"
-                  body="Approved amounts waiting for manual UPI payout will appear here."
+                  title="No refund balances"
+                  body="Approved refund credits waiting for Razorpay disbursement will appear here."
                   colors={colors}
                 />
               ) : (
@@ -650,7 +688,7 @@ export default function AdminReviewsScreen() {
                         onChangeText={(value) =>
                           setPayoutRefs((prev) => ({ ...prev, [key]: value }))
                         }
-                        placeholder="UPI payout reference"
+                        placeholder="Razorpay refund or disbursement id"
                         placeholderTextColor={colors.mutedForeground}
                         style={[
                           styles.input,
@@ -694,7 +732,7 @@ export default function AdminReviewsScreen() {
                         activeOpacity={0.84}
                       >
                         <Feather name="check" size={15} color="#000" />
-                        <Text style={styles.primaryBtnText}>Mark paid via UPI</Text>
+                        <Text style={styles.primaryBtnText}>Mark refunded</Text>
                       </TouchableOpacity>
                     </View>
                   );
@@ -851,7 +889,7 @@ const styles = StyleSheet.create({
   },
   tab: {
     minHeight: 38,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 12,
     flexDirection: "row",
@@ -865,7 +903,7 @@ const styles = StyleSheet.create({
   countPill: {
     minWidth: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 6,
@@ -873,7 +911,7 @@ const styles = StyleSheet.create({
   countText: { fontSize: 11, fontFamily: "Inter_700Bold" },
   section: { gap: 12 },
   card: {
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
     gap: 12,
@@ -886,7 +924,7 @@ const styles = StyleSheet.create({
   cardIcon: {
     width: 34,
     height: 34,
-    borderRadius: 10,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -908,13 +946,13 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 44,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },
   proofBox: {
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 12,
     flexDirection: "row",
     gap: 8,
@@ -932,7 +970,7 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     height: 44,
     alignItems: "center",
@@ -951,7 +989,7 @@ const styles = StyleSheet.create({
   },
   primaryBtn: {
     height: 44,
-    borderRadius: 12,
+    borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -981,7 +1019,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   ledgerRow: {
-    borderRadius: 13,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 13,
     flexDirection: "row",
