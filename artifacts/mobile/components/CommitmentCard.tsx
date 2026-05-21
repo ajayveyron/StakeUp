@@ -201,7 +201,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
               <Text
                 style={[styles.statLabel, { color: colors.mutedForeground }]}
               >
-                Kept
+                Refund credit
               </Text>
             </View>
             <View

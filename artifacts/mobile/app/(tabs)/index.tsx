@@ -188,7 +188,7 @@ export default function HomeScreen() {
           >
             <SumStat
               value={formatCurrency(totalRefunded)}
-              label="Kept"
+              label="Refund credit"
               color={colors.primary}
               colors={colors}
             />
@@ -280,7 +280,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* Kept today */}
+        {/* Successful today */}
         {todayDone.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
@@ -325,7 +325,7 @@ export default function HomeScreen() {
               {firstName ? `No pacts yet, ${firstName}` : "No pacts on record"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Make one you cannot casually ignore. The Raven will keep the record.
+              Make one you cannot casually ignore. The Raven will record the proof.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
@@ -458,7 +458,7 @@ function ActiveWidget({
             <View style={wStyles.countdownRow}>
               <Feather name="check-circle" size={11} color={colors.primary} />
               <Text style={[wStyles.countdown, { color: colors.primary }]}>
-                Kept today
+                Successful today
               </Text>
             </View>
           ) : (
@@ -502,7 +502,7 @@ function ActiveWidget({
             {formatCurrency(totalRefunded, commitment.currency)}
           </Text>
           <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
-            kept
+            refund credit
           </Text>
         </View>
         <View style={wStyles.statDivider} />
@@ -511,7 +511,7 @@ function ActiveWidget({
             {verified}/{totalDays}
           </Text>
           <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
-            days kept
+            successful days
           </Text>
         </View>
         <View style={wStyles.statDivider} />

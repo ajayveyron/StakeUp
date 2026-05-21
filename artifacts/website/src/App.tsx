@@ -20,12 +20,16 @@ const proofTypes = [
   {
     icon: Camera,
     title: "Workout pact",
+    goalType: "workout",
+    cta: "Start workout pact",
     body: "Train on the days you promised. Submit fresh proof with the daily pose or gesture prompt before your deadline.",
   },
   {
     icon: Link2,
     title: "Content pact",
-    body: "Publish the post, keep it public, and submit the link before the day closes. Deleted or private posts do not count.",
+    goalType: "content",
+    cta: "Start content pact",
+    body: "Publish the post, leave it public, and submit the link before the day closes. Deleted or private posts do not count.",
   },
 ];
 
@@ -57,7 +61,7 @@ const moneyRules = [
   {
     icon: ShieldCheck,
     title: "Deposit comes back only when earned",
-    body: "Kept days create refund credit after manual review. Payouts are manual UPI for the first cohorts.",
+    body: "Successful days create refund credit after manual review. Payouts are manual UPI for the first cohorts.",
   },
   {
     icon: HeartHandshake,
@@ -83,6 +87,9 @@ const faqs = [
 
 const lastUpdated = "May 21, 2026";
 const appUrl = "https://app.pactraven.com";
+const appCreateUrl = `${appUrl}/commitment/new`;
+const pactIntentUrl = (goalType: string) =>
+  `${appCreateUrl}?type=${goalType}&step=name`;
 
 const legalPages = {
   "/terms": {
@@ -307,11 +314,15 @@ function App() {
             <h1>Make a pact you cannot casually break.</h1>
             <p className="lede">
               Choose a 30-day challenge, buy one pact slot, lock a refundable
-              deposit, and submit proof. Kept days unlock refund credit. Missed
+              deposit, and submit proof. Successful days unlock refund credit. Missed
               days forfeit to the charity you chose.
             </p>
             <div className="hero-actions">
-              <a className="button primary" href={appUrl} aria-label="Open Pact Raven app">
+              <a
+                className="button primary"
+                href={appCreateUrl}
+                aria-label="Open Pact Raven app"
+              >
                 Start a pact
                 <ArrowRight size={20} />
               </a>
@@ -328,14 +339,14 @@ function App() {
               <strong>Show proof daily</strong>
             </div>
             <div className="promise-line">
-              <span>If kept</span>
+              <span>If successful</span>
               <strong>Refund credit</strong>
             </div>
             <div className="promise-line">
               <span>If missed</span>
               <strong>Charity forfeit</strong>
             </div>
-            <a className="panel-link" href={appUrl}>
+            <a className="panel-link" href={appCreateUrl}>
               Open the app
               <ArrowRight size={18} />
             </a>
@@ -346,7 +357,7 @@ function App() {
       <section className="band" id="how">
         <div className="section-heading">
           <p className="stamp">How it works</p>
-          <h2>Start only when you are ready to stand by the record.</h2>
+          <h2>Start only when you are ready to sign the record.</h2>
         </div>
         <div className="step-list">
           {steps.map((step, index) => (
@@ -372,8 +383,8 @@ function App() {
                 <Icon size={34} />
                 <h3>{item.title}</h3>
                 <p>{item.body}</p>
-                <a href={appUrl}>
-                  Start this pact
+                <a href={pactIntentUrl(item.goalType)}>
+                  {item.cta}
                   <ArrowRight size={18} />
                 </a>
               </article>
@@ -403,7 +414,7 @@ function App() {
 
       <section className="charity-band" id="charity">
         <div className="section-heading">
-          <p className="stamp">If the pact is not kept</p>
+          <p className="stamp">If a day is missed or rejected</p>
           <h2>Missed-day money goes to the charity you selected.</h2>
         </div>
         <p className="charity-note">
@@ -431,7 +442,7 @@ function App() {
           ))}
         </div>
         <div className="policy-cta">
-          <a className="button primary" href={appUrl}>
+          <a className="button primary" href={appCreateUrl}>
             Start a pact
             <ArrowRight size={20} />
           </a>
@@ -444,7 +455,7 @@ function App() {
       <footer>
         <div>
           <strong>PACT RAVEN</strong>
-          <span>Make the pact. Keep the record.</span>
+          <span>Make the pact. Record the proof.</span>
         </div>
         <nav className="footer-links" aria-label="Legal links">
           <a href="/terms">Terms</a>

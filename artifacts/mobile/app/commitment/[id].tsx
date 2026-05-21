@@ -361,7 +361,7 @@ export default function CommitmentDetailScreen() {
           ]}
         >
           <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
-            Kept money unlocked
+            Refund credit unlocked
           </Text>
           <Text style={[styles.refundValue, { color: colors.primary }]}>
             {formatCurrency(refunded, commitment.currency)}
@@ -424,7 +424,7 @@ export default function CommitmentDetailScreen() {
           >
             <Feather name="alert-circle" size={14} color={colors.danger} />
             <Text style={[styles.missedText, { color: colors.danger }]}>
-              {missed} day{missed > 1 ? "s" : ""} broke the pact ·{" "}
+              {missed} missed day{missed > 1 ? "s" : ""} ·{" "}
               {formatCurrency(missedAmount, commitment.currency)} forfeited to {forfeitLabel}
             </Text>
           </View>
@@ -797,7 +797,7 @@ export default function CommitmentDetailScreen() {
                   ]}
                 >
                   {todayStatus === "approved"
-                    ? `Kept · ${formatCurrency(perDay, commitment.currency)} refund credit`
+                    ? `Successful · ${formatCurrency(perDay, commitment.currency)} refund credit`
                     : "Proof is with the Raven"}
                 </Text>
               </View>

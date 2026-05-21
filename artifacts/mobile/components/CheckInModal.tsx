@@ -255,7 +255,7 @@ export function CheckInModal({
                 Public proof link
               </Text>
               <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Post it publicly. Paste the link. Stand by it.
+                Post it publicly. Paste the link. Sign the record.
               </Text>
               <View
                 style={[
@@ -408,7 +408,7 @@ export function CheckInModal({
                       { color: colors.mutedForeground },
                     ]}
                   >
-                    Stand by it
+                    Sign the record
                   </Text>
                   <Text
                     style={[
@@ -491,10 +491,10 @@ export function CheckInModal({
               {proofReady && !hasSignature
                 ? `Sign "${SUBMISSION_STATEMENT}" to lock this into the record`
                 : isContent && canSubmit
-                ? `If kept, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
                 : !isContent && canSubmit
-                ? `If kept, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
-                : `Show proof by the deadline. The Raven keeps the record.`}
+                ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                : `Show proof by the deadline. The Raven records the proof.`}
             </Text>
           </View>
 

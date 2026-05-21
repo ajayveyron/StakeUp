@@ -1,8 +1,12 @@
 {
   "installCommand": "corepack pnpm install --frozen-lockfile --ignore-scripts",
-  "buildCommand": "corepack pnpm --filter @workspace/mobile exec expo export --platform web",
+  "buildCommand": "EXPO_PUBLIC_DOMAIN=app.pactraven.com corepack pnpm --filter @workspace/mobile run build:web",
   "outputDirectory": "artifacts/mobile/dist",
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

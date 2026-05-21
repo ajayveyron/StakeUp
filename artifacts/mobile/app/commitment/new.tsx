@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -98,16 +98,22 @@ interface FormData {
 export default function NewCommitmentScreen() {
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    type?: string | string[];
+    step?: string | string[];
+  }>();
   const insets = useSafeAreaInsets();
   const { addCommitment } = useCommitments();
   const firstName = useFirstName();
+  const appliedIntentRef = useRef(false);
 
-  const [stepIndex, setStepIndex, , clearStep] = usePersistedState<number>(
+  const [stepIndex, setStepIndex, stepHydrated, clearStep] =
+    usePersistedState<number>(
     "newCommitment.stepIndex",
     0,
   );
   const [creating, setCreating] = useState(false);
-  const [form, setForm, , clearForm] = usePersistedState<FormData>(
+  const [form, setForm, formHydrated, clearForm] = usePersistedState<FormData>(
     "newCommitment.form",
     {
       name: "",
@@ -121,6 +127,18 @@ export default function NewCommitmentScreen() {
       forfeitDestination: "akshaya_patra",
     },
   );
+  const intentType = Array.isArray(params.type) ? params.type[0] : params.type;
+  const intentStep = Array.isArray(params.step) ? params.step[0] : params.step;
+
+  useEffect(() => {
+    if (appliedIntentRef.current || !formHydrated || !stepHydrated) return;
+    const goalType =
+      intentType === "workout" || intentType === "content" ? intentType : null;
+    if (!goalType) return;
+    appliedIntentRef.current = true;
+    setForm((prev) => ({ ...prev, goalType }));
+    if (intentStep === "name") setStepIndex(1);
+  }, [formHydrated, intentStep, intentType, setForm, setStepIndex, stepHydrated]);
 
   const steps: StepKey[] =
     form.goalType === "workout"
@@ -546,7 +564,7 @@ export default function NewCommitmentScreen() {
                 )}
                 {scheduledDays > 0 && parseFloat(form.pactAmount) > 0 && (
                   <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                    {formatCurrency(perDay, form.currency)} refund credit per kept day
+                    {formatCurrency(perDay, form.currency)} refund credit per successful day
                   </Text>
                 )}
               </StepQuestion>

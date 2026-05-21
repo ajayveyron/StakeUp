@@ -151,7 +151,7 @@ export function MonthCalendar({ commitment, year, month }: Props) {
         })}
       </View>
       <View style={styles.legend}>
-        <LegendItem color={colors.primary} label="Kept" colors={colors} />
+        <LegendItem color={colors.primary} label="Successful" colors={colors} />
         <LegendItem color={colors.warning} label="Raven" colors={colors} />
         <LegendItem color={colors.danger} label="Missed" colors={colors} />
         <LegendItem color={colors.accent} label="Today" colors={colors} />

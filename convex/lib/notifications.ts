@@ -214,17 +214,17 @@ export async function notifyCheckInApproved(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "check_in_approved",
-    title: "Kept",
-    body: `${args.commitment.name} for ${args.checkIn.date} was kept. ${amount} is now refund credit.`,
+    title: "Successful day",
+    body: `${args.commitment.name} for ${args.checkIn.date} was approved. ${amount} is now refund credit.`,
     commitmentId: args.commitment._id,
     checkInId: args.checkIn._id,
     route: routeForCommitment(args.commitment._id),
     dedupeKey: `check-in-approved:${args.checkIn._id}`,
     email: {
-      subject: `Kept: ${args.commitment.name}`,
+      subject: `Successful day: ${args.commitment.name}`,
       body: `Hi ${name},
 
-Your ${args.commitment.name} submission for ${args.checkIn.date} was kept.
+Your ${args.commitment.name} submission for ${args.checkIn.date} was approved.
 
 ${amount} is now a refund credit.`,
     },

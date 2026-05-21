@@ -34,7 +34,7 @@
 
 - Do not use generic habit-app copy like "great job", "you got this", "complete your task", "submit activity", or bland motivational language.
 - Pact Raven should feel like a witness to a pact: calm, serious, direct, and a little ritualistic without becoming cute.
-- Prefer words like `pact`, `proof`, `record`, `witness`, `sign`, `locked`, `kept`, `forfeited`, `refund credit`, and `the Raven`.
-- Use product framing like "The Raven keeps the record", "Lock the money", "Show proof", "Stand by it", "Kept", and "Pact not met".
-- Be honest about the model: approved/kept days unlock refund credit; missed or rejected days forfeit to the user's chosen charity; forfeits are not Pact Raven revenue.
+- Prefer words like `pact`, `proof`, `record`, `witness`, `sign`, `locked`, `successful day`, `missed day`, `rejected day`, `forfeited`, `refund credit`, and `the Raven`.
+- Use product framing like "The Raven records the proof", "Lock the money", "Show proof", "Sign the record", "Successful day", and "Pact not met".
+- Be honest about the model: approved proof creates successful days and refund credit; missed or rejected days forfeit to the user's chosen charity; forfeits are not Pact Raven revenue.
 - Keep admin/operator copy functional and precise, but keep user-facing surfaces in the Pact Raven voice.

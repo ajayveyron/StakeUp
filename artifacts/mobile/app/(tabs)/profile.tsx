@@ -249,7 +249,7 @@ export default function ProfileScreen() {
               {firstName ? `No record yet, ${firstName}` : "No record yet"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Make a pact. Keep it. The record will appear here.
+              Make a pact. Submit proof. The record will appear here.
             </Text>
           </View>
         ) : (
@@ -365,7 +365,7 @@ export default function ProfileScreen() {
               <Div colors={colors} />
               <StatRow
                 icon="check-circle"
-                label="Days kept"
+                label="Successful days"
                 value={totalCheckIns.toString()}
                 colors={colors}
               />
@@ -379,7 +379,7 @@ export default function ProfileScreen() {
               <Div colors={colors} />
               <StatRow
                 icon="trending-up"
-                label="Avg kept rate"
+                label="Success rate"
                 value={`${avgRate}%`}
                 colors={colors}
                 valueColor={
@@ -493,7 +493,7 @@ export default function ProfileScreen() {
                           { color: colors.mutedForeground },
                         ]}
                       >
-                        {verified}/{total} days kept · {rate}% kept ·{" "}
+                        {verified}/{total} successful days · {rate}% success ·{" "}
                         {formatCurrency(perDay, c.currency)}/day ·{" "}
                         {formatDate(c.startDate)} – {formatDate(c.endDate)}
                       </Text>
