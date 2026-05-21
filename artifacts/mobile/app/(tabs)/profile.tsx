@@ -10,6 +10,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -50,34 +51,39 @@ export default function ProfileScreen() {
   const requestManualPayout = useMutation(api.payments.requestManualPayout);
   const { buySlot, paying: buyingSlot } = useRazorpayCheckout({
     onSlotSuccess: () =>
-      Alert.alert("Pact slot ready", "One unused pact slot was added."),
+      Alert.alert(
+        "Pact slot ready",
+        "Open any draft pact to lock its refundable deposit and start.",
+      ),
   });
   const { commitments } = useCommitments();
   const firstName = useFirstName();
   const [withdrawing, setWithdrawing] = useState(false);
+  const [upiId, setUpiId] = useState("");
+  const [payeeName, setPayeeName] = useState("");
 
   const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
   const totalCommitted = confirmedCommitments.reduce(
     (s, c) => s + c.pactAmount,
-    0
+    0,
   );
   const totalRefunded = confirmedCommitments.reduce(
     (s, c) => s + getTotalRefunded(c),
-    0
+    0,
   );
   const totalAtRisk = confirmedCommitments.reduce(
     (s, c) => s + getAmountAtRisk(c),
-    0
+    0,
   );
   const totalCheckIns = commitments.reduce(
     (s, c) => s + getVerifiedCheckIns(c).length,
-    0
+    0,
   );
   const avgRate =
     commitments.length > 0
       ? Math.round(
           commitments.reduce((s, c) => s + getSuccessRate(c), 0) /
-            commitments.length
+            commitments.length,
         )
       : 0;
 
@@ -85,23 +91,34 @@ export default function ProfileScreen() {
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const availableRefund = wallet?.availableToPayout ?? 0;
   const payoutRequested = wallet?.payoutRequested ?? 0;
+  const normalizedUpiId = upiId.trim().toLowerCase();
+  const canRequestRefund =
+    availableRefund > 0 &&
+    payoutRequested === 0 &&
+    /^[a-z0-9.\-_]{2,256}@[a-z0-9.\-_]{2,64}$/i.test(normalizedUpiId);
+  const showRefundPanel =
+    commitments.length > 0 || availableRefund > 0 || payoutRequested > 0;
 
   async function handleWithdrawRefund() {
-    if (withdrawing || availableRefund <= 0 || payoutRequested > 0) return;
+    if (withdrawing || !canRequestRefund) return;
     setWithdrawing(true);
     try {
       const result = await requestManualPayout({
         amount: availableRefund,
         currency: wallet?.currency ?? "INR",
+        upiId: normalizedUpiId,
+        payeeName: payeeName.trim() || undefined,
       });
+      setUpiId("");
+      setPayeeName("");
       Alert.alert(
         "Refund requested",
-        `${formatCurrency(result.amount, result.currency)} is queued for manual UPI payout.`
+        `${formatCurrency(result.amount, result.currency)} is queued for manual UPI payout to ${normalizedUpiId}.`,
       );
     } catch (error) {
       Alert.alert(
         "Refund failed",
-        error instanceof Error ? error.message : "Please try again."
+        error instanceof Error ? error.message : "Please try again.",
       );
     } finally {
       setWithdrawing(false);
@@ -133,10 +150,7 @@ export default function ProfileScreen() {
             <NotificationButton />
             <TouchableOpacity
               onPress={() => void signOut()}
-              style={[
-                styles.signOutBtn,
-                { backgroundColor: colors.secondary },
-              ]}
+              style={[styles.signOutBtn, { backgroundColor: colors.secondary }]}
               activeOpacity={0.75}
             >
               <Feather
@@ -145,10 +159,7 @@ export default function ProfileScreen() {
                 color={colors.mutedForeground}
               />
               <Text
-                style={[
-                  styles.signOutText,
-                  { color: colors.mutedForeground },
-                ]}
+                style={[styles.signOutText, { color: colors.mutedForeground }]}
               >
                 Sign out
               </Text>
@@ -179,10 +190,7 @@ export default function ProfileScreen() {
                   Admin ops
                 </Text>
                 <Text
-                  style={[
-                    styles.adminMeta,
-                    { color: colors.mutedForeground },
-                  ]}
+                  style={[styles.adminMeta, { color: colors.mutedForeground }]}
                 >
                   Payments, check-ins, reviews, refunds
                 </Text>
@@ -215,7 +223,9 @@ export default function ProfileScreen() {
               <Text style={[styles.adminTitle, { color: colors.foreground }]}>
                 Pact slots
               </Text>
-              <Text style={[styles.adminMeta, { color: colors.mutedForeground }]}>
+              <Text
+                style={[styles.adminMeta, { color: colors.mutedForeground }]}
+              >
                 {slotSummary?.available ?? 0} unused · ₹249 each
               </Text>
             </View>
@@ -238,6 +248,144 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {showRefundPanel && (
+          <>
+            <View style={styles.heroRow}>
+              <View
+                style={[
+                  styles.heroCard,
+                  {
+                    backgroundColor: colors.primary + "14",
+                    borderColor: colors.primary + "33",
+                  },
+                ]}
+              >
+                <Text style={[styles.heroValue, { color: colors.primary }]}>
+                  {formatCurrency(wallet?.availableToPayout ?? totalRefunded)}
+                </Text>
+                <Text
+                  style={[styles.heroLabel, { color: colors.mutedForeground }]}
+                >
+                  Refund Credit
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.heroCard,
+                  {
+                    backgroundColor: colors.accent + "14",
+                    borderColor: colors.accent + "33",
+                  },
+                ]}
+              >
+                <Text style={[styles.heroValue, { color: colors.accent }]}>
+                  {formatCurrency(totalAtRisk)}
+                </Text>
+                <Text
+                  style={[styles.heroLabel, { color: colors.mutedForeground }]}
+                >
+                  Still at Risk
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleWithdrawRefund}
+              disabled={withdrawing || !canRequestRefund}
+              style={[
+                styles.withdrawBtn,
+                {
+                  backgroundColor: canRequestRefund
+                    ? colors.primary
+                    : colors.secondary,
+                  opacity: withdrawing ? 0.55 : 1,
+                },
+              ]}
+              activeOpacity={0.84}
+            >
+              <Feather
+                name="download"
+                size={16}
+                color={canRequestRefund ? "#000" : colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.withdrawBtnText,
+                  {
+                    color: canRequestRefund ? "#000" : colors.mutedForeground,
+                  },
+                ]}
+              >
+                {withdrawing
+                  ? "Requesting refund..."
+                  : payoutRequested > 0
+                    ? `${formatCurrency(payoutRequested)} payout requested`
+                    : availableRefund > 0
+                      ? canRequestRefund
+                        ? "Request manual UPI refund"
+                        : "Enter UPI ID to request refund"
+                      : "No refund balance yet"}
+              </Text>
+            </TouchableOpacity>
+
+            {availableRefund > 0 && payoutRequested === 0 && (
+              <View
+                style={[
+                  styles.payoutDetails,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Text
+                  style={[styles.payoutTitle, { color: colors.foreground }]}
+                >
+                  Payout destination
+                </Text>
+                <Text
+                  style={[styles.payoutHint, { color: colors.mutedForeground }]}
+                >
+                  The Raven records this UPI ID with the refund request.
+                </Text>
+                <TextInput
+                  value={upiId}
+                  onChangeText={setUpiId}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  placeholder="name@bank"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[
+                    styles.payoutInput,
+                    {
+                      color: colors.foreground,
+                      backgroundColor: colors.input,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+                <TextInput
+                  value={payeeName}
+                  onChangeText={setPayeeName}
+                  placeholder="Payee name"
+                  placeholderTextColor={colors.mutedForeground}
+                  style={[
+                    styles.payoutInput,
+                    {
+                      color: colors.foreground,
+                      backgroundColor: colors.input,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                />
+                {upiId.trim().length > 0 && !canRequestRefund && (
+                  <Text style={[styles.payoutError, { color: colors.danger }]}>
+                    Enter a valid UPI ID before requesting payout.
+                  </Text>
+                )}
+              </View>
+            )}
+          </>
+        )}
+
         {commitments.length === 0 ? (
           <View style={styles.empty}>
             <Feather
@@ -254,87 +402,6 @@ export default function ProfileScreen() {
           </View>
         ) : (
           <>
-            {/* Hero stats */}
-            <View style={styles.heroRow}>
-              <View
-                style={[
-                  styles.heroCard,
-                  {
-                    backgroundColor: colors.primary + "14",
-                    borderColor: colors.primary + "33",
-                  },
-                ]}
-              >
-                <Text style={[styles.heroValue, { color: colors.primary }]}>
-                  {formatCurrency(wallet?.availableToPayout ?? totalRefunded)}
-                </Text>
-                <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-                  Refund Credit
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.heroCard,
-                  {
-                    backgroundColor: colors.accent + "14",
-                    borderColor: colors.accent + "33",
-                  },
-                ]}
-              >
-                <Text style={[styles.heroValue, { color: colors.accent }]}>
-                  {formatCurrency(totalAtRisk)}
-                </Text>
-                <Text style={[styles.heroLabel, { color: colors.mutedForeground }]}>
-                  Still at Risk
-                </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              onPress={handleWithdrawRefund}
-              disabled={withdrawing || availableRefund <= 0 || payoutRequested > 0}
-              style={[
-                styles.withdrawBtn,
-                {
-                  backgroundColor:
-                    availableRefund > 0 && payoutRequested === 0
-                      ? colors.primary
-                      : colors.secondary,
-                  opacity: withdrawing ? 0.55 : 1,
-                },
-              ]}
-              activeOpacity={0.84}
-            >
-              <Feather
-                name="download"
-                size={16}
-                color={
-                  availableRefund > 0 && payoutRequested === 0
-                    ? "#000"
-                    : colors.mutedForeground
-                }
-              />
-              <Text
-                style={[
-                  styles.withdrawBtnText,
-                  {
-                    color:
-                      availableRefund > 0 && payoutRequested === 0
-                        ? "#000"
-                        : colors.mutedForeground,
-                  },
-                ]}
-              >
-                {withdrawing
-                  ? "Requesting refund..."
-                  : payoutRequested > 0
-                  ? `${formatCurrency(payoutRequested)} payout requested`
-                  : availableRefund > 0
-                  ? "Request manual UPI refund"
-                  : "No refund balance yet"}
-              </Text>
-            </TouchableOpacity>
-
             {/* Detail stats */}
             <View
               style={[
@@ -382,9 +449,7 @@ export default function ProfileScreen() {
                 label="Success rate"
                 value={`${avgRate}%`}
                 colors={colors}
-                valueColor={
-                  avgRate >= 70 ? colors.primary : colors.accent
-                }
+                valueColor={avgRate >= 70 ? colors.primary : colors.accent}
               />
             </View>
 
@@ -460,8 +525,8 @@ export default function ProfileScreen() {
                                 rate >= 100
                                   ? colors.primary
                                   : rate >= 50
-                                  ? colors.accent
-                                  : colors.danger,
+                                    ? colors.accent
+                                    : colors.danger,
                             },
                           ]}
                         >
@@ -479,7 +544,8 @@ export default function ProfileScreen() {
                           style={[
                             styles.historyProgressFill,
                             {
-                              width: `${Math.min((verified / total) * 100, 100)}%` as any,
+                              width:
+                                `${Math.min((verified / total) * 100, 100)}%` as any,
                               backgroundColor:
                                 rate >= 70 ? colors.primary : colors.accent,
                             },
@@ -569,7 +635,9 @@ function StatRow({
           {label}
         </Text>
       </View>
-      <Text style={[srStyles.value, { color: valueColor ?? colors.foreground }]}>
+      <Text
+        style={[srStyles.value, { color: valueColor ?? colors.foreground }]}
+      >
         {value}
       </Text>
     </View>
@@ -577,7 +645,9 @@ function StatRow({
 }
 
 function Div({ colors }: { colors: any }) {
-  return <View style={[srStyles.divider, { backgroundColor: colors.border }]} />;
+  return (
+    <View style={[srStyles.divider, { backgroundColor: colors.border }]} />
+  );
 }
 
 const srStyles = StyleSheet.create({
@@ -676,6 +746,34 @@ const styles = StyleSheet.create({
   withdrawBtnText: {
     fontSize: 13,
     fontFamily: "Inter_700Bold",
+  },
+  payoutDetails: {
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
+    gap: 8,
+  },
+  payoutTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  payoutHint: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 17,
+  },
+  payoutInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  payoutError: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
   },
   statsCard: {
     borderRadius: 8,

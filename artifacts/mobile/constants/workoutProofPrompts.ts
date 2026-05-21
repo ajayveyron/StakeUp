@@ -55,7 +55,7 @@ export const WORKOUT_PROOF_PROMPTS: WorkoutProofPrompt[] = [
 
 export function selectWorkoutProofPrompt(
   commitmentId: string | undefined,
-  date: string
+  date: string,
 ) {
   const seed = `${commitmentId ?? "pact"}:${date}`;
   let hash = 0;

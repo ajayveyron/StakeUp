@@ -20,12 +20,20 @@ import { formatCurrency, formatDate } from "@/utils/commitment";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 
+type ProofLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  capturedAt: string;
+};
+
 type PendingReviewRow = {
   checkIn: {
     id: string;
     date: string;
     proofUrl?: string;
     proofPrompt?: string;
+    proofLocation?: ProofLocation;
     submissionStatement?: string;
     stepCount?: number;
     submittedAt: string;
@@ -75,6 +83,7 @@ type AdminOverview = {
     checkInId?: string;
     proofUrl?: string;
     proofPrompt?: string;
+    proofLocation?: ProofLocation;
     submissionStatement?: string;
     stepCount?: number;
     commitment: {
@@ -92,6 +101,8 @@ type AdminOverview = {
     id: string;
     amount: number;
     currency: string;
+    upiId?: string;
+    payeeName?: string;
     createdAt: string;
     note?: string;
     user: AdminUser;
@@ -188,14 +199,25 @@ function proofLabel(args: {
   goalType: "content" | "workout";
   proofUrl?: string;
   proofPrompt?: string;
+  proofLocation?: ProofLocation;
   submissionStatement?: string;
   stepCount?: number;
 }) {
   const suffix = signedLabel(args.submissionStatement);
+  const location =
+    args.proofLocation && args.goalType === "workout"
+      ? ` · location ${args.proofLocation.latitude.toFixed(
+          5,
+        )}, ${args.proofLocation.longitude.toFixed(5)}${
+          typeof args.proofLocation.accuracy === "number"
+            ? ` ±${Math.round(args.proofLocation.accuracy)}m`
+            : ""
+        }`
+      : "";
   if (args.proofUrl && args.proofPrompt) {
-    return `${args.proofUrl} · prompt ${args.proofPrompt}${suffix}`;
+    return `${args.proofUrl} · prompt ${args.proofPrompt}${location}${suffix}`;
   }
-  if (args.proofUrl) return `${args.proofUrl}${suffix}`;
+  if (args.proofUrl) return `${args.proofUrl}${location}${suffix}`;
   if (args.stepCount !== undefined) {
     return `${args.stepCount.toLocaleString("en-IN")} legacy steps${suffix}`;
   }
@@ -217,12 +239,12 @@ export default function AdminReviewsScreen() {
   const currentUser = useQuery(api.users.current);
   const overview = useQuery(
     api.reviews.adminOverview,
-    currentUser?.role === "admin" ? {} : "skip"
+    currentUser?.role === "admin" ? {} : "skip",
   ) as AdminOverview | undefined;
   const confirmPayment = useMutation(api.reviews.confirmPayment);
   const recordManualPayout = useMutation(api.reviews.recordManualPayout);
   const resolveEarlyEndSettlement = useMutation(
-    api.reviews.resolveEarlyEndSettlement
+    api.reviews.resolveEarlyEndSettlement,
   );
   const approve = useMutation(api.reviews.approve);
   const reject = useMutation(api.reviews.reject);
@@ -233,13 +255,18 @@ export default function AdminReviewsScreen() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [payoutRefs, setPayoutRefs] = useState<Record<string, string>>({});
   const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>({});
-  const [settlementRefunds, setSettlementRefunds] = useState<Record<string, string>>({});
-  const [settlementForfeits, setSettlementForfeits] = useState<Record<string, string>>({});
+  const [settlementRefunds, setSettlementRefunds] = useState<
+    Record<string, string>
+  >({});
+  const [settlementForfeits, setSettlementForfeits] = useState<
+    Record<string, string>
+  >({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const topPadding = Platform.OS === "web" ? 67 : insets.top;
   const isAdmin = currentUser?.role === "admin";
-  const loading = currentUser === undefined || (isAdmin && overview === undefined);
+  const loading =
+    currentUser === undefined || (isAdmin && overview === undefined);
 
   async function handleConfirmPayment(commitmentId: string) {
     setBusyId(commitmentId);
@@ -254,7 +281,7 @@ export default function AdminReviewsScreen() {
     } catch (error) {
       Alert.alert(
         "Payment confirmation failed",
-        error instanceof Error ? error.message : ""
+        error instanceof Error ? error.message : "",
       );
     } finally {
       setBusyId(null);
@@ -266,7 +293,10 @@ export default function AdminReviewsScreen() {
     try {
       await approve({ checkInId: checkInId as Id<"checkIns"> });
     } catch (error) {
-      Alert.alert("Approval failed", error instanceof Error ? error.message : "");
+      Alert.alert(
+        "Approval failed",
+        error instanceof Error ? error.message : "",
+      );
     } finally {
       setBusyId(null);
     }
@@ -283,7 +313,10 @@ export default function AdminReviewsScreen() {
       await reject({ checkInId: checkInId as Id<"checkIns">, reason });
       setReasons((prev) => ({ ...prev, [checkInId]: "" }));
     } catch (error) {
-      Alert.alert("Rejection failed", error instanceof Error ? error.message : "");
+      Alert.alert(
+        "Rejection failed",
+        error instanceof Error ? error.message : "",
+      );
     } finally {
       setBusyId(null);
     }
@@ -293,7 +326,7 @@ export default function AdminReviewsScreen() {
     userId: string,
     currency: string,
     amount: number,
-    requestId?: string
+    requestId?: string,
   ) {
     const key = requestId ?? `${userId}:${currency}`;
     setBusyId(key);
@@ -330,7 +363,10 @@ export default function AdminReviewsScreen() {
       setReferences((prev) => ({ ...prev, [requestId]: "" }));
       setNotes((prev) => ({ ...prev, [requestId]: "" }));
     } catch (error) {
-      Alert.alert("Settlement failed", error instanceof Error ? error.message : "");
+      Alert.alert(
+        "Settlement failed",
+        error instanceof Error ? error.message : "",
+      );
     } finally {
       setBusyId(null);
     }
@@ -462,19 +498,31 @@ export default function AdminReviewsScreen() {
                     key={row.id}
                     style={[
                       styles.card,
-                      { backgroundColor: colors.card, borderColor: colors.border },
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
                     ]}
                   >
                     <CardTop
                       icon="key"
                       title={row.user.label}
-                      meta={row.razorpayOrderId ?? formatDate(row.createdAt.slice(0, 10))}
+                      meta={
+                        row.razorpayOrderId ??
+                        formatDate(row.createdAt.slice(0, 10))
+                      }
                       amount={formatCurrency(row.amount, row.currency)}
                       amountColor={colors.primary}
                       colors={colors}
                     />
-                    <Text style={[styles.proofText, { color: colors.mutedForeground }]}>
-                      Non-refundable pact slot fee. If Razorpay verification did not return, inspect this order manually.
+                    <Text
+                      style={[
+                        styles.proofText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Non-refundable pact slot fee. If Razorpay verification did
+                      not return, inspect this order manually.
                     </Text>
                   </View>
                 ))
@@ -512,7 +560,7 @@ export default function AdminReviewsScreen() {
                         meta={`${row.user.label} · ${formatDate(row.commitment.startDate)}`}
                         amount={formatCurrency(
                           row.commitment.pactAmount,
-                          row.commitment.currency
+                          row.commitment.currency,
                         )}
                         amountColor={colors.accent}
                         colors={colors}
@@ -540,7 +588,10 @@ export default function AdminReviewsScreen() {
                       <TextInput
                         value={notes[commitmentId] ?? ""}
                         onChangeText={(value) =>
-                          setNotes((prev) => ({ ...prev, [commitmentId]: value }))
+                          setNotes((prev) => ({
+                            ...prev,
+                            [commitmentId]: value,
+                          }))
                         }
                         placeholder="Internal note"
                         placeholderTextColor={colors.mutedForeground}
@@ -593,7 +644,10 @@ export default function AdminReviewsScreen() {
                     key={`${row.commitment.id}:${row.date}`}
                     style={[
                       styles.card,
-                      { backgroundColor: colors.card, borderColor: colors.border },
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
                     ]}
                   >
                     <CardTop
@@ -627,6 +681,7 @@ export default function AdminReviewsScreen() {
                           goalType: row.commitment.goalType,
                           proofUrl: row.proofUrl,
                           proofPrompt: row.proofPrompt,
+                          proofLocation: row.proofLocation,
                           submissionStatement: row.submissionStatement,
                           stepCount: row.stepCount,
                         })}
@@ -672,7 +727,7 @@ export default function AdminReviewsScreen() {
                         meta={`${row.user.email ?? row.user.displayName ?? "Unknown user"} · ${formatDate(row.checkIn.date)}`}
                         amount={formatCurrency(
                           row.commitment.refundPerDay,
-                          row.commitment.currency
+                          row.commitment.currency,
                         )}
                         amountColor={colors.primary}
                         colors={colors}
@@ -693,14 +748,19 @@ export default function AdminReviewsScreen() {
                           color={colors.mutedForeground}
                         />
                         <Text
-                          style={[styles.proofText, { color: colors.foreground }]}
+                          style={[
+                            styles.proofText,
+                            { color: colors.foreground },
+                          ]}
                           numberOfLines={2}
                         >
                           {proofLabel({
                             goalType: row.commitment.goalType,
                             proofUrl: row.checkIn.proofUrl,
                             proofPrompt: row.checkIn.proofPrompt,
-                            submissionStatement: row.checkIn.submissionStatement,
+                            proofLocation: row.checkIn.proofLocation,
+                            submissionStatement:
+                              row.checkIn.submissionStatement,
                             stepCount: row.checkIn.stepCount,
                           })}
                         </Text>
@@ -708,7 +768,10 @@ export default function AdminReviewsScreen() {
                       <TextInput
                         value={reasons[checkInId] ?? ""}
                         onChangeText={(value) =>
-                          setReasons((prev) => ({ ...prev, [checkInId]: value }))
+                          setReasons((prev) => ({
+                            ...prev,
+                            [checkInId]: value,
+                          }))
                         }
                         placeholder="Rejection reason"
                         placeholderTextColor={colors.mutedForeground}
@@ -737,7 +800,12 @@ export default function AdminReviewsScreen() {
                           activeOpacity={0.8}
                         >
                           <Feather name="x" size={15} color={colors.danger} />
-                          <Text style={[styles.rejectText, { color: colors.danger }]}>
+                          <Text
+                            style={[
+                              styles.rejectText,
+                              { color: colors.danger },
+                            ]}
+                          >
                             Reject
                           </Text>
                         </TouchableOpacity>
@@ -785,17 +853,28 @@ export default function AdminReviewsScreen() {
                         key={key}
                         style={[
                           styles.card,
-                          { backgroundColor: colors.card, borderColor: colors.border },
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                          },
                         ]}
                       >
                         <CardTop
                           icon="send"
                           title={`${row.user.label} requested payout`}
-                          meta={row.user.phone ?? row.user.email ?? "No contact"}
+                          meta={`${row.payeeName ? `${row.payeeName} · ` : ""}${row.upiId ?? "UPI not recorded"}`}
                           amount={formatCurrency(row.amount, row.currency)}
                           amountColor={colors.primary}
                           colors={colors}
                         />
+                        <Text
+                          style={[
+                            styles.metaLine,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          {row.user.phone ?? row.user.email ?? "No contact"}
+                        </Text>
                         <TextInput
                           value={payoutRefs[key] ?? ""}
                           onChangeText={(value) =>
@@ -816,7 +895,10 @@ export default function AdminReviewsScreen() {
                         <TextInput
                           value={payoutNotes[key] ?? ""}
                           onChangeText={(value) =>
-                            setPayoutNotes((prev) => ({ ...prev, [key]: value }))
+                            setPayoutNotes((prev) => ({
+                              ...prev,
+                              [key]: value,
+                            }))
                           }
                           placeholder="Internal note"
                           placeholderTextColor={colors.mutedForeground}
@@ -850,84 +932,48 @@ export default function AdminReviewsScreen() {
                           activeOpacity={0.84}
                         >
                           <Feather name="check" size={15} color="#000" />
-                          <Text style={styles.primaryBtnText}>Record UPI payout</Text>
+                          <Text style={styles.primaryBtnText}>
+                            Record UPI payout
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     );
                   })}
                   {overview!.payoutBalances.map((row) => {
-                  const key = `${row.user.id}:${row.currency}`;
-                  const busy = busyId === key;
-                  return (
-                    <View
-                      key={key}
-                      style={[
-                        styles.card,
-                        { backgroundColor: colors.card, borderColor: colors.border },
-                      ]}
-                    >
-                      <CardTop
-                        icon="send"
-                        title={row.user.label}
-                        meta={row.user.phone ?? row.user.email ?? "No contact"}
-                        amount={formatCurrency(row.amount, row.currency)}
-                        amountColor={colors.primary}
-                        colors={colors}
-                      />
-                      <TextInput
-                        value={payoutRefs[key] ?? ""}
-                        onChangeText={(value) =>
-                          setPayoutRefs((prev) => ({ ...prev, [key]: value }))
-                        }
-                        placeholder="UPI transaction id"
-                        placeholderTextColor={colors.mutedForeground}
+                    const key = `${row.user.id}:${row.currency}`;
+                    return (
+                      <View
+                        key={key}
                         style={[
-                          styles.input,
+                          styles.card,
                           {
-                            color: colors.foreground,
-                            backgroundColor: colors.input,
+                            backgroundColor: colors.card,
                             borderColor: colors.border,
                           },
                         ]}
-                        editable={!busy}
-                      />
-                      <TextInput
-                        value={payoutNotes[key] ?? ""}
-                        onChangeText={(value) =>
-                          setPayoutNotes((prev) => ({ ...prev, [key]: value }))
-                        }
-                        placeholder="Internal note"
-                        placeholderTextColor={colors.mutedForeground}
-                        style={[
-                          styles.input,
-                          {
-                            color: colors.foreground,
-                            backgroundColor: colors.input,
-                            borderColor: colors.border,
-                          },
-                        ]}
-                        editable={!busy}
-                      />
-                      <TouchableOpacity
-                        onPress={() =>
-                          handlePayout(row.user.id, row.currency, row.amount)
-                        }
-                        disabled={busy}
-                        style={[
-                          styles.primaryBtn,
-                          {
-                            backgroundColor: colors.primary,
-                            opacity: busy ? 0.5 : 1,
-                          },
-                        ]}
-                        activeOpacity={0.84}
                       >
-                        <Feather name="check" size={15} color="#000" />
-                        <Text style={styles.primaryBtnText}>Record UPI payout</Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
+                        <CardTop
+                          icon="send"
+                          title={row.user.label}
+                          meta={
+                            row.user.phone ?? row.user.email ?? "No contact"
+                          }
+                          amount={formatCurrency(row.amount, row.currency)}
+                          amountColor={colors.primary}
+                          colors={colors}
+                        />
+                        <Text
+                          style={[
+                            styles.metaLine,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          Ask the user to request payout from the app so the UPI
+                          destination is recorded.
+                        </Text>
+                      </View>
+                    );
+                  })}
                 </>
               )}
             </View>
@@ -951,7 +997,10 @@ export default function AdminReviewsScreen() {
                       key={key}
                       style={[
                         styles.card,
-                        { backgroundColor: colors.card, borderColor: colors.border },
+                        {
+                          backgroundColor: colors.card,
+                          borderColor: colors.border,
+                        },
                       ]}
                     >
                       <CardTop
@@ -1037,7 +1086,9 @@ export default function AdminReviewsScreen() {
                         activeOpacity={0.84}
                       >
                         <Feather name="check" size={15} color="#000" />
-                        <Text style={styles.primaryBtnText}>Resolve settlement</Text>
+                        <Text style={styles.primaryBtnText}>
+                          Resolve settlement
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   );
@@ -1053,15 +1104,23 @@ export default function AdminReviewsScreen() {
                   key={entry.id}
                   style={[
                     styles.ledgerRow,
-                    { backgroundColor: colors.card, borderColor: colors.border },
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
                   ]}
                 >
                   <View style={styles.ledgerLeft}>
-                    <Text style={[styles.ledgerTitle, { color: colors.foreground }]}>
+                    <Text
+                      style={[styles.ledgerTitle, { color: colors.foreground }]}
+                    >
                       {ledgerLabel(entry.type)} · {entry.user.label}
                     </Text>
                     <Text
-                      style={[styles.ledgerMeta, { color: colors.mutedForeground }]}
+                      style={[
+                        styles.ledgerMeta,
+                        { color: colors.mutedForeground },
+                      ]}
                     >
                       {entry.commitment?.name ?? entry.destination} ·{" "}
                       {new Date(entry.createdAt).toLocaleString("en-IN", {
@@ -1080,8 +1139,8 @@ export default function AdminReviewsScreen() {
                           entry.type === "forfeited"
                             ? colors.danger
                             : entry.type === "manual_payout"
-                            ? colors.accent
-                            : colors.primary,
+                              ? colors.accent
+                              : colors.primary,
                       },
                     ]}
                   >
@@ -1118,10 +1177,16 @@ function CardTop({
         <Feather name={icon as any} size={15} color={colors.mutedForeground} />
       </View>
       <View style={styles.cardTitleBlock}>
-        <Text style={[styles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>
+        <Text
+          style={[styles.cardTitle, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
           {title}
         </Text>
-        <Text style={[styles.cardMeta, { color: colors.mutedForeground }]} numberOfLines={1}>
+        <Text
+          style={[styles.cardMeta, { color: colors.mutedForeground }]}
+          numberOfLines={1}
+        >
           {meta}
         </Text>
       </View>
@@ -1144,8 +1209,12 @@ function EmptyState({
   return (
     <View style={styles.emptyCard}>
       <Feather name={icon as any} size={28} color={colors.mutedForeground} />
-      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>{title}</Text>
-      <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>{body}</Text>
+      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+        {title}
+      </Text>
+      <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+        {body}
+      </Text>
     </View>
   );
 }
@@ -1242,6 +1311,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginTop: 3,
+  },
+  metaLine: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    marginTop: -4,
   },
   amount: {
     fontSize: 14,

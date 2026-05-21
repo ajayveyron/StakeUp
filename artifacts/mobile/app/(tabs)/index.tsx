@@ -19,7 +19,11 @@ import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentCard } from "@/components/CommitmentCard";
 import { NotificationButton } from "@/components/NotificationButton";
-import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
+import {
+  Commitment,
+  ProofLocation,
+  useCommitments,
+} from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
   formatCountdown,
@@ -63,22 +67,22 @@ export default function HomeScreen() {
   const pendingPaymentCommitments = commitments.filter(isPendingPayment);
   const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
   const todayPending = activeCommitments.filter(
-    (c) => isTodayScheduled(c) && !hasTodayCheckIn(c)
+    (c) => isTodayScheduled(c) && !hasTodayCheckIn(c),
   );
   const todayDone = activeCommitments.filter(
-    (c) => isTodayScheduled(c) && hasTodayCheckIn(c)
+    (c) => isTodayScheduled(c) && hasTodayCheckIn(c),
   );
   const todayNotScheduled = activeCommitments.filter(
-    (c) => !isTodayScheduled(c)
+    (c) => !isTodayScheduled(c),
   );
 
   const totalCommitted = confirmedCommitments.reduce(
     (s, c) => s + c.pactAmount,
-    0
+    0,
   );
   const totalRefunded = confirmedCommitments.reduce(
     (s, c) => s + getTotalRefunded(c),
-    0
+    0,
   );
 
   const currentUser = useCurrentUser();
@@ -101,14 +105,14 @@ export default function HomeScreen() {
     date: string,
     url: string,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) {
     submitContentCheckIn(
       id,
       date,
       url,
       submissionSignature,
-      submissionStatement
+      submissionStatement,
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setModalVisible(false);
@@ -117,18 +121,20 @@ export default function HomeScreen() {
   function handleSubmitWorkout(
     id: string,
     date: string,
-    proofUrl: string,
-    proofPrompt?: string,
+    proofStorageId: string,
+    proofPrompt: string,
+    proofLocation: ProofLocation,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) {
     submitWorkoutCheckIn(
       id,
       date,
-      proofUrl,
+      proofStorageId,
       proofPrompt,
+      proofLocation,
       submissionSignature,
-      submissionStatement
+      submissionStatement,
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setModalVisible(false);
@@ -192,19 +198,31 @@ export default function HomeScreen() {
               color={colors.primary}
               colors={colors}
             />
-            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.summaryDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <SumStat
               value={formatCurrency(totalCommitted - totalRefunded)}
               label="At risk"
               color={colors.accent}
               colors={colors}
             />
-            <View style={[styles.summaryDivider, { backgroundColor: colors.border }]} />
+            <View
+              style={[
+                styles.summaryDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
             <SumStat
               value={String(todayPending.length)}
               label="Due today"
               color={
-                todayPending.length > 0 ? colors.foreground : colors.mutedForeground
+                todayPending.length > 0
+                  ? colors.foreground
+                  : colors.mutedForeground
               }
               colors={colors}
             />
@@ -216,8 +234,10 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Draft pacts
             </Text>
-            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              These pacts start after one slot is used and the deposit is locked.
+            <Text
+              style={[styles.sectionSub, { color: colors.mutedForeground }]}
+            >
+              Open a draft pact to buy a slot, lock the deposit, and start.
             </Text>
             {pendingPaymentCommitments.map((c) => (
               <CommitmentCard key={c.id} commitment={c} compact />
@@ -263,7 +283,8 @@ export default function HomeScreen() {
                 { color: isUrgent ? colors.danger : colors.mutedForeground },
               ]}
             >
-              The pact closes in {formatCountdown(countdown)} · proof due by 11:59 PM
+              The pact closes in {formatCountdown(countdown)} · proof due by
+              11:59 PM
             </Text>
           </View>
         )}
@@ -275,7 +296,11 @@ export default function HomeScreen() {
               Also due today
             </Text>
             {todayPending.slice(1).map((c) => (
-              <CommitmentCard key={c.id} commitment={c} onCheckIn={openCheckIn} />
+              <CommitmentCard
+                key={c.id}
+                commitment={c}
+                onCheckIn={openCheckIn}
+              />
             ))}
           </View>
         )}
@@ -301,7 +326,9 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Rest day
             </Text>
-            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.sectionSub, { color: colors.mutedForeground }]}
+            >
               These pacts do not judge today.
             </Text>
             {todayNotScheduled.map((c) => (
@@ -325,7 +352,8 @@ export default function HomeScreen() {
               {firstName ? `No pacts yet, ${firstName}` : "No pacts on record"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Make one you cannot casually ignore. The Raven will record the proof.
+              Make one you cannot casually ignore. The Raven will record the
+              proof.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
@@ -377,7 +405,8 @@ function ActiveWidget({
   const totalDays = getTotalCommittedDays(commitment);
   const verified = getVerifiedCheckIns(commitment).length;
   const daysLeft = getDaysRemaining(commitment);
-  const hasPending = isTodayScheduled(commitment) && !hasTodayCheckIn(commitment);
+  const hasPending =
+    isTodayScheduled(commitment) && !hasTodayCheckIn(commitment);
   const todayCheckIn = getCheckInForDate(commitment, today);
   const todayStatus = getCheckInStatus(todayCheckIn);
   const progress = totalDays > 0 ? verified / totalDays : 0;
@@ -391,7 +420,8 @@ function ActiveWidget({
         wStyles.card,
         {
           backgroundColor: colors.card,
-          borderColor: hasPending && isUrgent ? colors.danger + "66" : colors.border,
+          borderColor:
+            hasPending && isUrgent ? colors.danger + "66" : colors.border,
           borderWidth: hasPending && isUrgent ? 1.5 : 1,
         },
       ]}
@@ -462,7 +492,9 @@ function ActiveWidget({
               </Text>
             </View>
           ) : (
-            <Text style={[wStyles.countdown, { color: colors.mutedForeground }]}>
+            <Text
+              style={[wStyles.countdown, { color: colors.mutedForeground }]}
+            >
               {daysLeft}d left
             </Text>
           )}
@@ -562,10 +594,16 @@ function ActiveWidget({
             activeOpacity={0.8}
             style={[wStyles.detailBtn, { backgroundColor: colors.secondary }]}
           >
-            <Text style={[wStyles.detailTxt, { color: colors.mutedForeground }]}>
+            <Text
+              style={[wStyles.detailTxt, { color: colors.mutedForeground }]}
+            >
               Details
             </Text>
-            <Feather name="arrow-right" size={14} color={colors.mutedForeground} />
+            <Feather
+              name="arrow-right"
+              size={14}
+              color={colors.mutedForeground}
+            />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -747,7 +785,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 8,
   },
-  emptyTitle: { fontSize: 20, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  emptyTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+  },
   emptyText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",

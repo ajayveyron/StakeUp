@@ -23,7 +23,11 @@ import { CommitmentTimeline } from "@/components/CommitmentTimeline";
 import { MonthCalendar } from "@/components/MonthCalendar";
 import { charityName } from "@/constants/charities";
 import { LEGAL_URLS } from "@/constants/links";
-import { Commitment, useCommitments } from "@/contexts/CommitmentsContext";
+import {
+  Commitment,
+  ProofLocation,
+  useCommitments,
+} from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 import {
@@ -84,12 +88,17 @@ export default function CommitmentDetailScreen() {
             { paddingTop: topPadding + 8, borderBottomColor: colors.border },
           ]}
         >
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.iconBtn}
+          >
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
         </View>
         <View style={styles.notFound}>
-          <Text style={[styles.notFoundText, { color: colors.mutedForeground }]}>
+          <Text
+            style={[styles.notFoundText, { color: colors.mutedForeground }]}
+          >
             Commitment not found
           </Text>
         </View>
@@ -135,7 +144,7 @@ export default function CommitmentDetailScreen() {
             router.back();
           },
         },
-      ]
+      ],
     );
   }
 
@@ -175,14 +184,14 @@ export default function CommitmentDetailScreen() {
     date: string,
     url: string,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) {
     submitContentCheckIn(
       cId,
       date,
       url,
       submissionSignature,
-      submissionStatement
+      submissionStatement,
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
@@ -190,18 +199,20 @@ export default function CommitmentDetailScreen() {
   function handleSubmitWorkout(
     cId: string,
     date: string,
-    proofUrl: string,
-    proofPrompt?: string,
+    proofStorageId: string,
+    proofPrompt: string,
+    proofLocation: ProofLocation,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) {
     submitWorkoutCheckIn(
       cId,
       date,
-      proofUrl,
+      proofStorageId,
       proofPrompt,
+      proofLocation,
       submissionSignature,
-      submissionStatement
+      submissionStatement,
     );
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
@@ -269,10 +280,14 @@ export default function CommitmentDetailScreen() {
           </View>
           <CommitmentTimeline commitment={commitment} />
           <View style={styles.dateRangeRow}>
-            <Text style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}
+            >
               {formatDate(commitment.startDate)}
             </Text>
-            <Text style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}
+            >
               → {formatDate(commitment.endDate)}
             </Text>
           </View>
@@ -287,8 +302,8 @@ export default function CommitmentDetailScreen() {
                 backgroundColor: active
                   ? colors.primary + "22"
                   : pendingPayment
-                  ? colors.accent + "22"
-                  : colors.secondary,
+                    ? colors.accent + "22"
+                    : colors.secondary,
               },
             ]}
           >
@@ -299,34 +314,34 @@ export default function CommitmentDetailScreen() {
                   backgroundColor: active
                     ? colors.primary
                     : pendingPayment
-                    ? colors.accent
-                    : colors.mutedForeground,
+                      ? colors.accent
+                      : colors.mutedForeground,
                 },
               ]}
             />
-          <Text
-            style={[
-              styles.statusText,
-              {
-                color: pendingPayment
-                  ? colors.accent
-                  : active
-                  ? colors.primary
-                  : colors.mutedForeground,
-              },
-            ]}
-          >
+            <Text
+              style={[
+                styles.statusText,
+                {
+                  color: pendingPayment
+                    ? colors.accent
+                    : active
+                      ? colors.primary
+                      : colors.mutedForeground,
+                },
+              ]}
+            >
               {pendingPayment
                 ? draft
                   ? "Draft"
                   : "Deposit not locked"
                 : expired
-                ? "Closed"
-                : ended
-                ? "Ended"
-                : active
-                ? "Live"
-                : "Upcoming"}
+                  ? "Closed"
+                  : ended
+                    ? "Ended"
+                    : active
+                      ? "Live"
+                      : "Upcoming"}
             </Text>
           </View>
           <Text style={[styles.daysLeftTxt, { color: colors.mutedForeground }]}>
@@ -335,12 +350,12 @@ export default function CommitmentDetailScreen() {
                 ? "Lock the deposit to start"
                 : "Buy a slot, then lock the deposit"
               : expired
-              ? `${rate}% success`
-              : ended
-              ? "Settlement review"
-              : active
-              ? `${daysLeft} days left`
-              : `Starts ${formatDate(commitment.startDate)}`}
+                ? `${rate}% success`
+                : ended
+                  ? "Settlement review"
+                  : active
+                    ? `${daysLeft} days left`
+                    : `Starts ${formatDate(commitment.startDate)}`}
           </Text>
         </View>
 
@@ -367,7 +382,8 @@ export default function CommitmentDetailScreen() {
             {formatCurrency(refunded, commitment.currency)}
           </Text>
           <Text style={[styles.refundOf, { color: colors.mutedForeground }]}>
-            of {formatCurrency(commitment.pactAmount, commitment.currency)} committed
+            of {formatCurrency(commitment.pactAmount, commitment.currency)}{" "}
+            committed
           </Text>
           <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
             <View
@@ -425,7 +441,8 @@ export default function CommitmentDetailScreen() {
             <Feather name="alert-circle" size={14} color={colors.danger} />
             <Text style={[styles.missedText, { color: colors.danger }]}>
               {missed} missed day{missed > 1 ? "s" : ""} ·{" "}
-              {formatCurrency(missedAmount, commitment.currency)} forfeited to {forfeitLabel}
+              {formatCurrency(missedAmount, commitment.currency)} forfeited to{" "}
+              {forfeitLabel}
             </Text>
           </View>
         )}
@@ -455,13 +472,14 @@ export default function CommitmentDetailScreen() {
                         style={[
                           styles.upcomingDot,
                           {
-                            backgroundColor: checkInStatus === "approved"
-                              ? colors.primary
-                              : checkInStatus === "under_review"
-                              ? colors.accent
-                              : isDateToday
-                              ? colors.accent
-                              : colors.border,
+                            backgroundColor:
+                              checkInStatus === "approved"
+                                ? colors.primary
+                                : checkInStatus === "under_review"
+                                  ? colors.accent
+                                  : isDateToday
+                                    ? colors.accent
+                                    : colors.border,
                           },
                         ]}
                       >
@@ -528,10 +546,7 @@ export default function CommitmentDetailScreen() {
               })}
               {upcomingDates.length > 6 && (
                 <Text
-                  style={[
-                    styles.moreSlots,
-                    { color: colors.mutedForeground },
-                  ]}
+                  style={[styles.moreSlots, { color: colors.mutedForeground }]}
                 >
                   + {upcomingDates.length - 6} more slots
                 </Text>
@@ -551,20 +566,22 @@ export default function CommitmentDetailScreen() {
             icon={commitment.goalType === "content" ? "video" : "activity"}
             label="Type"
             value={
-              commitment.goalType === "content"
-                ? "Content Posting"
-                : "Workout"
+              commitment.goalType === "content" ? "Content Posting" : "Workout"
             }
             colors={colors}
           />
-          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.infoDivider, { backgroundColor: colors.border }]}
+          />
           <InfoRow
             icon="calendar"
             label="Schedule"
             value={formatDaysOfWeek(commitment.daysOfWeek)}
             colors={colors}
           />
-          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.infoDivider, { backgroundColor: colors.border }]}
+          />
           <InfoRow
             icon="target"
             label="Daily target"
@@ -577,7 +594,9 @@ export default function CommitmentDetailScreen() {
             }
             colors={colors}
           />
-          <View style={[styles.infoDivider, { backgroundColor: colors.border }]} />
+          <View
+            style={[styles.infoDivider, { backgroundColor: colors.border }]}
+          />
           <InfoRow
             icon="link"
             label="Proof required"
@@ -616,7 +635,10 @@ export default function CommitmentDetailScreen() {
                     key={ci.id}
                     style={[
                       styles.activityRow,
-                      { backgroundColor: colors.card, borderColor: colors.border },
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                      },
                     ]}
                   >
                     <View
@@ -627,14 +649,17 @@ export default function CommitmentDetailScreen() {
                             status === "approved"
                               ? colors.primary
                               : status === "under_review"
-                              ? colors.accent
-                              : colors.danger,
+                                ? colors.accent
+                                : colors.danger,
                         },
                       ]}
                     />
                     <View style={styles.activityInfo}>
                       <Text
-                        style={[styles.activityDate, { color: colors.foreground }]}
+                        style={[
+                          styles.activityDate,
+                          { color: colors.foreground },
+                        ]}
                       >
                         {formatDate(ci.date)}
                       </Text>
@@ -657,6 +682,20 @@ export default function CommitmentDetailScreen() {
                           ]}
                         >
                           Prompt: {ci.proofPrompt}
+                        </Text>
+                      )}
+                      {ci.proofLocation && (
+                        <Text
+                          style={[
+                            styles.activityMeta,
+                            { color: colors.mutedForeground },
+                          ]}
+                        >
+                          Location: {ci.proofLocation.latitude.toFixed(5)},{" "}
+                          {ci.proofLocation.longitude.toFixed(5)}
+                          {typeof ci.proofLocation.accuracy === "number"
+                            ? ` ±${Math.round(ci.proofLocation.accuracy)}m`
+                            : ""}
                         </Text>
                       )}
                       {ci.submissionStatement && (
@@ -688,18 +727,18 @@ export default function CommitmentDetailScreen() {
                             status === "approved"
                               ? colors.primary
                               : status === "under_review"
-                              ? colors.accent
-                              : colors.mutedForeground,
+                                ? colors.accent
+                                : colors.mutedForeground,
                         },
                       ]}
                     >
                       {status === "approved"
                         ? `+${formatCurrency(perDay, commitment.currency)}`
                         : status === "under_review"
-                        ? "With Raven"
-                        : status === "missed"
-                        ? "Missed"
-                        : "Rejected"}
+                          ? "With Raven"
+                          : status === "missed"
+                            ? "Missed"
+                            : "Rejected"}
                     </Text>
                   </View>
                 );
@@ -715,13 +754,17 @@ export default function CommitmentDetailScreen() {
         >
           <Feather name="heart" size={14} color={colors.mutedForeground} />
           <View style={styles.charityInfo}>
-            <Text style={[styles.charityLabel, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.charityLabel, { color: colors.mutedForeground }]}
+            >
               If the pact breaks
             </Text>
             <Text style={[styles.charityName, { color: colors.foreground }]}>
               {forfeitLabel}
             </Text>
-            <Text style={[styles.charityMeta, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.charityMeta, { color: colors.mutedForeground }]}
+            >
               The money does not become ours. It goes where you chose.
             </Text>
           </View>
@@ -744,7 +787,9 @@ export default function CommitmentDetailScreen() {
               <Text style={[styles.charityLabel, { color: colors.danger }]}>
                 End pact early
               </Text>
-              <Text style={[styles.charityMeta, { color: colors.mutedForeground }]}>
+              <Text
+                style={[styles.charityMeta, { color: colors.mutedForeground }]}
+              >
                 The slot stays used. Admin settles the remaining deposit.
               </Text>
             </View>
@@ -783,7 +828,9 @@ export default function CommitmentDetailScreen() {
                 <Feather
                   name={todayStatus === "approved" ? "check-circle" : "clock"}
                   size={16}
-                  color={todayStatus === "approved" ? colors.primary : colors.accent}
+                  color={
+                    todayStatus === "approved" ? colors.primary : colors.accent
+                  }
                 />
                 <Text
                   style={[
@@ -804,7 +851,10 @@ export default function CommitmentDetailScreen() {
               {todayStatus === "under_review" && (
                 <TouchableOpacity
                   onPress={handleUndoToday}
-                  style={[styles.undoBtn, { backgroundColor: colors.secondary }]}
+                  style={[
+                    styles.undoBtn,
+                    { backgroundColor: colors.secondary },
+                  ]}
                   activeOpacity={0.75}
                 >
                   <Feather
@@ -866,7 +916,10 @@ function PaymentSetupCard({
   const pendingDeposit = isPendingDeposit(commitment);
   const { buySlot, payDeposit, paying } = useRazorpayCheckout({
     onSlotSuccess: () =>
-      Alert.alert("Pact slot ready", "One unused pact slot was added."),
+      Alert.alert(
+        "Pact slot ready",
+        "Now lock the refundable deposit on this draft to start.",
+      ),
     onDepositSuccess: () =>
       Alert.alert("Deposit locked", "Your pact is now live."),
   });
@@ -879,14 +932,12 @@ function PaymentSetupCard({
   };
   const title = hasSlot ? "Lock the deposit" : "Buy a pact slot";
   const body = hasSlot
-    ? "One slot will be consumed when the refundable deposit is verified."
+    ? "After the deposit succeeds, one slot is consumed and the pact becomes live."
     : "A pact slot costs ₹249, is non-refundable, and unlocks one challenge.";
   const buttonLabel = paying
     ? "Opening payment..."
     : hasSlot
-      ? pendingDeposit
-        ? "Pay deposit"
-        : "Start with this slot"
+      ? "Pay deposit"
       : "Buy pact slot";
 
   return (
@@ -971,8 +1022,8 @@ function PaymentSetupCard({
           onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
         >
           Terms
-        </Text>
-        {" "}and{" "}
+        </Text>{" "}
+        and{" "}
         <Text
           style={[styles.paymentLink, { color: colors.accent }]}
           onPress={() => void Linking.openURL(LEGAL_URLS.payments)}
@@ -1063,7 +1114,9 @@ function StatCol({
 }) {
   return (
     <View style={scStyles.col}>
-      <Text style={[scStyles.value, { color: valueColor ?? colors.foreground }]}>
+      <Text
+        style={[scStyles.value, { color: valueColor ?? colors.foreground }]}
+      >
         {value}
       </Text>
       <Text style={[scStyles.label, { color: colors.mutedForeground }]}>
@@ -1257,7 +1310,12 @@ const styles = StyleSheet.create({
   refundLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
   refundValue: { fontSize: 36, fontFamily: "Inter_700Bold", lineHeight: 42 },
   refundOf: { fontSize: 12, fontFamily: "Inter_400Regular", marginBottom: 14 },
-  progressBg: { height: 6, borderRadius: 3, overflow: "hidden", marginBottom: 16 },
+  progressBg: {
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
   progressFill: { height: "100%", borderRadius: 3 },
   statsRow: { flexDirection: "row", alignItems: "center" },
   // Missed banner
@@ -1301,7 +1359,11 @@ const styles = StyleSheet.create({
   upcomingInfo: { flex: 1, gap: 2 },
   upcomingDate: { fontSize: 13 },
   upcomingDeadline: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  upcomingRefund: { fontSize: 13, fontFamily: "Inter_600SemiBold", flexShrink: 0 },
+  upcomingRefund: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    flexShrink: 0,
+  },
   upcomingDiv: { height: 1, marginLeft: 34 },
   moreSlots: {
     fontSize: 11,

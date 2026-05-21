@@ -1,5 +1,8 @@
 import { Feather } from "@expo/vector-icons";
+import { useMutation } from "convex/react";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -7,6 +10,7 @@ import {
   Modal,
   PanResponder,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +19,7 @@ import {
 } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
 
-import { Commitment } from "@/contexts/CommitmentsContext";
+import { Commitment, ProofLocation } from "@/contexts/CommitmentsContext";
 import { selectWorkoutProofPrompt } from "@/constants/workoutProofPrompts";
 import { useColors } from "@/hooks/useColors";
 import {
@@ -24,6 +28,8 @@ import {
   getMsUntilDeadline,
   getRefundPerDay,
 } from "@/utils/commitment";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 
 interface Props {
   visible: boolean;
@@ -35,15 +41,16 @@ interface Props {
     date: string,
     url: string,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) => void;
   onSubmitWorkout: (
     commitmentId: string,
     date: string,
-    proofUrl: string,
-    proofPrompt?: string,
+    proofStorageId: string,
+    proofPrompt: string,
+    proofLocation: ProofLocation,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) => void;
 }
 
@@ -61,19 +68,33 @@ export function CheckInModal({
   onSubmitWorkout,
 }: Props) {
   const colors = useColors();
+  const generateProofUploadUrl = useMutation(
+    api.checkIns.generateProofUploadUrl,
+  );
   const [url, setUrl] = useState("");
-  const [workoutProofUrl, setWorkoutProofUrl] = useState("");
+  const [workoutProofStorageId, setWorkoutProofStorageId] = useState<
+    string | undefined
+  >();
+  const [workoutProofLocation, setWorkoutProofLocation] = useState<
+    ProofLocation | undefined
+  >();
+  const [workoutPreviewUri, setWorkoutPreviewUri] = useState<
+    string | undefined
+  >();
+  const [uploadingWorkoutProof, setUploadingWorkoutProof] = useState(false);
+  const [workoutUploadError, setWorkoutUploadError] = useState<
+    string | undefined
+  >();
   const [referenceImageFailed, setReferenceImageFailed] = useState(false);
   const [signatureStrokes, setSignatureStrokes] = useState<SignatureStroke[]>(
-    []
+    [],
   );
   const proofPrompt = useMemo(
     () => selectWorkoutProofPrompt(commitment?.id, date),
-    [commitment?.id, date]
+    [commitment?.id, date],
   );
   const [countdown, setCountdown] = useState(getMsUntilDeadline());
   const urlRef = useRef<TextInput>(null);
-  const workoutRef = useRef<TextInput>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -85,12 +106,14 @@ export function CheckInModal({
   useEffect(() => {
     if (visible) {
       setUrl("");
-      setWorkoutProofUrl("");
+      setWorkoutProofStorageId(undefined);
+      setWorkoutProofLocation(undefined);
+      setWorkoutPreviewUri(undefined);
+      setWorkoutUploadError(undefined);
       setReferenceImageFailed(false);
       setSignatureStrokes([]);
       setTimeout(() => {
         if (commitment?.goalType === "content") urlRef.current?.focus();
-        else workoutRef.current?.focus();
       }, 300);
     }
   }, [visible, commitment?.goalType]);
@@ -101,9 +124,9 @@ export function CheckInModal({
   const isContent = commitment.goalType === "content";
   const proofReady = isContent
     ? url.trim().startsWith("http")
-    : workoutProofUrl.trim().startsWith("http");
+    : Boolean(workoutProofStorageId && workoutProofLocation);
   const hasSignature = signatureStrokes.some((stroke) => stroke.length > 1);
-  const canSubmit = proofReady && hasSignature;
+  const canSubmit = proofReady && hasSignature && !uploadingWorkoutProof;
   const signaturePadResponder = useMemo(
     () =>
       PanResponder.create({
@@ -122,7 +145,9 @@ export function CheckInModal({
           const { locationX, locationY } = event.nativeEvent;
           setSignatureStrokes((prev) => {
             if (prev.length === 0) {
-              return [[{ x: Math.max(0, locationX), y: Math.max(0, locationY) }]];
+              return [
+                [{ x: Math.max(0, locationX), y: Math.max(0, locationY) }],
+              ];
             }
             const next = [...prev];
             const last = next[next.length - 1];
@@ -134,7 +159,7 @@ export function CheckInModal({
           });
         },
       }),
-    [proofReady]
+    [proofReady],
   );
 
   function signaturePayload() {
@@ -143,6 +168,93 @@ export function CheckInModal({
       strokes: signatureStrokes,
       signedAt: new Date().toISOString(),
     });
+  }
+
+  async function uploadWorkoutAsset(asset: ImagePicker.ImagePickerAsset) {
+    if (!commitment) return;
+    const body = asset.file ?? (await (await fetch(asset.uri)).blob());
+    const contentType =
+      asset.mimeType ||
+      (body instanceof Blob ? body.type : undefined) ||
+      "image/jpeg";
+    const uploadUrl = await generateProofUploadUrl({
+      commitmentId: commitment.id as Id<"commitments">,
+    });
+    const response = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": contentType },
+      body,
+    });
+    if (!response.ok) {
+      throw new Error("Proof upload failed");
+    }
+    const result = (await response.json()) as { storageId?: string };
+    if (!result.storageId)
+      throw new Error("Proof upload did not return a file id");
+    setWorkoutProofStorageId(result.storageId);
+    setWorkoutPreviewUri(asset.uri);
+  }
+
+  async function ensureWorkoutProofPermissions() {
+    if (Platform.OS !== "web") {
+      const cameraPermission =
+        await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        throw new Error("Camera permission is required for workout proof");
+      }
+    }
+
+    const locationPermission =
+      await Location.requestForegroundPermissionsAsync();
+    if (!locationPermission.granted) {
+      throw new Error("Location permission is required for workout proof");
+    }
+  }
+
+  async function readWorkoutProofLocation(): Promise<ProofLocation> {
+    const position = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+    return {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      accuracy: position.coords.accuracy ?? undefined,
+      capturedAt: new Date().toISOString(),
+    };
+  }
+
+  function formatLocation(location: ProofLocation) {
+    const accuracy =
+      typeof location.accuracy === "number"
+        ? ` · ±${Math.round(location.accuracy)}m`
+        : "";
+    return `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(
+      5,
+    )}${accuracy}`;
+  }
+
+  async function takeWorkoutProof() {
+    if (!commitment || uploadingWorkoutProof) return;
+    setUploadingWorkoutProof(true);
+    setWorkoutUploadError(undefined);
+    try {
+      await ensureWorkoutProofPermissions();
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: "images",
+        quality: 0.8,
+        allowsEditing: false,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const proofLocation = await readWorkoutProofLocation();
+      await uploadWorkoutAsset(result.assets[0]);
+      setWorkoutProofLocation(proofLocation);
+    } catch (error) {
+      setWorkoutUploadError(
+        error instanceof Error ? error.message : "Could not attach proof",
+      );
+    } finally {
+      setUploadingWorkoutProof(false);
+    }
   }
 
   function handleSubmit() {
@@ -154,16 +266,17 @@ export function CheckInModal({
         date,
         url.trim(),
         signaturePayload(),
-        SUBMISSION_STATEMENT
+        SUBMISSION_STATEMENT,
       );
     } else {
       onSubmitWorkout(
         commitment!.id,
         date,
-        workoutProofUrl.trim(),
+        workoutProofStorageId!,
         proofPrompt.text,
+        workoutProofLocation!,
         signaturePayload(),
-        SUBMISSION_STATEMENT
+        SUBMISSION_STATEMENT,
       );
     }
     onClose();
@@ -203,323 +316,445 @@ export function CheckInModal({
               <Text style={[styles.title, { color: colors.foreground }]}>
                 {isContent ? "Show Proof" : "Show Workout Proof"}
               </Text>
-              <Text style={[styles.commitName, { color: colors.mutedForeground }]} numberOfLines={1}>
+              <Text
+                style={[styles.commitName, { color: colors.mutedForeground }]}
+                numberOfLines={1}
+              >
                 {commitment.name}
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeBtn}
+              activeOpacity={0.7}
+            >
               <Feather name="x" size={20} color={colors.mutedForeground} />
             </TouchableOpacity>
           </View>
 
-          {/* Deadline countdown */}
-          <View
-            style={[
-              styles.deadlineBadge,
-              {
-                backgroundColor:
-                  countdown < 3600000
-                    ? colors.danger + "22"
-                    : colors.secondary,
-                borderColor:
-                  countdown < 3600000
-                    ? colors.danger + "44"
-                    : colors.border,
-              },
-            ]}
+          <ScrollView
+            contentContainerStyle={styles.sheetContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Feather
-              name="clock"
-              size={12}
-              color={countdown < 3600000 ? colors.danger : colors.mutedForeground}
-            />
-            <Text
+            {/* Deadline countdown */}
+            <View
               style={[
-                styles.deadlineText,
+                styles.deadlineBadge,
                 {
-                  color:
+                  backgroundColor:
                     countdown < 3600000
-                      ? colors.danger
-                      : colors.mutedForeground,
+                      ? colors.danger + "22"
+                      : colors.secondary,
+                  borderColor:
+                    countdown < 3600000 ? colors.danger + "44" : colors.border,
                 },
               ]}
             >
-              {formatCountdown(countdown)} · Deadline 11:59 PM
-            </Text>
-          </View>
-
-          {/* Content: URL input */}
-          {isContent && (
-            <View style={styles.section}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Public proof link
-              </Text>
-              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Post it publicly. Paste the link. Sign the record.
-              </Text>
-              <View
+              <Feather
+                name="clock"
+                size={12}
+                color={
+                  countdown < 3600000 ? colors.danger : colors.mutedForeground
+                }
+              />
+              <Text
                 style={[
-                  styles.inputRow,
-                  { backgroundColor: colors.input, borderColor: colors.border },
-                ]}
-              >
-                <Feather name="link" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
-                <TextInput
-                  ref={urlRef}
-                  style={[styles.input, { color: colors.foreground }]}
-                  placeholder="https://..."
-                  placeholderTextColor={colors.mutedForeground}
-                  value={url}
-                  onChangeText={setUrl}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSubmit}
-                />
-                {url.length > 0 && (
-                  <TouchableOpacity onPress={() => setUrl("")} activeOpacity={0.7}>
-                    <Feather name="x-circle" size={16} color={colors.mutedForeground} />
-                  </TouchableOpacity>
-                )}
-              </View>
-              {url.trim().length > 0 && !url.trim().startsWith("http") && (
-                <Text style={[styles.errorText, { color: colors.danger }]}>
-                  Must be a valid URL starting with http
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Workout proof input */}
-          {!isContent && (
-            <View style={styles.section}>
-              <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
-                Workout proof
-              </Text>
-              <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
-                Match the prompt. No old photos. No vague proof: {proofPrompt.text}
-              </Text>
-              <View
-                style={[
-                  styles.inputRow,
-                  { backgroundColor: colors.input, borderColor: colors.border },
-                ]}
-              >
-                <Feather name="camera" size={16} color={colors.mutedForeground} style={styles.inputIcon} />
-                <TextInput
-                  ref={workoutRef}
-                  style={[styles.input, { color: colors.foreground }]}
-                  placeholder="Paste camera proof link"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={workoutProofUrl}
-                  onChangeText={setWorkoutProofUrl}
-                  keyboardType="url"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSubmit}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-
-              {workoutProofUrl.trim().length > 0 &&
-                !workoutProofUrl.trim().startsWith("http") && (
-                  <Text style={[styles.errorText, { color: colors.danger }]}>
-                    Must be a valid proof link starting with http
-                  </Text>
-                )}
-
-              <View
-                style={[
-                  styles.proofPromptBox,
+                  styles.deadlineText,
                   {
-                    backgroundColor: colors.primary + "14",
-                    borderColor: colors.primary + "33",
+                    color:
+                      countdown < 3600000
+                        ? colors.danger
+                        : colors.mutedForeground,
                   },
                 ]}
               >
-                <Feather name="camera" size={14} color={colors.primary} />
+                {formatCountdown(countdown)} · Deadline 11:59 PM
+              </Text>
+            </View>
+
+            {/* Content: URL input */}
+            {isContent && (
+              <View style={styles.section}>
                 <Text
+                  style={[styles.fieldLabel, { color: colors.mutedForeground }]}
+                >
+                  Public proof link
+                </Text>
+                <Text
+                  style={[styles.fieldHint, { color: colors.mutedForeground }]}
+                >
+                  Post it publicly. Paste the link. Sign the record.
+                </Text>
+                <View
                   style={[
-                    styles.proofPromptText,
-                    { color: colors.primary },
+                    styles.inputRow,
+                    {
+                      backgroundColor: colors.input,
+                      borderColor: colors.border,
+                    },
                   ]}
                 >
-                  Fresh proof must clearly show: {proofPrompt.text}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.referenceImageBox,
-                  { backgroundColor: colors.secondary, borderColor: colors.border },
-                ]}
-              >
-                {!referenceImageFailed ? (
-                  <Image
-                    source={{ uri: proofPrompt.referenceImage.uri }}
-                    accessibilityLabel={proofPrompt.referenceImage.alt}
-                    onError={() => setReferenceImageFailed(true)}
-                    style={styles.referenceImage}
-                    resizeMode="contain"
+                  <Feather
+                    name="link"
+                    size={16}
+                    color={colors.mutedForeground}
+                    style={styles.inputIcon}
                   />
-                ) : (
-                  <View style={styles.referenceFallback}>
+                  <TextInput
+                    ref={urlRef}
+                    style={[styles.input, { color: colors.foreground }]}
+                    placeholder="https://..."
+                    placeholderTextColor={colors.mutedForeground}
+                    value={url}
+                    onChangeText={setUrl}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    keyboardType="url"
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
+                  />
+                  {url.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setUrl("")}
+                      activeOpacity={0.7}
+                    >
+                      <Feather
+                        name="x-circle"
+                        size={16}
+                        color={colors.mutedForeground}
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {url.trim().length > 0 && !url.trim().startsWith("http") && (
+                  <Text style={[styles.errorText, { color: colors.danger }]}>
+                    Must be a valid URL starting with http
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Workout proof input */}
+            {!isContent && (
+              <View style={styles.section}>
+                <Text
+                  style={[styles.fieldLabel, { color: colors.mutedForeground }]}
+                >
+                  Workout proof
+                </Text>
+                <Text
+                  style={[styles.fieldHint, { color: colors.mutedForeground }]}
+                >
+                  Use the camera now. Location is captured with the proof.
+                  Match the daily pose: {proofPrompt.text}
+                </Text>
+
+                <View style={styles.uploadActions}>
+                  <TouchableOpacity
+                    onPress={() => void takeWorkoutProof()}
+                    disabled={uploadingWorkoutProof}
+                    activeOpacity={0.8}
+                    style={[
+                      styles.uploadBtn,
+                      {
+                        backgroundColor: colors.primary,
+                        opacity: uploadingWorkoutProof ? 0.55 : 1,
+                      },
+                    ]}
+                  >
+                    <Feather name="camera" size={14} color="#000" />
+                    <Text style={styles.uploadBtnText}>
+                      {uploadingWorkoutProof
+                        ? "Capturing..."
+                        : workoutProofStorageId
+                          ? "Retake camera proof"
+                          : "Take camera proof"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {workoutPreviewUri && (
+                  <View
+                    style={[
+                      styles.proofPreview,
+                      {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Image
+                      source={{ uri: workoutPreviewUri }}
+                      accessibilityLabel="Attached workout proof"
+                      style={styles.proofPreviewImage}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        setWorkoutPreviewUri(undefined);
+                        setWorkoutProofStorageId(undefined);
+                        setWorkoutProofLocation(undefined);
+                      }}
+                      activeOpacity={0.75}
+                      style={[
+                        styles.removeProofBtn,
+                        { backgroundColor: colors.card },
+                      ]}
+                    >
+                      <Feather name="x" size={14} color={colors.foreground} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {workoutProofLocation && (
+                  <View
+                    style={[
+                      styles.locationBox,
+                      {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     <Feather
-                      name="image"
-                      size={18}
-                      color={colors.mutedForeground}
+                      name="map-pin"
+                      size={14}
+                      color={colors.primary}
                     />
                     <Text
                       style={[
-                        styles.referenceFallbackText,
+                        styles.locationText,
                         { color: colors.mutedForeground },
                       ]}
                     >
-                      Add {proofPrompt.referenceImage.assetKey}.png to show a
-                      reference image.
+                      Location captured · {formatLocation(workoutProofLocation)}
                     </Text>
                   </View>
                 )}
-              </View>
 
-              {/* Camera capture placeholder */}
-              <View
-                style={[
-                  styles.healthBox,
-                  { backgroundColor: colors.secondary, borderColor: colors.border },
-                ]}
-              >
-                <Feather name="smartphone" size={14} color={colors.mutedForeground} />
-                <Text style={[styles.healthText, { color: colors.mutedForeground }]}>
-                  PWA camera upload will attach directly here once storage is wired. For now, paste the proof link and sign the submission.
-                </Text>
-              </View>
-            </View>
-          )}
+                {workoutUploadError && (
+                  <Text style={[styles.errorText, { color: colors.danger }]}>
+                    {workoutUploadError}
+                  </Text>
+                )}
 
-          {proofReady && (
-            <View style={styles.section}>
-              <View style={styles.signatureHeader}>
-                <View style={styles.signatureTitleWrap}>
+                <View
+                  style={[
+                    styles.proofPromptBox,
+                    {
+                      backgroundColor: colors.primary + "14",
+                      borderColor: colors.primary + "33",
+                    },
+                  ]}
+                >
+                  <Feather name="activity" size={14} color={colors.primary} />
+                  <Text
+                    style={[styles.proofPromptText, { color: colors.primary }]}
+                  >
+                    Fresh proof must clearly show: {proofPrompt.text}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.referenceImageBox,
+                    {
+                      backgroundColor: colors.secondary,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  {!referenceImageFailed ? (
+                    <Image
+                      source={{ uri: proofPrompt.referenceImage.uri }}
+                      accessibilityLabel={proofPrompt.referenceImage.alt}
+                      onError={() => setReferenceImageFailed(true)}
+                      style={styles.referenceImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <View style={styles.referenceFallback}>
+                      <Feather
+                        name="image"
+                        size={18}
+                        color={colors.mutedForeground}
+                      />
+                      <Text
+                        style={[
+                          styles.referenceFallbackText,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        Reference image unavailable. Follow the pose prompt
+                        above.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View
+                  style={[
+                    styles.healthBox,
+                    {
+                      backgroundColor: colors.secondary,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="shield"
+                    size={14}
+                    color={colors.mutedForeground}
+                  />
                   <Text
                     style={[
-                      styles.fieldLabel,
+                      styles.healthText,
                       { color: colors.mutedForeground },
                     ]}
                   >
-                    Sign the record
-                  </Text>
-                  <Text
-                    style={[
-                      styles.signatureStatement,
-                      { color: colors.foreground },
-                    ]}
-                  >
-                    {SUBMISSION_STATEMENT}
+                    Workout proof accepts only a fresh camera capture, device
+                    location, and the daily pose prompt. Gallery uploads and
+                    proof links are not accepted.
                   </Text>
                 </View>
-                {signatureStrokes.length > 0 && (
-                  <TouchableOpacity
-                    onPress={() => setSignatureStrokes([])}
-                    activeOpacity={0.75}
-                    style={[
-                      styles.clearSignatureBtn,
-                      { backgroundColor: colors.secondary },
-                    ]}
-                  >
+              </View>
+            )}
+
+            {proofReady && (
+              <View style={styles.section}>
+                <View style={styles.signatureHeader}>
+                  <View style={styles.signatureTitleWrap}>
                     <Text
                       style={[
-                        styles.clearSignatureText,
+                        styles.fieldLabel,
                         { color: colors.mutedForeground },
                       ]}
                     >
-                      Clear
+                      Sign the record
                     </Text>
-                  </TouchableOpacity>
-                )}
+                    <Text
+                      style={[
+                        styles.signatureStatement,
+                        { color: colors.foreground },
+                      ]}
+                    >
+                      {SUBMISSION_STATEMENT}
+                    </Text>
+                  </View>
+                  {signatureStrokes.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSignatureStrokes([])}
+                      activeOpacity={0.75}
+                      style={[
+                        styles.clearSignatureBtn,
+                        { backgroundColor: colors.secondary },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.clearSignatureText,
+                          { color: colors.mutedForeground },
+                        ]}
+                      >
+                        Clear
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View
+                  {...signaturePadResponder.panHandlers}
+                  style={[
+                    styles.signaturePad,
+                    {
+                      backgroundColor: colors.input,
+                      borderColor: hasSignature
+                        ? colors.primary
+                        : colors.border,
+                    },
+                  ]}
+                >
+                  {signatureStrokes.length === 0 ? (
+                    <Text
+                      style={[
+                        styles.signaturePlaceholder,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Sign here with your finger
+                    </Text>
+                  ) : (
+                    <Svg
+                      width="100%"
+                      height="100%"
+                      style={StyleSheet.absoluteFill}
+                    >
+                      {signatureStrokes.map((stroke, index) => (
+                        <Polyline
+                          key={`${stroke.length}:${index}`}
+                          points={stroke
+                            .map((point) => `${point.x},${point.y}`)
+                            .join(" ")}
+                          fill="none"
+                          stroke={colors.primary}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={3}
+                        />
+                      ))}
+                    </Svg>
+                  )}
+                </View>
               </View>
-              <View
-                {...signaturePadResponder.panHandlers}
-                style={[
-                  styles.signaturePad,
-                  {
-                    backgroundColor: colors.input,
-                    borderColor: hasSignature ? colors.primary : colors.border,
-                  },
-                ]}
-              >
-                {signatureStrokes.length === 0 ? (
-                  <Text
-                    style={[
-                      styles.signaturePlaceholder,
-                      { color: colors.mutedForeground },
-                    ]}
-                  >
-                    Sign here with your finger
-                  </Text>
-                ) : (
-                  <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
-                    {signatureStrokes.map((stroke, index) => (
-                      <Polyline
-                        key={`${stroke.length}:${index}`}
-                        points={stroke
-                          .map((point) => `${point.x},${point.y}`)
-                          .join(" ")}
-                        fill="none"
-                        stroke={colors.primary}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                      />
-                    ))}
-                  </Svg>
-                )}
-              </View>
-            </View>
-          )}
+            )}
 
-          {/* Refund preview */}
-          <View
-            style={[
-              styles.refundPreview,
-              { backgroundColor: colors.primary + "14", borderColor: colors.primary + "33" },
-            ]}
-          >
-            <Feather name="rotate-ccw" size={14} color={colors.primary} />
-            <Text style={[styles.refundText, { color: colors.primary }]}>
-              {proofReady && !hasSignature
-                ? `Sign "${SUBMISSION_STATEMENT}" to lock this into the record`
-                : isContent && canSubmit
-                ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
-                : !isContent && canSubmit
-                ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
-                : `Show proof by the deadline. The Raven records the proof.`}
-            </Text>
-          </View>
-
-          {/* Submit */}
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-            style={[
-              styles.submitBtn,
-              {
-                backgroundColor: canSubmit ? colors.primary : colors.secondary,
-                opacity: canSubmit ? 1 : 0.5,
-              },
-            ]}
-            activeOpacity={0.85}
-          >
-            <Text
+            {/* Refund preview */}
+            <View
               style={[
-                styles.submitText,
-                { color: canSubmit ? "#000" : colors.mutedForeground },
+                styles.refundPreview,
+                {
+                  backgroundColor: colors.primary + "14",
+                  borderColor: colors.primary + "33",
+                },
               ]}
             >
-              Sign and Submit
-            </Text>
-          </TouchableOpacity>
+              <Feather name="rotate-ccw" size={14} color={colors.primary} />
+              <Text style={[styles.refundText, { color: colors.primary }]}>
+                {proofReady && !hasSignature
+                  ? `Sign "${SUBMISSION_STATEMENT}" to lock this into the record`
+                  : isContent && canSubmit
+                    ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                    : !isContent && canSubmit
+                      ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                      : `Show proof by the deadline. The Raven records the proof.`}
+              </Text>
+            </View>
+
+            {/* Submit */}
+            <TouchableOpacity
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+              style={[
+                styles.submitBtn,
+                {
+                  backgroundColor: canSubmit
+                    ? colors.primary
+                    : colors.secondary,
+                  opacity: canSubmit ? 1 : 0.5,
+                },
+              ]}
+              activeOpacity={0.85}
+            >
+              <Text
+                style={[
+                  styles.submitText,
+                  { color: canSubmit ? "#000" : colors.mutedForeground },
+                ]}
+              >
+                Sign and Submit
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -536,6 +771,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.6)",
   },
   sheet: {
+    maxHeight: "92%",
     borderTopLeftRadius: 8,
     borderTopRightRadius: 8,
     borderWidth: 1,
@@ -543,6 +779,10 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 40 : 24,
     gap: 14,
+  },
+  sheetContent: {
+    gap: 14,
+    paddingBottom: 4,
   },
   handle: {
     width: 36,
@@ -623,6 +863,73 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 11,
     fontFamily: "Inter_400Regular",
+  },
+  uploadActions: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  uploadBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  uploadBtnText: {
+    color: "#000",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  uploadSecondaryBtn: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  uploadSecondaryText: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+  },
+  proofPreview: {
+    height: 140,
+    overflow: "hidden",
+    borderRadius: 8,
+    borderWidth: 1,
+    position: "relative",
+  },
+  proofPreviewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  removeProofBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  locationBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  locationText: {
+    flex: 1,
+    fontSize: 11,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 16,
   },
   proofPromptBox: {
     flexDirection: "row",

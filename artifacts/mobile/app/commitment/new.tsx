@@ -39,6 +39,8 @@ import {
   getDayName,
   getEndDateForDuration,
   getMsUntilDeadline,
+  MAX_PACT_AMOUNT_INR,
+  MIN_PACT_AMOUNT_INR,
   getScheduledDates,
   getPactAmountPresets,
   getStartDateOptions,
@@ -47,7 +49,8 @@ import {
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
-const NO_OUTLINE = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : undefined;
+const NO_OUTLINE =
+  Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : undefined;
 
 const NAME_EXAMPLES: Record<GoalType, string[]> = {
   content: [
@@ -67,7 +70,10 @@ const NAME_EXAMPLES: Record<GoalType, string[]> = {
 function useRotatingPlaceholder(options: string[], intervalMs = 2500): string {
   const [i, setI] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setI((n) => (n + 1) % options.length), intervalMs);
+    const id = setInterval(
+      () => setI((n) => (n + 1) % options.length),
+      intervalMs,
+    );
     return () => clearInterval(id);
   }, [options, intervalMs]);
   return options[i];
@@ -108,10 +114,7 @@ export default function NewCommitmentScreen() {
   const appliedIntentRef = useRef(false);
 
   const [stepIndex, setStepIndex, stepHydrated, clearStep] =
-    usePersistedState<number>(
-    "newCommitment.stepIndex",
-    0,
-  );
+    usePersistedState<number>("newCommitment.stepIndex", 0);
   const [creating, setCreating] = useState(false);
   const [form, setForm, formHydrated, clearForm] = usePersistedState<FormData>(
     "newCommitment.form",
@@ -138,12 +141,28 @@ export default function NewCommitmentScreen() {
     appliedIntentRef.current = true;
     setForm((prev) => ({ ...prev, goalType }));
     if (intentStep === "name") setStepIndex(1);
-  }, [formHydrated, intentStep, intentType, setForm, setStepIndex, stepHydrated]);
+  }, [
+    formHydrated,
+    intentStep,
+    intentType,
+    setForm,
+    setStepIndex,
+    stepHydrated,
+  ]);
 
   const steps: StepKey[] =
     form.goalType === "workout"
       ? ["type", "name", "days", "start", "amount", "charity", "review"]
-      : ["type", "name", "days", "postsPerDay", "start", "amount", "charity", "review"];
+      : [
+          "type",
+          "name",
+          "days",
+          "postsPerDay",
+          "start",
+          "amount",
+          "charity",
+          "review",
+        ];
   // Clamp stepIndex in case goalType changed between sessions (workout has fewer steps)
   const safeStepIndex = Math.min(stepIndex, steps.length - 1);
   useEffect(() => {
@@ -181,6 +200,10 @@ export default function NewCommitmentScreen() {
   const scheduledDays = scheduledDates.length;
   const perDay =
     scheduledDays > 0 ? (parseFloat(form.pactAmount) || 0) / scheduledDays : 0;
+  const pactAmount = parseFloat(form.pactAmount) || 0;
+  const pactAmountInRange =
+    form.currency !== "INR" ||
+    (pactAmount >= MIN_PACT_AMOUNT_INR && pactAmount <= MAX_PACT_AMOUNT_INR);
   const firstSubmissionDate = scheduledDates[0] ?? null;
 
   const isFirstSubmissionToday = firstSubmissionDate === getTodayStr();
@@ -212,7 +235,7 @@ export default function NewCommitmentScreen() {
       case "start":
         return form.startDate.length > 0;
       case "amount":
-        return parseFloat(form.pactAmount) > 0;
+        return pactAmount > 0 && pactAmountInRange;
       case "charity":
         return true;
       case "review":
@@ -244,7 +267,7 @@ export default function NewCommitmentScreen() {
       daysOfWeek: form.daysOfWeek,
       targetPerDay: form.targetPerDay,
       durationDays: daysBetween(form.startDate, endDate),
-      pactAmount: parseFloat(form.pactAmount) || 0,
+      pactAmount,
       currency: form.currency,
       forfeitDestination: form.forfeitDestination,
       startDate: form.startDate,
@@ -282,7 +305,9 @@ export default function NewCommitmentScreen() {
           >
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
-          <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+          <View
+            style={[styles.progressTrack, { backgroundColor: colors.border }]}
+          >
             <View
               style={[
                 styles.progressFill,
@@ -311,8 +336,16 @@ export default function NewCommitmentScreen() {
                 <View style={styles.typeRow}>
                   {(
                     [
-                      { type: "content" as const, icon: "video", label: "Content" },
-                      { type: "workout" as const, icon: "activity", label: "Workout" },
+                      {
+                        type: "content" as const,
+                        icon: "video",
+                        label: "Content",
+                      },
+                      {
+                        type: "workout" as const,
+                        icon: "activity",
+                        label: "Workout",
+                      },
                     ] as const
                   ).map((opt) => {
                     const sel = form.goalType === opt.type;
@@ -357,7 +390,11 @@ export default function NewCommitmentScreen() {
               <View style={styles.answerSlot}>
                 <TextInput
                   autoFocus
-                  style={[styles.bareInput, NO_OUTLINE, { color: colors.foreground }]}
+                  style={[
+                    styles.bareInput,
+                    NO_OUTLINE,
+                    { color: colors.foreground },
+                  ]}
                   placeholder={namePlaceholder}
                   placeholderTextColor={colors.mutedForeground + "66"}
                   value={form.name}
@@ -390,7 +427,9 @@ export default function NewCommitmentScreen() {
                         style={[
                           styles.dayChip,
                           {
-                            backgroundColor: sel ? colors.primary : "transparent",
+                            backgroundColor: sel
+                              ? colors.primary
+                              : "transparent",
                             borderColor: sel ? colors.primary : colors.border,
                           },
                         ]}
@@ -408,7 +447,9 @@ export default function NewCommitmentScreen() {
                   })}
                 </View>
                 {form.daysOfWeek.length > 0 && (
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+                  <Text
+                    style={[styles.hint, { color: colors.mutedForeground }]}
+                  >
                     {scheduledDays} active days over the month
                   </Text>
                 )}
@@ -428,7 +469,9 @@ export default function NewCommitmentScreen() {
                         style={[
                           styles.countChip,
                           {
-                            backgroundColor: sel ? colors.primary : "transparent",
+                            backgroundColor: sel
+                              ? colors.primary
+                              : "transparent",
                             borderColor: sel ? colors.primary : colors.border,
                           },
                         ]}
@@ -466,7 +509,9 @@ export default function NewCommitmentScreen() {
                         style={[
                           styles.datePill,
                           {
-                            backgroundColor: sel ? colors.primary : "transparent",
+                            backgroundColor: sel
+                              ? colors.primary
+                              : "transparent",
                             borderColor: sel ? colors.primary : colors.border,
                           },
                         ]}
@@ -501,13 +546,20 @@ export default function NewCommitmentScreen() {
               >
                 <View style={styles.amountRow}>
                   <Text
-                    style={[styles.amountSymbol, { color: colors.mutedForeground }]}
+                    style={[
+                      styles.amountSymbol,
+                      { color: colors.mutedForeground },
+                    ]}
                   >
                     ₹
                   </Text>
                   <TextInput
                     autoFocus
-                    style={[styles.amountInput, NO_OUTLINE, { color: colors.foreground }]}
+                    style={[
+                      styles.amountInput,
+                      NO_OUTLINE,
+                      { color: colors.foreground },
+                    ]}
                     placeholder="3000"
                     placeholderTextColor={colors.mutedForeground + "55"}
                     value={form.pactAmount}
@@ -528,9 +580,7 @@ export default function NewCommitmentScreen() {
                         return (
                           <TouchableOpacity
                             key={preset}
-                            onPress={() =>
-                              update("pactAmount", String(preset))
-                            }
+                            onPress={() => update("pactAmount", String(preset))}
                             activeOpacity={0.8}
                             style={[
                               styles.presetChip,
@@ -562,11 +612,23 @@ export default function NewCommitmentScreen() {
                     )}
                   </View>
                 )}
-                {scheduledDays > 0 && parseFloat(form.pactAmount) > 0 && (
-                  <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                    {formatCurrency(perDay, form.currency)} refund credit per successful day
+                {scheduledDays > 0 && pactAmount > 0 && (
+                  <Text
+                    style={[styles.hint, { color: colors.mutedForeground }]}
+                  >
+                    {formatCurrency(perDay, form.currency)} refund credit per
+                    successful day
                   </Text>
                 )}
+                {form.currency === "INR" &&
+                  !pactAmountInRange &&
+                  pactAmount > 0 && (
+                    <Text style={[styles.errorHint, { color: colors.danger }]}>
+                      Beta deposits must be between{" "}
+                      {formatCurrency(MIN_PACT_AMOUNT_INR, form.currency)} and{" "}
+                      {formatCurrency(MAX_PACT_AMOUNT_INR, form.currency)}.
+                    </Text>
+                  )}
               </StepQuestion>
             )}
 
@@ -589,9 +651,7 @@ export default function NewCommitmentScreen() {
                           style={[
                             styles.radio,
                             {
-                              borderColor: sel
-                                ? colors.primary
-                                : colors.border,
+                              borderColor: sel ? colors.primary : colors.border,
                               backgroundColor: sel
                                 ? colors.primary
                                 : "transparent",
@@ -607,9 +667,7 @@ export default function NewCommitmentScreen() {
                             style={[
                               styles.charityName,
                               {
-                                color: sel
-                                  ? colors.primary
-                                  : colors.foreground,
+                                color: sel ? colors.primary : colors.foreground,
                               },
                             ]}
                           >
@@ -681,8 +739,36 @@ export default function NewCommitmentScreen() {
                 </View>
 
                 <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                  Save this as a draft. Starting it needs one pact slot and a separate deposit payment.
+                  Save this as a draft. Next: buy one pact slot, lock the
+                  refundable deposit, then the pact becomes live.
                 </Text>
+                <View
+                  style={[
+                    styles.rulesBox,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: colors.card,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.rulesTitle, { color: colors.foreground }]}
+                  >
+                    Rules before payment
+                  </Text>
+                  <Text
+                    style={[
+                      styles.rulesText,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    The slot fee is not refunded. Approved proof creates refund
+                    credit. Missed, late, private, unclear, or rejected proof
+                    forfeits that day's deposit credit to{" "}
+                    {charityName(form.forfeitDestination)}. First proof is due{" "}
+                    {firstSubmissionLabel}.
+                  </Text>
+                </View>
               </View>
             )}
           </Animated.View>
@@ -729,11 +815,7 @@ function InlineActions({
   colors: any;
 }) {
   const busy = creating;
-  const label = creating
-    ? "Creating..."
-    : isReview
-      ? "Save draft"
-      : "Continue";
+  const label = creating ? "Creating..." : isReview ? "Save draft" : "Continue";
   return (
     <View style={styles.actionsRow}>
       <TouchableOpacity
@@ -883,10 +965,7 @@ function MetricBlock({
         {label}
       </Text>
       <Text
-        style={[
-          styles.metricValue,
-          { color: valueColor ?? colors.foreground },
-        ]}
+        style={[styles.metricValue, { color: valueColor ?? colors.foreground }]}
         numberOfLines={2}
       >
         {value}
@@ -906,7 +985,9 @@ function StepQuestion({
 }) {
   return (
     <>
-      <Text style={[styles.question, { color: colors.foreground }]}>{text}</Text>
+      <Text style={[styles.question, { color: colors.foreground }]}>
+        {text}
+      </Text>
       <View style={styles.answerSlot}>{children}</View>
     </>
   );
@@ -942,6 +1023,11 @@ const styles = StyleSheet.create({
   hint: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
+  },
+  errorHint: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 17,
   },
 
   // Type
@@ -1055,6 +1141,21 @@ const styles = StyleSheet.create({
 
   // Review
   reviewName: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  rulesBox: {
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 12,
+    gap: 6,
+  },
+  rulesTitle: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  rulesText: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
   // Schedule calendar
   calHeader: { flexDirection: "row", marginBottom: 4 },
   calHeaderText: {

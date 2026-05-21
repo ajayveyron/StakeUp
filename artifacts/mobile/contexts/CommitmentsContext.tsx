@@ -6,11 +6,7 @@ import type { Id } from "@convex/_generated/dataModel";
 import type { CharityDestination } from "@/constants/charities";
 
 export type GoalType = "content" | "workout";
-export type CheckInStatus =
-  | "under_review"
-  | "approved"
-  | "rejected"
-  | "missed";
+export type CheckInStatus = "under_review" | "approved" | "rejected" | "missed";
 export type ForfeitDestination = CharityDestination;
 export type CommitmentStatus =
   | "draft"
@@ -20,11 +16,20 @@ export type CommitmentStatus =
   | "ended"
   | "deleted";
 
+export interface ProofLocation {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  capturedAt: string;
+}
+
 export interface CheckIn {
   id: string;
   date: string; // YYYY-MM-DD
   proofUrl?: string; // content: public post URL
+  proofStorageId?: string; // workout: direct upload stored in Convex
   proofPrompt?: string; // workout: daily physical proof prompt
+  proofLocation?: ProofLocation; // workout: captured device location
   submissionSignature?: string; // fun/accountability signature stroke payload
   submissionStatement?: string;
   stepCount?: number; // legacy step count data
@@ -65,7 +70,7 @@ export interface Commitment {
 interface CommitmentsContextType {
   commitments: Commitment[];
   addCommitment: (
-    c: Omit<Commitment, "id" | "checkIns" | "createdAt">
+    c: Omit<Commitment, "id" | "checkIns" | "createdAt">,
   ) => Promise<string | null>;
   deleteCommitment: (id: string) => void;
   submitContentCheckIn: (
@@ -73,21 +78,22 @@ interface CommitmentsContextType {
     date: string,
     proofUrl: string,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) => void;
   submitWorkoutCheckIn: (
     commitmentId: string,
     date: string,
-    proofUrl: string,
-    proofPrompt?: string,
+    proofStorageId: string,
+    proofPrompt: string,
+    proofLocation: ProofLocation,
     submissionSignature?: string,
-    submissionStatement?: string
+    submissionStatement?: string,
   ) => void;
   approveCheckIn: (commitmentId: string, date: string) => void;
   rejectCheckIn: (
     commitmentId: string,
     date: string,
-    rejectionReason: string
+    rejectionReason: string,
   ) => void;
   removeCheckIn: (commitmentId: string, date: string) => void;
   getCommitment: (id: string) => Commitment | undefined;
@@ -108,7 +114,8 @@ export function CommitmentsProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const commitments = (useQuery(api.commitments.listMine) ?? []) as Commitment[];
+  const commitments = (useQuery(api.commitments.listMine) ??
+    []) as Commitment[];
   const createCommitment = useMutation(api.commitments.create);
   const deleteMine = useMutation(api.commitments.deleteMine);
   const submitContent = useMutation(api.checkIns.submitContent);
@@ -138,14 +145,14 @@ export function CommitmentsProvider({
         return null;
       }
     },
-    [createCommitment]
+    [createCommitment],
   );
 
   const deleteCommitment = useCallback(
     (id: string) => {
       void deleteMine({ id: id as Id<"commitments"> }).catch(logMutationError);
     },
-    [deleteMine]
+    [deleteMine],
   );
 
   const submitContentCheckIn = useCallback(
@@ -154,7 +161,7 @@ export function CommitmentsProvider({
       date: string,
       proofUrl: string,
       submissionSignature?: string,
-      submissionStatement?: string
+      submissionStatement?: string,
     ) => {
       void submitContent({
         commitmentId: commitmentId as Id<"commitments">,
@@ -164,28 +171,30 @@ export function CommitmentsProvider({
         submissionStatement,
       }).catch(logMutationError);
     },
-    [submitContent]
+    [submitContent],
   );
 
   const submitWorkoutCheckIn = useCallback(
     (
       commitmentId: string,
       date: string,
-      proofUrl: string,
-      proofPrompt?: string,
+      proofStorageId: string,
+      proofPrompt: string,
+      proofLocation: ProofLocation,
       submissionSignature?: string,
-      submissionStatement?: string
+      submissionStatement?: string,
     ) => {
       void submitWorkout({
         commitmentId: commitmentId as Id<"commitments">,
         date,
-        proofUrl,
+        proofStorageId: proofStorageId as Id<"_storage">,
         proofPrompt,
+        proofLocation,
         submissionSignature,
         submissionStatement,
       }).catch(logMutationError);
     },
-    [submitWorkout]
+    [submitWorkout],
   );
 
   const approveCheckIn = useCallback(
@@ -195,10 +204,10 @@ export function CommitmentsProvider({
         ?.checkIns.find((ci) => ci.date === date);
       if (!checkIn) return;
       void approve({ checkInId: checkIn.id as Id<"checkIns"> }).catch(
-        logMutationError
+        logMutationError,
       );
     },
-    [approve, commitments]
+    [approve, commitments],
   );
 
   const rejectCheckIn = useCallback(
@@ -212,7 +221,7 @@ export function CommitmentsProvider({
         reason: rejectionReason,
       }).catch(logMutationError);
     },
-    [commitments, reject]
+    [commitments, reject],
   );
 
   const removeCheckIn = useCallback(
@@ -222,12 +231,12 @@ export function CommitmentsProvider({
         date,
       }).catch(logMutationError);
     },
-    [removeMine]
+    [removeMine],
   );
 
   const getCommitment = useCallback(
     (id: string) => commitments.find((c) => c.id === id),
-    [commitments]
+    [commitments],
   );
 
   return (

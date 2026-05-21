@@ -65,7 +65,13 @@ export function goalTypeUnit(type: GoalType): string {
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DAY_NAMES_FULL = [
-  "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ];
 
 export function formatDaysOfWeek(days: number[]): string {
@@ -88,7 +94,7 @@ export type DurationType = "week" | "2weeks" | "month" | "3months";
 
 export function getEndDateForDuration(
   startDate: string,
-  durationType: DurationType
+  durationType: DurationType,
 ): string {
   const start = new Date(startDate + "T00:00:00");
   switch (durationType) {
@@ -114,10 +120,14 @@ export function getEndDateForDuration(
 
 export function getDurationLabel(durationType: DurationType): string {
   switch (durationType) {
-    case "week":    return "1 Week";
-    case "2weeks":  return "2 Weeks";
-    case "month":   return "1 Month";
-    case "3months": return "3 Months";
+    case "week":
+      return "1 Week";
+    case "2weeks":
+      return "2 Weeks";
+    case "month":
+      return "1 Month";
+    case "3months":
+      return "3 Months";
   }
 }
 
@@ -153,15 +163,24 @@ export function formatStartDateOption(dateStr: string): {
 }
 
 // ── Pact amount presets ───────────────────────────────────────────────────
+export const MIN_PACT_AMOUNT_INR = 500;
+export const MAX_PACT_AMOUNT_INR = 3000;
+
 // Presets give daily refund amounts that are multiples of ₹50 or $0.50.
 export function getPactAmountPresets(
   scheduledDays: number,
-  currency: string
+  currency: string,
 ): number[] {
   if (scheduledDays <= 0) return [];
   const dailyMultiples =
     currency === "INR" ? [50, 100, 200, 500] : [0.5, 1, 2, 5];
-  return dailyMultiples.map((d) => Math.round(d * scheduledDays * 100) / 100);
+  return dailyMultiples
+    .map((d) => Math.round(d * scheduledDays * 100) / 100)
+    .filter((amount) =>
+      currency === "INR"
+        ? amount >= MIN_PACT_AMOUNT_INR && amount <= MAX_PACT_AMOUNT_INR
+        : true,
+    );
 }
 
 // ── Scheduled dates ───────────────────────────────────────────────────────
@@ -240,13 +259,13 @@ export function getAmountAtRisk(c: Commitment): number {
 export function getMissedDates(c: Commitment): string[] {
   const today = getTodayStr();
   return getPastScheduledDates(c).filter(
-    (d) => !c.checkIns.some((ci) => ci.date === d && countsForDeadline(ci))
+    (d) => !c.checkIns.some((ci) => ci.date === d && countsForDeadline(ci)),
   );
 }
 
 export function getCheckInForDate(
   c: Commitment,
-  date: string
+  date: string,
 ): CheckIn | undefined {
   return c.checkIns.find((ci) => ci.date === date);
 }
@@ -293,7 +312,7 @@ export function getDaysRemaining(c: Commitment): number {
   const end = new Date(c.endDate + "T00:00:00");
   return Math.max(
     0,
-    Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)),
   );
 }
 
@@ -318,7 +337,13 @@ export function getPeriodLabel(days: number): string {
 export function getMsUntilDeadline(): number {
   const now = new Date();
   const deadline = new Date(
-    now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 0
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    0,
   );
   return Math.max(0, deadline.getTime() - now.getTime());
 }
