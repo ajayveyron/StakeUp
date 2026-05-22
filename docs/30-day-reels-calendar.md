@@ -12,46 +12,94 @@ Alternate CTAs:
 
 - Comment WORKOUT for the workout pact.
 - Comment CONTENT for the content posting pact.
+- Comment CREATOR for creator challenge collaborations.
 - DM me "PACT" if you want the next cohort link.
 
 ## Format Rules
 
 - Length: 20 to 45 seconds.
 - First 2 seconds: strong hook as on-screen text.
-- Use direct camera delivery for most videos.
+- Rotate formats: direct camera, POV/skit, comment reply, founder frustration, real onboarding footage, and transformation montage.
 - Add captions.
 - Keep one idea per reel.
-- End with a simple CTA.
+- End with a simple CTA, but vary the wording.
 - Do not overexplain legal/payment details in reels. Explain rules in DM and onboarding.
 
 ## Weekly Content Mix
 
-- 25% problem agitation: why normal habit apps fail.
-- 20% founder build-in-public: how the beta works.
-- 20% pact mechanics: proof, refunds, rules.
-- 20% workout/content-specific scenarios.
-- 10% objections and trust.
+- 35% emotional recognition: self-negotiation, shame cycles, restarting, inconsistency identity.
+- 20% transformation stories: before/after profile, proof streaks, posting grids, workout consistency.
+- 15% founder build-in-public: real challenge, real operational footage, real lessons.
+- 10% objections and comment replies.
+- 10% workout/content-specific scenarios.
+- 5% pact mechanics: proof, refunds, rules.
 - 5% direct cohort promotion.
+
+## Growth Playbook Principles
+
+Use these rules when filming the first 100 reels, swapping weak hooks, or extending the calendar after day 30.
+
+- Core phrase: "Stop negotiating with yourself."
+- Secondary phrase: "Consistency with consequences."
+- Lead with the stakes reveal, not a feature tour: money locked, proof submitted, successful day recorded, or missed-day money marked for charity.
+- Make the product visible in one frame whenever possible: pact card, deposit, deadline, proof, result.
+- Treat the founder's own pact as the main series. The audience should know what you locked, what proof is due, and whether the Raven recorded a successful day.
+- Do not judge organic too early. Post 100 founder-led reels before deciding whether the format works.
+- Use micro-creators as challengers, not ad readers. The strongest creator post is "I locked money on myself for 30 days," not "download this app."
+- Build comment presence in fitness, creator, self-improvement, and productivity threads every day. Useful comments should create recognition before people see your own reel.
+- Delay paid ads until organic reels and creator challenges are producing DMs, paid users, and repeat pact interest.
+
+## Language Rules
+
+- Say "apps that let you fail silently" more often than "habit apps."
+- Say "the money leaves your control" before explaining that missed or rejected days go to charity.
+- Say "you already know what to do" before explaining any feature.
+- Say "proof" only after the viewer feels the pain. Do not open with proof mechanics unless replying to a specific objection.
+- Make the viewer think "this is me" before making them think "how does this work?"
+
+## Format Rotation
+
+- Painfully true direct camera: expose the internal monologue.
+- POV/skit: act out the negotiation, restart, skipped workout, or unpublished draft.
+- Comment reply: answer real objections and skeptical comments.
+- Operational footage: blurred WhatsApp chats, Razorpay flow, proof submissions, dashboards, cohort spreadsheet, refund calculation.
+- Founder frustration: show the product insight that made you build this.
+- Transformation montage: day 1 vs day 30, posting grid, workout record, proof streak, identity shift.
+
+## CTA Bank
+
+Use one CTA per reel. Avoid ending every reel with the same line.
+
+- If this exposed you, comment PACT.
+- If you are tired of restarting, comment PACT.
+- If you need pressure, not motivation, comment PACT.
+- If your problem is consistency, not knowledge, comment PACT.
+- If you would genuinely pay for accountability, comment PACT.
+- If tomorrow is your escape hatch, comment PACT.
+- If you want the workout version, comment WORKOUT.
+- If you want the posting version, comment CONTENT.
+- If you want to run this as a public creator challenge, comment CREATOR.
+- If you want the rules, DM me PACT.
 
 ## Day 1
 
-### Reel 1: Habit Apps Do Not Hurt Enough
+### Reel 1: Silent Failure
 
 Hook:
 
-> Your habit app does not care if you fail.
+> Most apps let you fail silently.
 
 Draft script:
 
-"You can skip a habit tracker for 10 days and nothing happens. No friction. No consequence. No one even notices. That is why most habit apps become another app you ignore. I am building Pact Raven for people who want actual accountability: put down a refundable deposit, prove the work, get it back. If you want the 30-day rules, comment PACT."
+"You can disappear from a tracker for 10 days and nothing really happens. No friction. No record that matters. No cost. That is the problem. The dangerous part is not failure. The dangerous part is quiet failure. Pact Raven is for people who want consistency with consequences. If this exposed you, comment PACT."
 
 Visual:
 
-Direct camera, then show a habit app notification being ignored.
+Direct camera, then show ignored reminders turning into a blank month.
 
 CTA:
 
-Comment PACT.
+If this exposed you, comment PACT.
 
 ### Reel 2: The 4-Friend Signal
 
@@ -61,7 +109,7 @@ Hook:
 
 Draft script:
 
-"Before making this an app, I asked 4 friends to put real money behind commitments. The surprising part was not that they paid. The surprising part was that they became more consistent because the money made the promise feel real. Now I want to test this with people who are not my friends. First cohort will be workout and content posting pacts. Comment PACT if you want in."
+"Before making this an app, I asked 4 friends to put real money behind commitments. The surprising part was not that they paid. The surprising part was that the promise stopped feeling casual. That is the shift I want to test with strangers now: when failure has a cost, do people stop negotiating with themselves?"
 
 Visual:
 
@@ -69,7 +117,7 @@ Founder talking, blur any private names/messages.
 
 CTA:
 
-Comment PACT.
+If pressure works on you, comment PACT.
 
 ## Day 2
 
@@ -81,7 +129,7 @@ Hook:
 
 Draft script:
 
-"Posting daily is not a content problem. It is an accountability problem. You already know what to post. You just keep negotiating with yourself. Pact Raven's content pact is simple: post once a day, submit the public link, get your deposit back when you stay consistent. If you miss, that day's amount goes to the charity you selected before starting. Comment CONTENT and I will send the format."
+"Posting daily is not a content problem. You already know what to post. That is why more advice is not helping. The real problem is that tomorrow is always available. A content pact removes that escape hatch: publish the post, make it public, and stop negotiating with yourself."
 
 Visual:
 
@@ -89,7 +137,7 @@ Show notes app content ideas, then a blank upload screen.
 
 CTA:
 
-Comment CONTENT.
+If you are tired of tomorrow, comment CONTENT.
 
 ### Reel 4: Gym Memberships Are Not Accountability
 
@@ -99,7 +147,7 @@ Hook:
 
 Draft script:
 
-"A gym membership only proves you paid the gym. It does not prove you showed up. Most people need a second layer: someone checking if today's workout actually happened. The workout pact is for that. You put down a refundable deposit, submit daily proof, and earn it back by being consistent. Comment WORKOUT if you want the next cohort."
+"A gym membership only proves you paid the gym. It does not prove you became the kind of person who shows up. If you keep restarting every Monday, the missing piece may not be a better split. It may be a consequence that makes skipping feel real."
 
 Visual:
 
@@ -107,7 +155,7 @@ Gym bag near door, calendar with missed days.
 
 CTA:
 
-Comment WORKOUT.
+If paying the gym has not been enough, comment WORKOUT.
 
 ## Day 3
 
@@ -119,7 +167,7 @@ Hook:
 
 Draft script:
 
-"I do not want Pact Raven to be a jackpot app. The clean version is simple: your first Pact Pass is covered, and you still lock a refundable commitment deposit. When you prove the work, your deposit comes back. If you continue after the first pact, the next Pact Pass is paid. The product should make money from accountability, not from your failure. Comment PACT if you want the rules."
+"I do not want Pact Raven to become a jackpot app. The point is not to win money. The point is that money leaves your control unless your record matches your promise. Success means your money comes back. Failure should not become Pact Raven revenue. That is the line."
 
 Visual:
 
@@ -127,7 +175,7 @@ Whiteboard: fee vs refundable deposit.
 
 CTA:
 
-Comment PACT.
+If that distinction matters to you, comment PACT.
 
 ### Reel 6: The Public Link Rule
 
@@ -137,7 +185,7 @@ Hook:
 
 Draft script:
 
-"If your commitment is posting content, the proof has to be a public link. LinkedIn, Instagram, YouTube Shorts, X, blog, newsletter. Private posts, deleted posts, and stories that disappear do not count. The rule is strict because the goal is real consistency, not loopholes. Comment CONTENT if you want the proof checklist."
+"A private draft lets you keep pretending. A public post changes your identity a little. That is why content pacts use public links. Not because the link is exciting, but because hiding is the habit we are trying to break."
 
 Visual:
 
@@ -145,7 +193,7 @@ Screen recording of a public post URL field.
 
 CTA:
 
-Comment CONTENT.
+If hiding is your pattern, comment CONTENT.
 
 ## Day 4
 
@@ -157,7 +205,7 @@ Hook:
 
 Draft script:
 
-"Workout proof can be gamed if we accept random gallery photos. So the early version uses a physical prompt. You take a fresh photo or video while doing a simple gesture or pose, submit it before your deadline, and it goes for manual review. Not perfect, but much better than trusting old screenshots. Comment WORKOUT for the workout rules."
+"Old gym selfies are how your brain turns accountability into theater. The workout pact is built around fresh proof because the real question is simple: did you show up today, or are you using yesterday's effort to protect today's excuse?"
 
 Visual:
 
@@ -165,17 +213,17 @@ Show a daily hand gesture or pose during a mock proof.
 
 CTA:
 
-Comment WORKOUT.
+If old effort keeps covering new excuses, comment WORKOUT.
 
 ### Reel 8: Why Web First
 
 Hook:
 
-> I am not building the native app first.
+> I wanted to test accountability before polishing the app.
 
 Draft script:
 
-"A native app sounds cooler, but it slows down the real test. App review, health APIs, store payments, edge cases. The real question is simpler: will people pay to be held accountable? So the first version is an Expo PWA, WhatsApp support, Razorpay payment, and manual review. If this works, native comes later. Comment PACT if you want to join the test."
+"It is easy to spend months making the product look polished while avoiding the scary question: will people actually pay for pressure? I would rather test accountability first. Small cohort, real money, real proof, real outcomes. Polish comes after the behavior is real."
 
 Visual:
 
@@ -183,7 +231,7 @@ Show a simple web form mockup and WhatsApp notification.
 
 CTA:
 
-Comment PACT.
+If you want accountability tested before polish, comment PACT.
 
 ## Day 5
 
@@ -195,7 +243,7 @@ Hook:
 
 Draft script:
 
-"A refundable deposit alone does not prove a business. People can say yes because they expect the money back. For Pact Raven, the first Pact Pass is covered, but the deposit is real. The business test is whether someone completes one pact and then pays Rs 249 for the next accountability cycle. If you would try this, comment PACT."
+"The first pact tells me whether the idea is interesting. The second pact tells me whether the pressure actually helped. If someone finishes 30 days and says, 'I want a harder promise next,' that is the signal. Not likes. Not compliments. Repeat pressure."
 
 Visual:
 
@@ -203,7 +251,7 @@ Two columns: covered first pass vs paid second pass.
 
 CTA:
 
-Comment PACT.
+If you would come back for the second pact, comment PACT.
 
 ### Reel 10: You Do Not Need Motivation
 
@@ -213,7 +261,7 @@ Hook:
 
 Draft script:
 
-"If your plan only works when you feel motivated, it is not a plan. It is a mood. A pact works because it adds external pressure. You decide the goal when you are calm, then the system holds you to it when you are lazy. That is the entire idea. Comment PACT if you want the 30-day format."
+"If your plan only works when you feel motivated, it is not a plan. It is a mood. A pact is for the version of you that wakes up tired, busy, and persuasive. You decide once when you are calm. Then the record holds you to it."
 
 Visual:
 
@@ -221,45 +269,45 @@ Morning alarm, skipped workout clothes, then pact dashboard.
 
 CTA:
 
-Comment PACT.
+If motivation keeps betraying you, comment PACT.
 
 ## Day 6
 
-### Reel 11: Content Pact Example
+### Reel 11: POV - 50 Drafts
 
 Hook:
 
-> Here is exactly how a content pact works.
+> POV: you have 50 drafts and still call yourself a creator.
 
 Draft script:
 
-"Example: you commit to posting one LinkedIn post every day for 30 days. Your first Pact Pass is covered, and you lock a refundable deposit. Every day before 11:59 pm, you submit the public post link. If it is approved, that day is marked successful. At the end, you get the successful portion back. Comment CONTENT and I will send the checklist."
+"Act it out: open the drafts folder, tweak one sentence, close the app, tell yourself tomorrow will be better. The content pact is for that exact loop. Not because you lack ideas. Because publishing has no consequence until you make it one."
 
 Visual:
 
-Screen mockup: commitment, deadline, submit link, approved.
+POV/skit: drafts folder, edit loop, no public record.
 
 CTA:
 
-Comment CONTENT.
+If you have drafts instead of a record, comment CONTENT.
 
-### Reel 12: Workout Pact Example
+### Reel 12: POV - Gym Bag By The Door
 
 Hook:
 
-> Here is exactly how a workout pact works.
+> POV: your gym bag has been ready for 3 days.
 
 Draft script:
 
-"Example: you commit to 5 workouts per week for 4 weeks. Before each deadline, you submit a fresh gym or home-workout proof with the daily gesture or pose prompt. We review it manually. Approved days become refund credits. Missed or rejected days go to the charity you selected before starting. Comment WORKOUT if you want the first cohort."
+"The shoes are there. The plan is there. The playlist is there. The only thing missing is consequence. A workout pact is not a better workout plan. It is a way to make the promise harder to abandon quietly."
 
 Visual:
 
-Workout calendar with 5 marked days.
+Gym bag by the door across multiple days, then direct camera.
 
 CTA:
 
-Comment WORKOUT.
+If this is too familiar, comment WORKOUT.
 
 ## Day 7
 
@@ -267,11 +315,11 @@ Comment WORKOUT.
 
 Hook:
 
-> I do not want random signups every day.
+> I am keeping the first cohorts small on purpose.
 
 Draft script:
 
-"For the early version, Pact Raven will run weekly cohorts. Everyone starts on Monday. That makes onboarding, reminders, proof review, and refunds cleaner. It also gives you a real start line instead of another vague someday plan. Next cohort opens this week. Comment PACT if you want the rules."
+"Not fake scarcity. Operational scarcity. I review the first records myself, and the product gets better only if the early users are serious. A small group of people who want pressure is more useful than a big list of people who like the idea."
 
 Visual:
 
@@ -279,7 +327,7 @@ Calendar with Monday circled.
 
 CTA:
 
-Comment PACT.
+If you want the small serious cohort, comment PACT.
 
 ### Reel 14: The Deadline Is The Product
 
@@ -289,7 +337,7 @@ Hook:
 
 Draft script:
 
-"The deadline is what makes the pact real. Not 'I will work out today.' The real version is: 'I will submit proof by 10 pm today.' If the deadline is vague, the review becomes vague, and the habit collapses. Pact Raven forces a clean deadline. Comment PACT if you want the template."
+"A vague commitment lets you keep moving the finish line. 'Later today' becomes tomorrow. Tomorrow becomes Monday. A deadline is not a reminder. It is the moment your promise either becomes a record or becomes another excuse."
 
 Visual:
 
@@ -297,7 +345,7 @@ Timer countdown, proof upload before deadline.
 
 CTA:
 
-Comment PACT.
+If later always becomes tomorrow, comment PACT.
 
 ## Day 8
 
@@ -309,7 +357,7 @@ Hook:
 
 Draft script:
 
-"Razorpay makes paying easy. Trusting a new product with a deposit is still hard. That is why the first version of Pact Raven is human-reviewed and founder-led. You should know the rules, the refund process, and what happens if proof is rejected before you pay. Comment PACT if you want the transparent rules."
+"The hard part is not collecting money. The hard part is earning trust before someone locks it. That is why I want to show real onboarding footage, real rules, and real records instead of hiding behind a polished page."
 
 Visual:
 
@@ -317,7 +365,7 @@ Razorpay screen blur, then rules checklist.
 
 CTA:
 
-Comment PACT.
+If operational footage builds trust for you, comment PACT.
 
 ### Reel 16: Why I Am Not Calling It A Bet
 
@@ -327,7 +375,7 @@ Hook:
 
 Draft script:
 
-"The point is not to gamble on yourself. The point is to create accountability. That is why I call it a refundable commitment deposit, not a bet. You are not trying to win someone else's money. You are trying to earn your own money back by proving consistency. Comment PACT if this model makes sense."
+"A bet is about upside. A pact is about control. You are not trying to win someone else's money. You are making your own excuse expensive enough to notice. That difference matters."
 
 Visual:
 
@@ -335,7 +383,7 @@ Cross out "bet"; write "commitment deposit."
 
 CTA:
 
-Comment PACT.
+If that difference matters to you, comment PACT.
 
 ## Day 9
 
@@ -347,7 +395,7 @@ Hook:
 
 Draft script:
 
-"Most creators are stuck because they are trying to think their way into consistency. But content gets better when you publish. The content pact is designed for volume, not perfection. One public post a day. Submit the link. No hiding. Comment CONTENT if you want to join the 30-day challenge."
+"Most creators are trying to think their way into consistency. But content gets better after public reps, not private planning. The painful truth is you may not need a better idea. You may need a public record."
 
 Visual:
 
@@ -355,7 +403,7 @@ Drafts folder, then publish button.
 
 CTA:
 
-Comment CONTENT.
+If you need reps more than ideas, comment CONTENT.
 
 ### Reel 18: Your Workout Plan Is Too Flexible
 
@@ -365,7 +413,7 @@ Hook:
 
 Draft script:
 
-"If the commitment has a range, your brain will always choose the lower end. Make it specific: Monday, Wednesday, Friday by 9 pm. Or daily for 30 days. The more precise the pact, the easier it is to review and the harder it is to escape. Comment WORKOUT if you want the workout pact rules."
+"If the commitment has a range, your brain will always negotiate down. '3 to 4 workouts' becomes 3. Then 2. Then restart Monday. Flexible goals feel kind, but sometimes they are just escape routes."
 
 Visual:
 
@@ -373,37 +421,37 @@ Rewrite vague plan into exact schedule.
 
 CTA:
 
-Comment WORKOUT.
+If flexible goals keep failing you, comment WORKOUT.
 
 ## Day 10
 
-### Reel 19: The Anti-Cheating Rule
+### Reel 19: Comment Reply - "What If I Cheat?"
 
 Hook:
 
-> If proof is unclear, it should not pass.
+> Replying to: "What if I cheat?"
 
 Draft script:
 
-"A pact only works if the rules are strict. If the proof is blurry, late, private, or impossible to verify, it gets rejected. That sounds harsh, but loose rules destroy trust for everyone. The goal is not to catch people. The goal is to make the right action obvious. Comment PACT for the proof checklist."
+"Then the system learns where the rule was weak. I am not building this because humans are perfect. I am building it because humans negotiate. Strict proof is not about catching people. It is about protecting the promise from the version of us that looks for loopholes."
 
 Visual:
 
-Approved vs rejected proof examples, no private details.
+Show the comment, then blurred examples of weak proof patterns.
 
 CTA:
 
-Comment PACT.
+If you know you look for loopholes, comment PACT.
 
 ### Reel 20: The Day 7 Referral Ask
 
 Hook:
 
-> I will ask users for referrals before the challenge ends.
+> The best referral moment might be day 7, not day 30.
 
 Draft script:
 
-"Most products ask for referrals after completion. I want to test asking on day 7. If someone has already submitted proof for a week, they understand the value. That is when they can invite a friend who also needs pressure. This is how Pact Raven can grow without ads. Comment PACT if you want to be in the early cohort."
+"By day 7, someone has already felt the pressure. That is when they can tell a friend, 'this is annoying, but it is working.' That sentence is stronger than a polished testimonial."
 
 Visual:
 
@@ -411,7 +459,7 @@ Day 7 progress badge and referral message draft.
 
 CTA:
 
-Comment PACT.
+If you have a friend who needs pressure too, comment PACT.
 
 ## Day 11
 
@@ -423,7 +471,7 @@ Hook:
 
 Draft script:
 
-"Friends are great for support, but they are usually bad at enforcement. If you miss, they say 'no worries.' That is kind, but it does not build consistency. Pact Raven has clear rules before the challenge starts, so review is not personal. Comment PACT if you need stricter accountability."
+"Friends are great for support, but they are usually bad at enforcement. If you miss, they say 'no worries.' That is kind. It is also why nothing changes. Sometimes you need a system that does not love your excuses."
 
 Visual:
 
@@ -431,7 +479,7 @@ Text chat saying "it's okay bro", then rules screen.
 
 CTA:
 
-Comment PACT.
+If your friends are too forgiving, comment PACT.
 
 ### Reel 22: Content Creators Need A Posting Gym
 
@@ -441,7 +489,7 @@ Hook:
 
 Draft script:
 
-"A gym gives you a place to show up physically. A content pact gives you a place to show up publicly. The rule is simple: ship one post, submit the link, repeat for 30 days. You do not need more saved ideas. You need reps. Comment CONTENT if you want the posting gym."
+"A gym gives you a place to show up physically. A content pact gives you a place to show up publicly. You do not need more saved ideas. You need reps, a clock, and a record you cannot hide from."
 
 Visual:
 
@@ -449,7 +497,7 @@ Gym analogy: reps counter becoming content posts.
 
 CTA:
 
-Comment CONTENT.
+If you need a posting gym, comment CONTENT.
 
 ## Day 12
 
@@ -461,7 +509,7 @@ Hook:
 
 Draft script:
 
-"The most valuable part of Pact Raven will be transformation proof. Not motivational quotes. Actual evidence: day 1, day 7, day 15, day 30. For workouts, that is consistency. For content, that is a body of published work. That is why the first product is built around proof. Comment PACT if you want in."
+"The most valuable content will not be motivational quotes. It will be receipts: day 1, day 7, day 15, day 30. The posting grid filled in. The workouts recorded. The person becoming harder to ignore."
 
 Visual:
 
@@ -469,25 +517,25 @@ Timeline with proof milestones.
 
 CTA:
 
-Comment PACT.
+If you want receipts, not motivation, comment PACT.
 
-### Reel 24: Why Not Step Counts Yet
+### Reel 24: Why I Am Not Building Every Goal
 
 Hook:
 
-> Step counts sound easy. They are not the first wedge.
+> A vague product would let me avoid the hard test.
 
 Draft script:
 
-"Step-count pacts need reliable health data, and that pushes us into native app complexity. I do not want to delay the business test for that. First we test content links and workout proof on web. If enough users ask for step counts, we build the native verifier later. Comment PACT if you agree with web-first."
+"If Pact Raven supports every goal on day one, I can hide from the real question. Which promise is painful enough that people will pay for pressure? First, content and workout. Clear pain. Clear transformation. Clear record."
 
 Visual:
 
-Health app screenshot blurred, then web proof form.
+Many goal cards fading out, content and workout staying on screen.
 
 CTA:
 
-Comment PACT.
+If your promise is content or workout, comment PACT.
 
 ## Day 13
 
@@ -495,11 +543,11 @@ Comment PACT.
 
 Hook:
 
-> Here is the entire product in one sentence.
+> Stop negotiating with yourself.
 
 Draft script:
 
-"Pact Raven helps you put money behind a commitment, prove the work daily, and get your deposit back when you stay consistent. That is it. No complicated productivity system. No endless tracking. Just a clear pact, a deadline, and proof. Comment PACT and I will send the first cohort rules."
+"That is the whole product in one sentence. Not because you are lazy. Because your brain is extremely good at renegotiating when the action gets uncomfortable. Pact Raven makes the promise external before that negotiation starts."
 
 Visual:
 
@@ -507,7 +555,7 @@ One sentence on screen while speaking.
 
 CTA:
 
-Comment PACT.
+If that sentence hits, comment PACT.
 
 ### Reel 26: Why People Pay Coaches
 
@@ -517,7 +565,7 @@ Hook:
 
 Draft script:
 
-"Most coaching information is already online. People pay because a coach creates pressure, structure, and accountability. Pact Raven is not trying to replace coaches. It is trying to make that pressure affordable for simple goals like posting daily or working out. Comment PACT if you want the beta."
+"Most coaching information is already online. People pay because a coach creates pressure, structure, and the feeling that someone will notice. Pact Raven is not trying to be a coach. It is trying to make that pressure available for one clear promise."
 
 Visual:
 
@@ -525,7 +573,7 @@ Free advice search results vs accountability checklist.
 
 CTA:
 
-Comment PACT.
+If you need pressure more than advice, comment PACT.
 
 ## Day 14
 
@@ -533,29 +581,29 @@ Comment PACT.
 
 Hook:
 
-> I am opening the first public Pact Raven cohort.
+> I can only review a small number of people myself right now.
 
 Draft script:
 
-"I am opening limited places for two pacts: daily content posting and workout consistency. Your first Pact Pass is covered, you lock a refundable deposit, submit proof, and get the deposit back when you prove consistency. Missed-day money goes to charity. Second Pact Pass onward is Rs 249. This is early and manual. If you want the rules, comment PACT."
+"I am intentionally keeping the first cohort small because I review the records myself. This is not for people who want another cute tracker. It is for people who are tired of restarting quietly. Two paths: post daily or show up for workouts. If you need pressure, not motivation, comment PACT."
 
 Visual:
 
-Founder invite, cohort places on screen.
+Founder invite, limited cohort slots, proof-review queue blurred.
 
 CTA:
 
-Comment PACT.
+If you need pressure, not motivation, comment PACT.
 
 ### Reel 28: What Happens If You Miss
 
 Hook:
 
-> What happens if you miss a day?
+> If you skip, the money leaves your control.
 
 Draft script:
 
-"If you miss, that day is not approved. The daily amount goes to the charity you selected before starting. The goal is not punishment. The goal is to make the cost of skipping clear before your lazy brain starts negotiating. Comment PACT if you want the full rulebook."
+"That sentence changes the decision. Not because the amount is huge, but because your excuse no longer controls the outcome. The charity part matters for trust. The emotional part is loss: you decided the consequence before your lazy brain got a vote."
 
 Visual:
 
@@ -563,45 +611,45 @@ Calendar: approved day, missed day, forfeited day.
 
 CTA:
 
-Comment PACT.
+If tomorrow is your escape hatch, comment PACT.
 
 ## Day 15
 
-### Reel 29: DM Funnel Explainer
+### Reel 29: Comment Reply - "This Sounds Dystopian"
 
 Hook:
 
-> Here is what happens after you comment PACT.
+> Replying to: "This sounds dystopian."
 
 Draft script:
 
-"If you comment PACT, I will DM you the rules. If it fits, you answer a few screening questions. Then you pick content or workout, pay, and join the next Monday cohort. I am keeping it manual at the start because trust matters more than automation. Comment PACT if you want the DM."
+"Fair reaction. But most people already punish themselves with guilt after they fail. I would rather make the consequence clear before the commitment starts, keep the rules honest, and send missed-day money away from Pact Raven. The point is not suffering. The point is to stop pretending private promises are working."
 
 Visual:
 
-Flow chart: comment, DM, WhatsApp, pay, start.
+Show the comment on screen, then direct camera reply.
 
 CTA:
 
-Comment PACT.
+If private promises are not working for you, comment PACT.
 
 ### Reel 30: Proof Over Intention
 
 Hook:
 
-> Pact Raven does not track intentions.
+> You already know what to do. That is why advice is not helping.
 
 Draft script:
 
-"I do not want users writing 'I tried' every night. The pact is proof-based. If your commitment is content, submit the public link. If it is workout, submit fresh proof. Good intentions do not get approved. Proof does. Comment PACT if that is the kind of pressure you need."
+"You do not need another thread about discipline. You do not need another routine video saved in a folder. You know the action. The problem is the gap between knowing and doing. Pact Raven is built for that gap: stop explaining, start proving."
 
 Visual:
 
-Cross out "I tried"; show "proof submitted."
+Saved advice folder, then a blank proof record waiting for action.
 
 CTA:
 
-Comment PACT.
+If your problem is consistency, not knowledge, comment PACT.
 
 ## Day 16
 
@@ -613,7 +661,7 @@ Hook:
 
 Draft script:
 
-"The content pact is not a quality contest. It is a consistency challenge. Your first 30 posts may be average. That is fine. The goal is to become the kind of person who ships. Quality improves after reps, not before them. Comment CONTENT if you want to build the posting habit."
+"Your first 30 posts might be average. That is not the threat. The threat is staying someone with 50 drafts and no publishing identity. The pact is not here to make every post brilliant. It is here to make hiding harder than shipping."
 
 Visual:
 
@@ -621,63 +669,63 @@ Show rough draft becoming published post.
 
 CTA:
 
-Comment CONTENT.
+If you have drafts instead of a record, comment CONTENT.
 
 ### Reel 32: Workout Objection
 
 Hook:
 
-> "What if I cannot work out daily?"
+> You are not inconsistent. You are consequence-free.
 
 Draft script:
 
-"Then do not choose a daily workout pact. Choose 4 or 5 workouts per week with fixed days. A good pact should be difficult but realistic. If it is impossible, you will just lose money and hate the product. The goal is consistency, not ego. Comment WORKOUT if you want help picking a realistic pact."
+"Every Sunday you believe the new plan. By Wednesday, the old pattern is back. That is not always laziness. Sometimes the problem is that skipping is free, private, and easy to explain away. A workout pact makes the skip visible."
 
 Visual:
 
-Weekly schedule with rest days.
+POV skit: Sunday confidence, Wednesday excuse, Friday restart.
 
 CTA:
 
-Comment WORKOUT.
+If this is your week every week, comment WORKOUT.
 
 ## Day 17
 
-### Reel 33: Why Manual Review Is A Feature
+### Reel 33: Operational Scarcity
 
 Hook:
 
-> Manual review is not a weakness in v1.
+> I am not trying to onboard everyone.
 
 Draft script:
 
-"For the first users, manual review is a feature. It means a real person checks if the proof matches the commitment. It also means we learn every loophole before automating. Automation too early would just automate bad rules. Comment PACT if you want to join the manual beta."
+"For the first cohorts, I only want people who actually want pressure. I review proofs myself, so the limit is real. That is good. A small serious group will teach more than a huge list of people who only liked the idea for five minutes."
 
 Visual:
 
-Admin review checklist.
+Blurred cohort spreadsheet and proof-review queue.
 
 CTA:
 
-Comment PACT.
+If you want to be in the serious group, comment PACT.
 
-### Reel 34: The Founder-Led Trust Layer
+### Reel 34: Founder Frustration
 
 Hook:
 
-> At the start, the trust layer is me.
+> I realized most productivity apps let you fail quietly.
 
 Draft script:
 
-"A new brand asking for deposits has a trust problem. I know that. That is why early Pact Raven will be founder-led: clear rules, direct WhatsApp, manual proof review, and transparent payout process. Over time, the brand earns trust. For now, I have to earn it personally. Comment PACT if you want the rules."
+"That is the part that bothered me. You miss for a week, the app still looks clean, and your life does not. There is no serious record. No consequence. No moment where the promise becomes external. Pact Raven is me trying to build the thing that does not let failure stay invisible."
 
 Visual:
 
-Founder speaking, show transparent checklist.
+Founder talking while showing old notes, product sketches, and a blurred app screen.
 
 CTA:
 
-Comment PACT.
+If quiet failure is your pattern, comment PACT.
 
 ## Day 18
 
@@ -685,29 +733,29 @@ Comment PACT.
 
 Hook:
 
-> One missed day is where habits usually die.
+> POV: you skipped one workout and mentally ended the whole month.
 
 Draft script:
 
-"Most people do not fail because of one missed day. They fail because one missed day becomes a story: 'I already broke it, so why continue?' Pact Raven should make the miss clear, contained, and then push you back into tomorrow. One miss should not destroy the whole pact. Comment PACT if you want the rules."
+"Act it out: one missed workout becomes 'I already ruined it,' then 'I'll restart Monday,' then three more missed days. The dangerous part is not the miss. It is the story after the miss. A pact should make the miss contained, recorded, and over."
 
 Visual:
 
-Calendar with one red day followed by green days.
+POV/skit: gym bag by the door, phone in hand, restart-Monday text on screen.
 
 CTA:
 
-Comment PACT.
+If one miss turns into a spiral for you, comment PACT.
 
 ### Reel 36: The Public Accountability Flywheel
 
 Hook:
 
-> Content pacts market themselves.
+> The marketing is not the app. It is the transformation.
 
 Draft script:
 
-"If a user posts daily for 30 days, they are not just completing a pact. They are publicly changing their identity. That is powerful for them, and it also spreads the idea. The best marketing for Pact Raven is users showing up in public. Comment CONTENT if you want to be in the creator cohort."
+"A 30-day posting grid says more than any product demo. Day 1: nervous. Day 7: still rough. Day 15: more confident. Day 30: a person with a public record. That is the content. The product just creates the pressure container."
 
 Visual:
 
@@ -715,7 +763,7 @@ Public post grid filling over 30 days.
 
 CTA:
 
-Comment CONTENT.
+If you want a public record, comment CONTENT.
 
 ## Day 19
 
@@ -723,11 +771,11 @@ Comment CONTENT.
 
 Hook:
 
-> I am intentionally not supporting every goal.
+> The product only works if the pain is obvious.
 
 Draft script:
 
-"People have asked about steps, sleep, quitting habits, studying, diet, and more. But the first version should be narrow. Workout and content posting are easier to explain, easier to verify, and easier to sell. A focused product learns faster. Comment PACT if you want one of the first two pacts."
+"Workout and content work first because the pain is public enough to feel real. You skipped the gym again. You did not publish again. Everyone knows that feeling. I do not want a vague self-improvement app. I want one painful problem at a time."
 
 Visual:
 
@@ -735,25 +783,25 @@ Cross out many goals, circle workout and content.
 
 CTA:
 
-Comment PACT.
+If your painful problem is consistency, comment PACT.
 
-### Reel 38: The Trust Contract
+### Reel 38: Real Onboarding Footage
 
 Hook:
 
-> Before anyone pays, they should know 5 things.
+> This is what the manual beta actually looks like.
 
 Draft script:
 
-"Before joining, you should know whether the Pact Pass is covered or paid, the deposit amount, the proof rule, the deadline, and what happens if proof is rejected. If a commitment product hides any of these, do not join it. Pact Raven will put the rules upfront. Comment PACT if you want to see them."
+"Not glossy. Not automated. Blurred WhatsApp chats, a cohort sheet, proof submissions, payment status, and review notes. I would rather show the messy trusted version than pretend the product is bigger than it is."
 
 Visual:
 
-Checklist of 5 rules.
+Blurred WhatsApp, Razorpay, cohort spreadsheet, proof-review dashboard.
 
 CTA:
 
-Comment PACT.
+If this feels more trustworthy than a landing page, comment PACT.
 
 ## Day 20
 
@@ -761,19 +809,19 @@ Comment PACT.
 
 Hook:
 
-> One beta user became consistent after money entered the picture.
+> Tiny beta proof: the decision changes when money enters the room.
 
 Draft script:
 
-"I cannot share private details, but one early beta pattern is clear: when the commitment became financial, the daily decision changed. It was no longer 'should I do it?' It became 'I already committed, now I need proof.' That shift is the product. Comment PACT if you want the beta format."
+"Use a real tiny metric here as soon as you have it: proof submitted on day 3, a user posting for 14 days, average submission time, or someone restarting after a miss. The point is not huge numbers. The point is showing that the pressure is producing behavior."
 
 Visual:
 
-Anonymous progress calendar.
+Anonymous progress calendar or tiny metric card. Do not invent the number.
 
 CTA:
 
-Comment PACT.
+If tiny real proof beats big fake claims, comment PACT.
 
 ### Reel 40: Why Free Beta Is Misleading
 
@@ -783,7 +831,7 @@ Hook:
 
 Draft script:
 
-"A free beta can tell you if people like an idea. It cannot tell you if the business works. For Pact Raven, the first Pact Pass is covered, but the deposit is still real. The critical question is whether strangers finish one pact and come back for a second paid pass. Comment PACT if you want in."
+"A free beta can make you feel smart while teaching almost nothing. People like free pressure because it is not pressure. The real question is whether strangers will put money into a promise, finish the record, and come back because it worked."
 
 Visual:
 
@@ -791,19 +839,19 @@ Free interest vs paid commitment graph.
 
 CTA:
 
-Comment PACT.
+If you would genuinely pay for accountability, comment PACT.
 
 ## Day 21
 
-### Reel 41: Creator Daily Prompt
+### Reel 41: Painfully True Creator Prompt
 
 Hook:
 
-> If you joined the content pact, today's prompt would be this.
+> You already have the idea. You are avoiding the judgment.
 
 Draft script:
 
-"Prompt: post the honest reason you have not been consistent yet. Not a polished thought-leadership post. Just the real blocker. The content pact is not only about posting. It is about removing the shame around publishing imperfectly. Comment CONTENT if you want 30 prompts like this."
+"The content problem is usually not ideas. It is the fear of being seen trying. Today's prompt: post the honest reason you have not been consistent. Not polished. Not impressive. Just true."
 
 Visual:
 
@@ -811,63 +859,63 @@ On-screen prompt and example post outline.
 
 CTA:
 
-Comment CONTENT.
+If judgment is what stops you, comment CONTENT.
 
-### Reel 42: Workout Daily Prompt
+### Reel 42: Painfully True Workout Prompt
 
 Hook:
 
-> If you joined the workout pact, today's proof prompt would be this.
+> Your body is not the blocker. Your negotiation is.
 
 Draft script:
 
-"Today's proof prompt example: show a thumbs-up with your left hand. You record fresh proof after your workout, perform the prompt in frame, and submit before your deadline. Simple, manual, and hard to fake casually. Comment WORKOUT if you want the proof checklist."
+"Most people do not need the perfect plan to do 30 minutes of movement. They need to stop turning every workout into a debate. Today's workout pact prompt is simple: move, record proof, sign the day. No motivational speech required."
 
 Visual:
 
-Mock daily hand gesture prompt.
+Shoes by the door, timer, simple proof prompt after workout.
 
 CTA:
 
-Comment WORKOUT.
+If every workout becomes a debate, comment WORKOUT.
 
 ## Day 22
 
-### Reel 43: What I Would Reject
+### Reel 43: Comment Reply - "Can't I Just Use Discipline?"
 
 Hook:
 
-> Here are 5 proofs I would reject.
+> Replying to: "Can't I just use discipline?"
 
 Draft script:
 
-"I would reject a private post, a deleted link, an old gym selfie, a blurry screenshot, and proof submitted after the deadline. Strict rules sound annoying until you realize they protect honest users. If everything passes, the pact becomes meaningless. Comment PACT for the review checklist."
+"Yes. If discipline is working, you do not need Pact Raven. This is for people who know discipline alone has not been enough. Some people need external pressure until the identity catches up."
 
 Visual:
 
-Rejected proof list with red marks.
+Show the comment, then direct camera. Cut to a simple "discipline works / pressure helps" split screen.
 
 CTA:
 
-Comment PACT.
+If discipline alone has not been enough, comment PACT.
 
-### Reel 44: What I Would Approve
+### Reel 44: Comment Reply - "Why Would I Pay To Suffer?"
 
 Hook:
 
-> Here are 5 proofs I would approve.
+> Replying to: "Why would I pay to suffer?"
 
 Draft script:
 
-"I would approve a public LinkedIn post link, a public reel posted today, a gym video with today's gesture prompt, a home workout clip with the daily prompt, or timestamped proof that clearly matches the commitment. Clear proof gets approved faster. Comment PACT for the accepted proof list."
+"You already pay in shame, restarts, unused memberships, and missed opportunities. Pact Raven just makes the cost visible before you fail instead of emotional after you fail. The goal is not suffering. The goal is a clean record."
 
 Visual:
 
-Approved proof list with green marks.
+Comment screenshot, then list the hidden costs: shame, restart, unused membership, missed post.
 
 CTA:
 
-Comment PACT.
+If invisible cost is already expensive, comment PACT.
 
 ## Day 23
 
@@ -875,11 +923,11 @@ Comment PACT.
 
 Hook:
 
-> All serious commitments should start on Monday.
+> "I'll start Monday" is usually a hiding place.
 
 Draft script:
 
-"Not because Monday is magic. Because a shared start date creates a clean cohort. Everyone gets rules before Sunday night, starts Monday, and submits proof daily. No random half-starts. No messy first week. Comment PACT if you want the next Monday cohort."
+"Most people use Monday as a reset fantasy. Pact Raven uses Monday as a start line. The difference is consequence. If you say Monday here, the record starts Monday."
 
 Visual:
 
@@ -887,7 +935,7 @@ Monday cohort countdown.
 
 CTA:
 
-Comment PACT.
+If Monday has been your excuse, comment PACT.
 
 ### Reel 46: Stop Making Private Promises
 
@@ -897,7 +945,7 @@ Hook:
 
 Draft script:
 
-"When only you know about a commitment, your brain can quietly delete it. Pact Raven makes the promise external: amount, deadline, proof, review. You can still fail, but you cannot pretend the commitment did not exist. Comment PACT if you need external pressure."
+"When only you know about a commitment, your brain can quietly delete it. No one saw it. No one recorded it. No money left your control. That is why private promises are so easy to break. The pact makes the promise external."
 
 Visual:
 
@@ -905,7 +953,7 @@ Private note deleted vs pact confirmation.
 
 CTA:
 
-Comment PACT.
+If your private promises keep disappearing, comment PACT.
 
 ## Day 24
 
@@ -917,7 +965,7 @@ Hook:
 
 Draft script:
 
-"For this stage, 100 paid users is enough to learn a lot. Which pact sells better? Which proof gets disputed? Do users repeat? Do they refer friends? Can review stay under 3 minutes per proof? That is the real startup test. Comment PACT if you want to be one of the first 100."
+"I do not need a viral fake waitlist. I need 100 serious people willing to put money behind a commitment and tell me if the pressure worked. Did they show up? Did they repeat? Did they change? That is the real test."
 
 Visual:
 
@@ -925,17 +973,17 @@ Counter from 0 to 100.
 
 CTA:
 
-Comment PACT.
+If you want to be one of the serious 100, comment PACT.
 
 ### Reel 48: The Anti-recurring plan Take
 
 Hook:
 
-> I do not want to start with a recurring plan.
+> I do not want you paying forever because you forgot to cancel.
 
 Draft script:
 
-"For this product, a recurring plan feels wrong at the start. People are not buying software access. They are buying one pressure container for one commitment. So the first offer should be per challenge: 30 days, clear rules, clear deposit, clear finish line. Comment PACT if that makes more sense."
+"That is another version of quiet failure. For this stage, I like one pressure container: 30 days, clear finish line, clear record. If it helped, you choose the next pact intentionally. No sleepy subscription."
 
 Visual:
 
@@ -943,7 +991,7 @@ recurring plan crossed out, 30-day challenge circled.
 
 CTA:
 
-Comment PACT.
+If intentional pressure feels better than another subscription, comment PACT.
 
 ## Day 25
 
@@ -951,11 +999,11 @@ Comment PACT.
 
 Hook:
 
-> The workout pact is not for fitness influencers.
+> This is for people who keep restarting fitness.
 
 Draft script:
 
-"It is for people who already know they should move but keep restarting. You do not need an aesthetic gym video. You need a realistic commitment, a deadline, and proof that you showed up. Beginner consistency beats perfect programming. Comment WORKOUT if you want the beginner rules."
+"You do not need an aesthetic gym video. You need to stop turning one missed week into a personality. Beginner consistency beats perfect programming. The first win is becoming someone who shows up again tomorrow."
 
 Visual:
 
@@ -963,17 +1011,17 @@ Simple home workout setup.
 
 CTA:
 
-Comment WORKOUT.
+If you keep restarting fitness, comment WORKOUT.
 
 ### Reel 50: Content For Beginners
 
 Hook:
 
-> The content pact is not for viral creators.
+> This is for people with 50 drafts and no record.
 
 Draft script:
 
-"It is for people with 50 drafts and no publishing habit. You do not need a niche manifesto before posting. You need 30 days of reps. The rule is simple: publish once, submit the link, repeat tomorrow. Comment CONTENT if you want the 30-day posting challenge."
+"You do not need a niche manifesto before posting. You need a public record. The transformation is not one viral post. It is going from 'I should post' to 'I am someone who publishes.'"
 
 Visual:
 
@@ -981,11 +1029,11 @@ Drafts folder, publish button, progress grid.
 
 CTA:
 
-Comment CONTENT.
+If you have drafts instead of a record, comment CONTENT.
 
 ## Day 26
 
-### Reel 51: The No-Excuse Deadline
+### Reel 51: POV - "I Was Busy"
 
 Hook:
 
@@ -993,25 +1041,25 @@ Hook:
 
 Draft script:
 
-"If 'I was busy' counts, the pact breaks. Everyone is busy. The rules have to be objective: proof before deadline or no approval. You choose the deadline before starting, so choose one you can actually meet. Comment PACT if you want the rulebook."
+"POV: it is 10:42 pm, you are tired, and your brain starts building the case for why today should not count. That is the exact moment the pact is for. Not when you are inspired. When you are negotiating."
 
 Visual:
 
-Deadline selector.
+POV/skit: late-night phone, unfinished task, internal excuses on screen.
 
 CTA:
 
-Comment PACT.
+If your excuses get persuasive at night, comment PACT.
 
-### Reel 52: The Repeat Challenge
+### Reel 52: Transformation Ladder
 
 Hook:
 
-> The best user does not churn. They graduate.
+> The first pact should change what you believe about yourself.
 
 Draft script:
 
-"If someone finishes a 30-day content pact, the next product is not begging them to stay. It is a harder challenge: 60 days, better proof, bigger deposit, or a group cohort. Successful users should graduate into stronger commitments. Comment PACT if you want the first level."
+"After 30 days, the question is not 'will you renew?' The question is: do you now trust yourself with a harder promise? More public content, a stronger workout schedule, a bigger commitment. The product should create graduates, not passive subscribers."
 
 Visual:
 
@@ -1019,7 +1067,7 @@ Level 1, level 2, level 3 ladder.
 
 CTA:
 
-Comment PACT.
+If you want the first level, comment PACT.
 
 ## Day 27
 
@@ -1027,19 +1075,19 @@ Comment PACT.
 
 Hook:
 
-> I am writing the rules before writing more code.
+> I keep coming back to one sentence: stop negotiating with yourself.
 
 Draft script:
 
-"For Pact Raven, rules matter as much as software. What counts as proof? What gets rejected? When do refunds happen? What happens if someone disputes a day? If these are unclear, the app will not save us. So I am building the operating system first. Comment PACT if you want to see the rules."
+"That is the whole product if I strip everything else away. Not dashboards. Not streak animations. Not a motivational quote. A system that makes the promise external enough that you stop negotiating with yourself."
 
 Visual:
 
-Docs, checklist, then simple app screen.
+Founder notes with "Stop negotiating with yourself" circled.
 
 CTA:
 
-Comment PACT.
+If that sentence hits, comment PACT.
 
 ### Reel 54: Why I Like Content And Workout First
 
@@ -1049,7 +1097,7 @@ Hook:
 
 Draft script:
 
-"Content has public links. Workout has fresh camera proof. Both are easy to explain in one sentence. Both have daily pain. Both create visible transformation. That is why I am starting there instead of trying to support every possible habit. Comment PACT if you want one of these."
+"Content and workout both create visible transformation. You can see the posting grid fill up. You can see the workout record build. That is why they are first. The marketing is the changed person, not the feature list."
 
 Visual:
 
@@ -1057,27 +1105,27 @@ Two cards: content pact and workout pact.
 
 CTA:
 
-Comment PACT.
+If you want one of these transformations, comment PACT.
 
 ## Day 28
 
-### Reel 55: Public Build Update
+### Reel 55: Micro-Proof Update
 
 Hook:
 
-> Pact Raven update: here is what I am testing this week.
+> Tiny Pact Raven update: here is what actually happened this week.
 
 Draft script:
 
-"This week I am testing three things: will strangers lock a real deposit, which pact gets more demand, and whether manual proof review can stay fast. The repeat test comes next: will people pay Rs 249 for a second Pact Pass. Comment PACT if you want to be part of the test."
+"Use real small proof: how many people asked for rules, how many joined WhatsApp, how many submitted proof, how many missed, how many restarted. Tiny real numbers beat vague hype because they show the system is alive."
 
 Visual:
 
-Three test cards on screen.
+Weekly metric card with only real numbers. Blur private data.
 
 CTA:
 
-Comment PACT.
+If you want next week's record, comment PACT.
 
 ### Reel 56: Objection - What If I Fail
 
@@ -1087,7 +1135,7 @@ Hook:
 
 Draft script:
 
-"A failed pact is not the end of the world. But it should cost enough that you take the next pact seriously. The important thing is that rules are clear before you start. No guilt, no drama, no negotiation after the deadline. Comment PACT if you want accountability without motivational fluff."
+"A failed pact is not the end of the world. But it should be honest. Not hidden in shame. Not softened into 'I was busy.' A missed day gets recorded, the money leaves your control, and tomorrow is still available. That is cleaner than pretending you never promised."
 
 Visual:
 
@@ -1095,7 +1143,7 @@ Missed day, reset tomorrow.
 
 CTA:
 
-Comment PACT.
+If you want accountability without motivational fluff, comment PACT.
 
 ## Day 29
 
@@ -1103,11 +1151,11 @@ Comment PACT.
 
 Hook:
 
-> Last call for Monday's accountability cohort.
+> Last call for people who actually want pressure.
 
 Draft script:
 
-"I am closing this week's small cohort soon. Two options: content posting or workout consistency. You will get the rules, the proof checklist, and the Razorpay payment details before joining. This is still early and manual, so places are limited. Comment PACT and I will DM you."
+"I am closing this week's small cohort soon. Not because scarcity is a marketing trick, but because I review the early records myself. If you want another app that lets you fail silently, this is probably not it. If you want a serious 30-day pressure container, comment PACT."
 
 Visual:
 
@@ -1115,7 +1163,7 @@ Countdown timer, cohort places.
 
 CTA:
 
-Comment PACT.
+If you actually want pressure, comment PACT.
 
 ### Reel 58: The 30-Day Identity Shift
 
@@ -1125,15 +1173,15 @@ Hook:
 
 Draft script:
 
-"If you post for 30 days, you stop being someone who wants to create and become someone who publishes. If you train for 30 days, you stop being someone who wants fitness and become someone who shows up. Pact Raven is built around that identity shift. Comment PACT if you want the next cohort."
+"If you post for 30 days, you stop being someone who wants to create and become someone with a record. If you train for 30 days, you stop being someone who restarts and become someone who shows up. That identity shift is the product."
 
 Visual:
 
-Before/after identity text.
+Before/after profile grid, workout record, and proof streak.
 
 CTA:
 
-Comment PACT.
+If you want that identity shift, comment PACT.
 
 ## Day 30
 
@@ -1145,7 +1193,7 @@ Hook:
 
 Draft script:
 
-"People do not need another reminder app. They need a reason to stop negotiating with themselves. The strongest response so far is to content and workout pacts because the proof is clear and the pain is real. I am taking the next cohort now. Comment PACT if you want in."
+"People do not need another reminder. They need a reason to stop negotiating with themselves. The best-performing posts were not feature explanations. They were the ones where people said, 'this is literally me.' That is the lesson."
 
 Visual:
 
@@ -1153,17 +1201,17 @@ Montage of previous hooks/comments, blur usernames if needed.
 
 CTA:
 
-Comment PACT.
+If this was literally you, comment PACT.
 
 ### Reel 60: The Next Cohort Offer
 
 Hook:
 
-> If you want to become consistent, join the next 30-day pact.
+> Stop negotiating with yourself for 30 days.
 
 Draft script:
 
-"Choose one: post content daily or prove your workouts. You will put down a refundable deposit, submit proof, and get it back when you stay consistent. This is not magic. It is pressure, rules, and proof. If that is what you need, comment PACT and I will send the details."
+"Choose one: publish daily or show up for workouts. For 30 days, the promise is not private anymore. There is a record. There is pressure. There is a consequence. If that is what you need, comment PACT and I will send the details."
 
 Visual:
 
@@ -1171,7 +1219,638 @@ Two pact cards and direct camera close.
 
 CTA:
 
+If you are tired of restarting, comment PACT.
+
+## Bonus Growth Playbook Reels
+
+Use these as replacements for weak posts, extra same-day reels, or reels 61-90 after the first 30 days. The CTA lines below are placeholders; swap them with the CTA Bank so the feed does not end every reel the same way.
+
+### Bonus 1: The Stakes Reveal
+
+Hook:
+
+> The app is not the interesting part. This moment is.
+
+Angle:
+
+Show the exact Pact Raven loop: choose a pact, lock money, submit proof, get a successful day recorded, or miss and see the charity outcome. Keep it under 20 seconds.
+
+Visual:
+
+Screen recording with face cam. Cut quickly between pact card, deposit, proof prompt, review state, and result.
+
+CTA:
+
 Comment PACT.
+
+### Bonus 2: I Locked My Own Money First
+
+Hook:
+
+> I should not ask anyone to do a pact I would not do myself.
+
+Angle:
+
+Founder sets a real personal pact and explains the rule in one line. This starts the founder-led series and makes the product feel witnessed, not theoretical.
+
+Visual:
+
+Direct camera, then the pact setup screen with private details blurred.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 3: Day 1 Public Commitment
+
+Hook:
+
+> Day 1: I locked money on this commitment.
+
+Angle:
+
+Document the first day like a public record. State the goal, deadline, proof rule, and charity consequence without overexplaining.
+
+Visual:
+
+Whiteboard or notes app: goal, proof, deadline, charity.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 4: Halfway Check
+
+Hook:
+
+> I am halfway through the pact. This is what changed.
+
+Angle:
+
+Use day 15 as a story beat. Talk about what felt harder than expected, how the deadline changed behavior, and whether the pressure is useful.
+
+Visual:
+
+Calendar with successful days, missed days hidden or explained honestly.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 5: The Final Record
+
+Hook:
+
+> 30 days later, here is the record.
+
+Angle:
+
+Reveal successful days, rejected days, missed days, refund credit, and charity amount. Make the outcome the content.
+
+Visual:
+
+Result screen or simple table with amounts blurred if needed.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 6: The Money Moment
+
+Hook:
+
+> This is the part silent-failure apps do not have.
+
+Angle:
+
+Show the moment money becomes part of the commitment. Keep the language clean: locked deposit, proof, refund credit, charity for missed or rejected days.
+
+Visual:
+
+Payment screen blurred, then pact rules.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 7: Consequences Beat Reminders
+
+Hook:
+
+> A reminder asks. A consequence answers.
+
+Angle:
+
+Contrast a passive notification with a pact deadline. The point is not motivation, it is a rule that stays real when motivation disappears.
+
+Visual:
+
+Ignored reminder notification, then deadline countdown.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 8: Your Tracker Is Too Polite
+
+Hook:
+
+> Most trackers are too polite to change you.
+
+Angle:
+
+Explain that tracking records behavior after the fact. Pact Raven changes the decision before the failure because the consequence is already chosen.
+
+Visual:
+
+Habit tracker screen, then a pact card with deadline and proof rule.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 9: The One-Frame Test
+
+Hook:
+
+> If this reel needs explanation, the product is not simple enough.
+
+Angle:
+
+Use the reel to pressure-test the product. Can a viewer understand the loop in three seconds: lock money, show proof, get it back or forfeit missed days?
+
+Visual:
+
+Three fast captions over the app: lock, prove, record.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 10: The Screen Recording Test
+
+Hook:
+
+> If I cannot screen-record the pact in 20 seconds, the flow is too heavy.
+
+Angle:
+
+Film the full setup flow and call out any friction honestly. This doubles as build-in-public and product QA.
+
+Visual:
+
+Uncut screen recording with a timer.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 11: 100 Videos Before Ads
+
+Hook:
+
+> I am not running ads until I post 100 of these.
+
+Angle:
+
+Explain the sequence: first prove people care organically, then bring in micro-creators, then consider paid ads. No paid shortcut before the message works.
+
+Visual:
+
+Counter: 1/100 reels posted.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 12: Paid Ads Can Wait
+
+Hook:
+
+> Paid ads would hide the real question right now.
+
+Angle:
+
+The real question is whether strangers understand the pact, comment, DM, pay, and repeat. Paid ads come later, after organic demand is visible.
+
+Visual:
+
+Funnel graphic: reel, comment, DM, WhatsApp, payment, cohort.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 13: The Creator Challenge
+
+Hook:
+
+> I do not want creators to promote Pact Raven. I want them to use it.
+
+Angle:
+
+Invite micro-creators to run their own 30-day pact on camera. Position it as a challenge with real proof, not a sponsorship read.
+
+Visual:
+
+Creator DM draft and a simple challenge card.
+
+CTA:
+
+Comment CREATOR or DM PACT.
+
+### Bonus 14: 10 Public Pacts
+
+Hook:
+
+> I want 10 people to lock public pacts at the same time.
+
+Angle:
+
+Explain the first creator cohort: 10 micro-creators, two posts per month each, real pact journeys, public results week.
+
+Visual:
+
+Grid of 10 blurred creator slots.
+
+CTA:
+
+Comment CREATOR.
+
+### Bonus 15: Challenge, Not Sponsorship
+
+Hook:
+
+> A sponsorship says "try this." A pact says "watch me prove it."
+
+Angle:
+
+Contrast generic paid promo with a real commitment journey. The pact itself should create the content arc.
+
+Visual:
+
+Two columns: ad read vs 30-day pact story.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 16: The Creator DM
+
+Hook:
+
+> This is the DM I would send to micro-creators.
+
+Angle:
+
+Share the actual outreach: "Want to run a 30-day public pact? You pick workout or content, we cover the first Pact Pass, you document the result."
+
+Visual:
+
+Notes app with the DM template.
+
+CTA:
+
+Comment CREATOR.
+
+### Bonus 17: How I Find Pact Creators
+
+Hook:
+
+> I am training a fresh account to find the right creators.
+
+Angle:
+
+Explain the sourcing method: engage only with fitness, creator, discipline, and self-improvement content, then approach accounts already making commitment-style posts.
+
+Visual:
+
+Blurred For You page or saved creator spreadsheet.
+
+CTA:
+
+Comment CREATOR.
+
+### Bonus 18: The Comment Loop
+
+Hook:
+
+> Growth is not only posting. It is showing up where the pain already is.
+
+Angle:
+
+Document 10 useful comments left on posts about skipped workouts, inconsistent posting, or apps people abandon. Each comment should add value and avoid spam.
+
+Visual:
+
+Blurred comment drafts.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 19: Silent Failure Is The Problem
+
+Hook:
+
+> The problem is not failure. It is quiet failure.
+
+Angle:
+
+Show that quiet failure is why people abandon apps. Pact Raven makes the failure visible to the system, the record, and the charity outcome.
+
+Visual:
+
+Silent streak reset vs pact record.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 20: Anti-Productivity Porn
+
+Hook:
+
+> Watching productivity content is not the same as keeping a promise.
+
+Angle:
+
+Position Pact Raven against passive self-improvement consumption. The viewer does not need another routine video. They need one clear pact and a deadline.
+
+Visual:
+
+Scrolling productivity reels, then phone placed down and pact screen opened.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 21: The No More Negotiation Rule
+
+Hook:
+
+> The point of the pact is to stop negotiating every day.
+
+Angle:
+
+Explain that the decision happens once, before the hard day arrives. After that, the daily job is proof, not debate.
+
+Visual:
+
+Notes app: decide once, prove daily.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 22: Results Week
+
+Hook:
+
+> The best marketing should happen when the pact ends.
+
+Angle:
+
+Plan a results week where founder and creators post their final records together. The synchronized outcome creates social proof without pretending the product is bigger than it is.
+
+Visual:
+
+Calendar with "results week" and 10 creator slots.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 23: The First Failed Day
+
+Hook:
+
+> I missed a day. Here is what the app recorded.
+
+Angle:
+
+If the founder misses, use it. Show the missed day, charity consequence, and why the product has to be honest even when it hurts.
+
+Visual:
+
+Missed-day record with sensitive details blurred.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 24: The First Rejected Proof
+
+Hook:
+
+> This proof would not pass review.
+
+Angle:
+
+Show a realistic example of unclear proof and explain the rejection calmly. This builds trust and teaches the rules before onboarding.
+
+Visual:
+
+Mock proof photo/video with "unclear" annotation.
+
+CTA:
+
+Comment WORKOUT.
+
+### Bonus 25: The Proof Deadline
+
+Hook:
+
+> The deadline is not a reminder. It is the rule.
+
+Angle:
+
+Make the daily deadline dramatic. Show what happens before and after the deadline instead of explaining the full product.
+
+Visual:
+
+Countdown at 9:58 pm, proof submitted at 9:59 pm.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 26: The Return Moment
+
+Hook:
+
+> This is what a successful pact should feel like.
+
+Angle:
+
+Show the refund-credit or return process after approved days. The viewer should understand that successful proof earns the user's own money back.
+
+Visual:
+
+Approved days turning into refund credit.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 27: Charity Is Not A Threat
+
+Hook:
+
+> The charity consequence is chosen before the pact starts.
+
+Angle:
+
+Explain the clean rule: missed or rejected days go to the chosen charity, not Pact Raven. This makes the consequence serious without making failure company revenue.
+
+Visual:
+
+Five charity options and a simple missed-day ledger.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 28: The Friend Test Is Over
+
+Hook:
+
+> Friends saying yes is not enough.
+
+Angle:
+
+Move from friend validation to stranger validation. The test is whether people who do not know the founder will understand the rules, pay, submit proof, and repeat.
+
+Visual:
+
+Two columns: friends vs strangers.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 29: The Repeat Pact Test
+
+Hook:
+
+> The second pact matters more than the first.
+
+Angle:
+
+Explain that a first covered Pact Pass tests interest, but a second paid Pact Pass tests whether accountability was valuable enough to repeat.
+
+Visual:
+
+Cycle 1 covered, cycle 2 paid.
+
+CTA:
+
+Comment PACT.
+
+### Bonus 30: The 60-Second Funnel
+
+Hook:
+
+> Here is how a comment becomes a pact.
+
+Angle:
+
+Walk through the path fast: comment, DM, WhatsApp, rules, payment, Monday cohort, daily proof. This turns the acquisition funnel itself into content.
+
+Visual:
+
+Fast flow chart with each step on screen.
+
+CTA:
+
+Comment PACT.
+
+## Painfully True Hook Bank
+
+Use these when a reel feels too rational. The viewer should feel recognized before the product is explained.
+
+- You are not inconsistent. You are consequence-free.
+- The problem is not laziness. It is that nothing happens when you fail.
+- You keep restarting because restarting is free.
+- The dangerous phrase is: "I'll do it tomorrow."
+- You already know what to do. That is why advice is not helping.
+- Your plan depends on a version of you that only exists on Sunday night.
+- You do not need more motivation. You need fewer escape routes.
+- You are not short on goals. You are short on consequences.
+- Your private promises keep disappearing because no one can see them.
+- You do not need another reset. You need a record.
+- Shame after failure is not accountability. It is just pain without structure.
+- If skipping is free, your brain will keep buying it.
+
+## Comment Reply Reel Bank
+
+Turn real comments into reels. These should feel conversational and slightly confrontational, not like support docs.
+
+- "This sounds dystopian." Reply: private shame is already dystopian; clear consequences are cleaner.
+- "Why would I pay to suffer?" Reply: you are already paying through restarts, unused memberships, and missed work.
+- "Can't I just use discipline?" Reply: yes, if discipline is working. This is for when it is not.
+- "What if I cheat?" Reply: then the system learns where the rules are weak. Honest users need strict rules.
+- "This is gambling." Reply: no upside jackpot, no winning someone else's money, no company revenue from failed days.
+- "I actually need this." Reply: then pick one promise you are tired of negotiating with.
+- "What if I fail?" Reply: then the miss is recorded, contained, and tomorrow still exists.
+- "This is too much pressure." Reply: exactly. It is only for people who want pressure.
+
+## Transformation Montage Ideas
+
+The product is accountability. The marketing is transformation. Film these whenever there is real footage.
+
+- Day 1 vs day 30 content grid.
+- First awkward post vs thirtieth post.
+- Workout calendar before and after the pact.
+- Proof streak growing across the month.
+- Founder challenge montage: lock, prove, miss, recover, final record.
+- Creator challenge montage: setup reel, halfway check, results reel.
+- "I used to restart every Monday" before/after story.
+- "I posted publicly for 14 days straight for the first time" story.
+- "I missed once but did not quit the whole month" story.
+- Final record reveal: successful days, missed days, rejected days, refund credit, charity amount.
+
+## Micro-Proof Rules
+
+Use tiny real numbers as soon as they exist. Do not invent metrics.
+
+- "7/10 people submitted proof on day 3."
+- "One user posted publicly for 14 days straight for the first time."
+- "3 users restarted after missing instead of quitting."
+- "Average proof submission time this week: 9:14 PM."
+- "Most common DM this week: 'I need this but I am scared I will fail.'"
+- "Most common objection this week: 'Why would I pay for pressure?'"
+- "Proof review time is averaging under 3 minutes."
+- "Content pacts generated more DMs than workout pacts this week."
+
+## Creator Challenge Outreach
+
+Use this for micro-creators in fitness, creator economy, discipline, study, career, or self-improvement niches.
+
+> Hey, I am testing Pact Raven with a small group of people who want public accountability. The challenge is simple: pick a 30-day workout or content pact, lock a refundable deposit, submit proof, and document what happens. Your first Pact Pass is covered. I am not looking for an ad read. I am looking for people willing to show the real commitment arc. Want details?
+
+Creator fit checklist:
+
+- Already posts about discipline, fitness, content creation, studying, or self-improvement.
+- Comfortable documenting a 30-day challenge in public.
+- Willing to show proof, results, and missed days honestly.
+- Small enough to reply manually, credible enough that their audience trusts them.
+- Can post at least two reels during the pact: setup and result.
+
+## Comment Strategy Prompts
+
+Leave useful comments daily on posts where people are already talking about inconsistency, skipped workouts, content procrastination, or apps they abandoned. Do not spam links. The goal is recognition before the DM.
+
+- "The problem with most tracking apps is that nothing happens when you skip. Tracking alone does not create pressure."
+- "This is why I like commitment systems more than streak systems. A streak can reset quietly. A pact has a record."
+- "For workouts, the hard part is not knowing what to do. It is proving you showed up on the day you said you would."
+- "Creators usually do not need more ideas. They need a public deadline and a reason not to disappear."
+- "The cleanest accountability rule I have found is: decide once, prove daily."
+- "A missed day should have a clear consequence before the missed day happens. Otherwise it becomes negotiation."
+- "The interesting version is not punishment. It is making the promise concrete enough that you stop treating it casually."
+- "If the proof is vague, the commitment becomes vague. That is where most accountability systems collapse."
+- "I think the future of consistency products is less tracking and more consequence design."
+- "A 30-day public pact is more useful than another private goal in a notes app."
 
 ## DM Script For Commenters
 
@@ -1208,8 +1887,21 @@ Every 7 days, track:
 - Users paid
 - Abandoned-onboarding discount offers sent
 - Abandoned-onboarding discount conversions
+- Founder-led reels posted toward the 100-video target
+- Creator DMs sent
+- Creator challenge replies
+- Creator challenge posts live
+- Comments left on target posts
+- Profile visits and bio-link clicks
+- Reels with a clear stakes reveal in the first 3 seconds
+- Comments saying "this is me", "I need this", "I feel attacked", or similar self-recognition
+- POV/skit reels posted
+- Comment reply reels posted
+- Transformation footage captured
+- Tiny real proof points captured
+- CTA variants tested
 - Most common objection
 - Best-performing hook
 - Worst-performing hook
 
-Double down on the hooks that generate DMs, not only views.
+Double down on hooks that generate DMs and self-recognition, not only views.

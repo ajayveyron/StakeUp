@@ -8,6 +8,10 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
+        workoutAccountability: resolve(
+          __dirname,
+          "workout-accountability.html",
+        ),
         terms: resolve(__dirname, "terms.html"),
         privacy: resolve(__dirname, "privacy.html"),
         refunds: resolve(__dirname, "refund-cancellation.html"),

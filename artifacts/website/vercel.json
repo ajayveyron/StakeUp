@@ -1,5 +1,119 @@
 {
   "cleanUrls": true,
+  "routes": [
+    {
+      "src": "^/$",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "image/png"
+        }
+      ],
+      "dest": "/api/not-acceptable"
+    },
+    {
+      "src": "^/workout-accountability$",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": "image/png"
+        }
+      ],
+      "dest": "/api/not-acceptable"
+    },
+    {
+      "src": "^/$",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "headers": {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "X-Markdown-Tokens": "496",
+        "X-Robots-Tag": "noindex",
+        "Vary": "Accept, User-Agent",
+        "X-Content-Type-Options": "nosniff",
+        "X-AEO-Version": "1.0"
+      },
+      "dest": "/index.md"
+    },
+    {
+      "src": "^/workout-accountability$",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "headers": {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "X-Markdown-Tokens": "516",
+        "X-Robots-Tag": "noindex",
+        "Vary": "Accept, User-Agent",
+        "X-Content-Type-Options": "nosniff",
+        "X-AEO-Version": "1.0"
+      },
+      "dest": "/workout-accountability.md"
+    },
+    {
+      "src": "^/$",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|PerplexityBot|ClaudeBot|Claude-User|Claude-SearchBot|Google-Extended|anthropic-ai).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/html.*"
+        }
+      ],
+      "headers": {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "X-Markdown-Tokens": "496",
+        "X-Robots-Tag": "noindex",
+        "Vary": "Accept, User-Agent",
+        "X-Content-Type-Options": "nosniff",
+        "X-AEO-Version": "1.0"
+      },
+      "dest": "/index.md"
+    },
+    {
+      "src": "^/workout-accountability$",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|PerplexityBot|ClaudeBot|Claude-User|Claude-SearchBot|Google-Extended|anthropic-ai).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/html.*"
+        }
+      ],
+      "headers": {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "X-Markdown-Tokens": "516",
+        "X-Robots-Tag": "noindex",
+        "Vary": "Accept, User-Agent",
+        "X-Content-Type-Options": "nosniff",
+        "X-AEO-Version": "1.0"
+      },
+      "dest": "/workout-accountability.md"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -25,9 +139,298 @@
           "value": "camera=(), microphone=(), geolocation=(), payment=()"
         }
       ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</index.md>; rel=\"alternate\"; type=\"text/markdown\""
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        }
+      ]
+    },
+    {
+      "source": "/workout-accountability",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</workout-accountability.md>; rel=\"alternate\"; type=\"text/markdown\""
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        }
+      ]
+    },
+    {
+      "source": "/workout-accountability.html",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "</workout-accountability.md>; rel=\"alternate\"; type=\"text/markdown\""
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        }
+      ]
+    },
+    {
+      "source": "/index.md",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "X-Markdown-Tokens",
+          "value": "496"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        },
+        {
+          "key": "X-AEO-Version",
+          "value": "1.0"
+        }
+      ]
+    },
+    {
+      "source": "/workout-accountability.md",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "X-Markdown-Tokens",
+          "value": "516"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        },
+        {
+          "key": "X-AEO-Version",
+          "value": "1.0"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "X-Markdown-Tokens",
+          "value": "496"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        },
+        {
+          "key": "X-AEO-Version",
+          "value": "1.0"
+        }
+      ]
+    },
+    {
+      "source": "/workout-accountability",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "X-Markdown-Tokens",
+          "value": "516"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        },
+        {
+          "key": "X-AEO-Version",
+          "value": "1.0"
+        }
+      ]
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|PerplexityBot|ClaudeBot|Claude-User|Claude-SearchBot|Google-Extended|anthropic-ai).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/html.*"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "X-Markdown-Tokens",
+          "value": "496"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        },
+        {
+          "key": "X-AEO-Version",
+          "value": "1.0"
+        }
+      ]
+    },
+    {
+      "source": "/workout-accountability",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|PerplexityBot|ClaudeBot|Claude-User|Claude-SearchBot|Google-Extended|anthropic-ai).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/html.*"
+        }
+      ],
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/markdown; charset=utf-8"
+        },
+        {
+          "key": "X-Markdown-Tokens",
+          "value": "516"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex"
+        },
+        {
+          "key": "Vary",
+          "value": "Accept, User-Agent"
+        },
+        {
+          "key": "X-AEO-Version",
+          "value": "1.0"
+        }
+      ]
     }
   ],
   "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/index.md"
+    },
+    {
+      "source": "/workout-accountability",
+      "has": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/markdown.*"
+        }
+      ],
+      "destination": "/workout-accountability.md"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|PerplexityBot|ClaudeBot|Claude-User|Claude-SearchBot|Google-Extended|anthropic-ai).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/html.*"
+        }
+      ],
+      "destination": "/index.md"
+    },
+    {
+      "source": "/workout-accountability",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(GPTBot|OAI-SearchBot|ChatGPT-User|PerplexityBot|ClaudeBot|Claude-User|Claude-SearchBot|Google-Extended|anthropic-ai).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "header",
+          "key": "accept",
+          "value": ".*text/html.*"
+        }
+      ],
+      "destination": "/workout-accountability.md"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"

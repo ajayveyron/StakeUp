@@ -19,7 +19,9 @@ Pact Raven is a commitment and accountability product for users in India. Users 
 ## Important pages
 
 - Homepage: https://pactraven.com/
+- Homepage markdown twin: https://pactraven.com/index.md
 - Workout accountability: https://pactraven.com/workout-accountability
+- Workout accountability markdown twin: https://pactraven.com/workout-accountability.md
 - Proof rules: https://pactraven.com/proof-rules
 - Payment, cancellation, refund, and delivery policy: https://pactraven.com/refund-cancellation
 - Terms of Use: https://pactraven.com/terms
