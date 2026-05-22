@@ -23,8 +23,8 @@ function NativeTabLayout() {
         <Label>Pacts</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Ledger</Label>
+        <Icon sf={{ default: "person", selected: "person.fill" }} />
+        <Label>Profile</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -54,7 +54,13 @@ function ClassicTabLayout() {
           isIOS ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={["transparent", "#FFD800", "#FFD800", "#F8F3D4", "transparent"]}
+                colors={[
+                  "transparent",
+                  "#FFD800",
+                  "#FFD800",
+                  "#F8F3D4",
+                  "transparent",
+                ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
@@ -68,7 +74,13 @@ function ClassicTabLayout() {
           ) : isWeb ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={["transparent", "#FFD800", "#FFD800", "#F8F3D4", "transparent"]}
+                colors={[
+                  "transparent",
+                  "#FFD800",
+                  "#FFD800",
+                  "#F8F3D4",
+                  "transparent",
+                ]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
@@ -107,12 +119,12 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Ledger",
+          title: "Profile",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="chart.bar" tintColor={color} size={24} />
+              <SymbolView name="person" tintColor={color} size={24} />
             ) : (
-              <Feather name="bar-chart-2" size={22} color={color} />
+              <Feather name="user" size={22} color={color} />
             ),
         }}
       />

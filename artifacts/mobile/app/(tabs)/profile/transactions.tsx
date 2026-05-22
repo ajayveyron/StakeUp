@@ -1,11 +1,8 @@
-import { useAuth } from "@clerk/clerk-expo";
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
-import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
-  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,15 +11,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
-import { NotificationButton } from "@/components/NotificationButton";
-import { LEGAL_URLS } from "@/constants/links";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { useFirstName } from "@/hooks/useCurrentUser";
-import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 import { api } from "@convex/_generated/api";
 import {
   formatCurrency,
@@ -40,22 +35,12 @@ import {
   isPendingPayment,
 } from "@/utils/commitment";
 
-export default function ProfileScreen() {
+export default function TransactionsScreen() {
   const colors = useColors();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { signOut } = useAuth();
-  const currentUser = useQuery(api.users.current);
   const wallet = useQuery(api.wallet.getMine);
-  const slotSummary = useQuery(api.payments.slotSummary);
   const requestManualPayout = useMutation(api.payments.requestManualPayout);
-  const { buySlot, paying: buyingSlot } = useRazorpayCheckout({
-    onSlotSuccess: () =>
-      Alert.alert(
-        "Pact slot ready",
-        "Open any draft pact to lock its refundable deposit and start.",
-      ),
-  });
   const { commitments } = useCommitments();
   const firstName = useFirstName();
   const [withdrawing, setWithdrawing] = useState(false);
@@ -125,10 +110,6 @@ export default function ProfileScreen() {
     }
   }
 
-  function handleBuySlot() {
-    void buySlot();
-  }
-
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <BrutalistBackdrop />
@@ -143,109 +124,16 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={[styles.backBtn, { backgroundColor: colors.secondary }]}
+            activeOpacity={0.75}
+          >
+            <Feather name="arrow-left" size={18} color={colors.foreground} />
+          </TouchableOpacity>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            The Ledger
+            Transactions
           </Text>
-          <View style={styles.headerActions}>
-            <NotificationButton />
-            <TouchableOpacity
-              onPress={() => void signOut()}
-              style={[styles.signOutBtn, { backgroundColor: colors.secondary }]}
-              activeOpacity={0.75}
-            >
-              <Feather
-                name="log-out"
-                size={15}
-                color={colors.mutedForeground}
-              />
-              <Text
-                style={[styles.signOutText, { color: colors.mutedForeground }]}
-              >
-                Sign out
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {currentUser?.role === "admin" && (
-          <TouchableOpacity
-            onPress={() => router.push("/admin/reviews")}
-            style={[
-              styles.adminCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-            activeOpacity={0.82}
-          >
-            <View style={styles.adminLeft}>
-              <View
-                style={[
-                  styles.adminIcon,
-                  { backgroundColor: colors.accent + "18" },
-                ]}
-              >
-                <Feather name="shield" size={15} color={colors.accent} />
-              </View>
-              <View>
-                <Text style={[styles.adminTitle, { color: colors.foreground }]}>
-                  Admin ops
-                </Text>
-                <Text
-                  style={[styles.adminMeta, { color: colors.mutedForeground }]}
-                >
-                  Payments, check-ins, reviews, refunds
-                </Text>
-              </View>
-            </View>
-            <Feather
-              name="chevron-right"
-              size={18}
-              color={colors.mutedForeground}
-            />
-          </TouchableOpacity>
-        )}
-
-        <View
-          style={[
-            styles.adminCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.adminLeft}>
-            <View
-              style={[
-                styles.adminIcon,
-                { backgroundColor: colors.primary + "18" },
-              ]}
-            >
-              <Feather name="key" size={15} color={colors.primary} />
-            </View>
-            <View>
-              <Text style={[styles.adminTitle, { color: colors.foreground }]}>
-                Pact slots
-              </Text>
-              <Text
-                style={[styles.adminMeta, { color: colors.mutedForeground }]}
-              >
-                {slotSummary?.available ?? 0} unused · ₹249 each
-              </Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={handleBuySlot}
-            disabled={buyingSlot}
-            style={[
-              styles.slotBtn,
-              {
-                backgroundColor: colors.primary,
-                opacity: buyingSlot ? 0.55 : 1,
-              },
-            ]}
-            activeOpacity={0.84}
-          >
-            <Text style={styles.slotBtnText}>
-              {buyingSlot ? "Opening..." : "Buy"}
-            </Text>
-          </TouchableOpacity>
         </View>
 
         {showRefundPanel && (
@@ -570,45 +458,6 @@ export default function ProfileScreen() {
             )}
           </>
         )}
-        <View
-          style={[
-            styles.legalCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <Text style={[styles.legalTitle, { color: colors.foreground }]}>
-            Policy record
-          </Text>
-          <View style={styles.legalLinks}>
-            <TouchableOpacity
-              onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.legalLink, { color: colors.primary }]}>
-                Terms
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => void Linking.openURL(LEGAL_URLS.privacy)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.legalLink, { color: colors.primary }]}>
-                Privacy
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => void Linking.openURL(LEGAL_URLS.payments)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.legalLink, { color: colors.primary }]}>
-                Payments and refunds
-              </Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.legalMeta, { color: colors.mutedForeground }]}>
-            Legal pages open on pactraven.com.
-          </Text>
-        </View>
       </ScrollView>
     </View>
   );
@@ -669,60 +518,16 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 12,
     marginBottom: 20,
   },
   title: { fontSize: 26, fontFamily: "Inter_700Bold" },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  signOutBtn: {
-    minWidth: 92,
-    height: 36,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  signOutText: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
-  },
-  adminCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  adminLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  adminIcon: {
-    width: 32,
-    height: 32,
+  backBtn: {
+    width: 38,
+    height: 38,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
-  },
-  adminTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  adminMeta: { fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
-  slotBtn: {
-    minWidth: 62,
-    height: 34,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 12,
-  },
-  slotBtnText: {
-    color: "#000",
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
   },
   heroRow: { flexDirection: "row", gap: 12, marginBottom: 14 },
   heroCard: {
@@ -844,15 +649,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     paddingHorizontal: 24,
   },
-  legalCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 14,
-    marginTop: 18,
-    gap: 10,
-  },
-  legalTitle: { fontSize: 13, fontFamily: "Inter_700Bold" },
-  legalLinks: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  legalLink: { fontSize: 12, fontFamily: "Inter_700Bold" },
-  legalMeta: { fontSize: 11, fontFamily: "Inter_400Regular" },
 });
