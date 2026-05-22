@@ -3,6 +3,7 @@ import type { GenericDatabaseReader } from "convex/server";
 import type { DataModel, Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
+type IdentityAuthCtx = Pick<QueryCtx | MutationCtx, "auth">;
 type AuthCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
 
 type IdentityValue = string | null | undefined;
@@ -35,10 +36,18 @@ export async function getCurrentUserDoc(
     .unique();
 }
 
-export async function requireClerkIdentity(ctx: AuthCtx) {
+export async function requireClerkIdentity(ctx: IdentityAuthCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) {
     throw new Error("Authentication required");
+  }
+  return identity;
+}
+
+export async function requireAdminIdentity(ctx: IdentityAuthCtx) {
+  const identity = await requireClerkIdentity(ctx);
+  if (!isAdminEmail(identityEmail(identity))) {
+    throw new Error("Admin access required");
   }
   return identity;
 }

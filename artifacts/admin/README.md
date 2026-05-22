@@ -1,8 +1,10 @@
 # Pact Raven Admin
 
-Legacy private beta-ops dashboard for tracking the original manually managed beta cohort.
+Standalone mobile-first admin dashboard for Pact Raven operations.
 
-The current product admin surface is `artifacts/mobile/app/admin/reviews.tsx` backed by the main Convex `reviews`, `payments`, and ledger functions. Use this package only when you intentionally need the old beta cohort tools.
+The dashboard is backed by the main Convex product tables and `convex/reviews.ts`.
+It covers slots, deposits, today's proof, proof review, refunds, early-end
+settlements, ledger history, and founder metrics.
 
 ## Environment
 
@@ -23,4 +25,15 @@ From the repo root:
 pnpm dev:admin
 ```
 
-The first signed-in admin can seed the initial 3-user beta cohort from the dashboard.
+## Deploy
+
+Use a separate Vercel project rooted at `artifacts/admin`.
+
+Recommended project:
+
+```sh
+pact-raven-admin
+```
+
+Attach `admin.pactraven.com` to that project, not the main `pact-raven` app
+project.

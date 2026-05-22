@@ -317,18 +317,6 @@ export default function ProfileScreen() {
             onPress={() => router.push("/profile/transactions")}
             colors={colors}
           />
-          {currentUser?.role === "admin" && (
-            <>
-              <Divider colors={colors} />
-              <ActionRow
-                icon="shield"
-                label="Admin ops"
-                value="Payments, reviews, refunds"
-                onPress={() => router.push("/admin/reviews")}
-                colors={colors}
-              />
-            </>
-          )}
           <Divider colors={colors} />
           <ActionRow
             icon="file-text"

@@ -1,145 +1,215 @@
+import { SignOutButton, useAuth as useClerkAuth } from "@clerk/clerk-react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { anyApi } from "convex/server";
 import {
+  AlertTriangle,
   CalendarClock,
   Check,
-  CircleDollarSign,
-  Database,
+  Clock3,
+  CreditCard,
   IndianRupee,
   Loader2,
-  Plus,
-  RefreshCw,
-  UserRound,
+  LockKeyhole,
+  ShieldCheck,
   WalletCards,
   X,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
-import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+const api = anyApi;
+type Id<TableName extends string> = string & { readonly __tableName?: TableName };
 
-type BetaOverview = {
-  today: string;
-  isSeeded: boolean;
-  totals: {
-    paidReceived: number;
-    refundEarned: number;
-    refundPaid: number;
-    pendingRefund: number;
-    forfeited: number;
-    remainingPotentialRefund: number;
-    remainingSubmissions: number;
-    approvedSubmissions: number;
-    missedSubmissions: number;
-    pendingSubmissions: number;
-    activeUsers: number;
-    activeCommitments: number;
+type ProofLocation = {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  capturedAt: string;
+};
+
+type AdminUser = {
+  id: Id<"users">;
+  label: string;
+  email?: string;
+  phone?: string;
+  whatsappNumber?: string;
+  displayName?: string;
+};
+
+type AdminSession = {
+  email?: string;
+  displayName?: string;
+  imageUrl?: string;
+  role: "user" | "admin";
+};
+
+type RateMetric = {
+  value: number | null;
+  numerator: number;
+  denominator: number;
+};
+
+type AmountMetric = {
+  amount: number;
+  currency: string;
+};
+
+type MetricSummary = {
+  usersCreatingPact: RateMetric;
+  draftToDepositPaid: RateMetric;
+  averageDepositAmount: AmountMetric & { count: number };
+  activePacts: number;
+  proofSubmissionRate: RateMetric;
+  proofApprovalRate: RateMetric;
+  pactCompletionRate: RateMetric;
+  earlyQuitRate: RateMetric;
+  repeatPactRate: RateMetric;
+  refundRequestRate: RateMetric;
+  depositLiabilityLocked: AmountMetric;
+  forfeitedToCharity: AmountMetric;
+  pendingPayoutAmount: AmountMetric;
+  medianReviewMinutes: number | null;
+};
+
+type AdminOverview = {
+  metrics: {
+    allTime: MetricSummary;
+    last30Days: MetricSummary;
   };
-  commitments: CommitmentRow[];
-  upcoming: Array<{
-    commitmentId: Id<"betaCommitments">;
-    date: string;
-    title: string;
-    amountPerSubmission: number;
+  slotPurchases: Array<{
+    id: Id<"pactSlotPurchases">;
+    amount: number;
     currency: string;
-    user: {
-      id: Id<"betaUsers">;
+    razorpayOrderId?: string;
+    createdAt: string;
+    user: AdminUser;
+  }>;
+  pendingPayments: Array<{
+    commitment: {
+      id: Id<"commitments">;
+      name: string;
+      goalType: "content" | "workout";
+      startDate: string;
+      endDate: string;
+      pactAmount: number;
+      currency: string;
+      createdAt: string;
+    };
+    user: AdminUser;
+  }>;
+  todayCheckIns: Array<{
+    date: string;
+    status: "due" | "under_review" | "approved" | "rejected" | "missed";
+    submittedAt?: string;
+    checkInId?: Id<"checkIns">;
+    proofUrl?: string;
+    proofPrompt?: string;
+    proofLocation?: ProofLocation;
+    submissionStatement?: string;
+    stepCount?: number;
+    commitment: {
+      id: Id<"commitments">;
+      name: string;
+      goalType: "content" | "workout";
+      targetPerDay: number;
+      currency: string;
+      refundPerDay: number;
+    };
+    user: AdminUser;
+  }>;
+  pendingReviews: Array<{
+    checkIn: {
+      id: Id<"checkIns">;
+      date: string;
+      proofUrl?: string;
+      proofPrompt?: string;
+      proofLocation?: ProofLocation;
+      submissionStatement?: string;
+      stepCount?: number;
+      submittedAt: string;
+      status: "under_review";
+    };
+    commitment: {
+      id: Id<"commitments">;
+      name: string;
+      goalType: "content" | "workout";
+      targetPerDay: number;
+      currency: string;
+      refundPerDay: number;
+    };
+    user: Omit<AdminUser, "label">;
+  }>;
+  payoutRequests: Array<{
+    id: Id<"manualPayoutRequests">;
+    amount: number;
+    currency: string;
+    upiId?: string;
+    payeeName?: string;
+    createdAt: string;
+    note?: string;
+    user: AdminUser;
+  }>;
+  earlyEndSettlements: Array<{
+    id: Id<"earlyEndSettlementRequests">;
+    reason?: string;
+    requestedAt: string;
+    commitment: {
+      id: Id<"commitments">;
+      name: string;
+      pactAmount: number;
+      currency: string;
+    };
+    user: AdminUser;
+  }>;
+  payoutBalances: Array<{
+    user: AdminUser;
+    currency: string;
+    amount: number;
+  }>;
+  recentLedger: Array<{
+    id: Id<"walletLedgerEntries">;
+    type:
+      | "deposit_confirmed"
+      | "approved_refund"
+      | "forfeited"
+      | "manual_payout"
+      | "charity_transfer";
+    amount: number;
+    currency: string;
+    destination: "user" | "charity" | "razorpay";
+    externalReference?: string;
+    note?: string;
+    createdAt: string;
+    user: Pick<AdminUser, "id" | "label" | "email">;
+    commitment?: {
+      id: Id<"commitments">;
       name: string;
     };
   }>;
-  recentLedger: LedgerRow[];
 };
 
-type CommitmentRow = {
-  id: Id<"betaCommitments">;
-  slug: string;
-  title: string;
-  category: "fasting" | "exercise" | "content" | "custom";
-  status: "active" | "paused" | "completed" | "deleted";
-  frequencyLabel: string;
-  frequencyPerWeek: number;
-  daysOfWeek: number[];
-  plannedSubmissions: number;
-  scheduledSubmissions: number;
-  amountPerSubmission: number;
-  totalAmount: number;
-  currency: string;
-  cycleStartDate: string;
-  cycleEndDate: string;
-  nextDueDate?: string;
-  remainingSubmissions: number;
-  remainingPotentialRefund: number;
-  notes?: string;
-  user: {
-    id: Id<"betaUsers">;
-    name: string;
-    slug?: string;
-    email?: string;
-    phone?: string;
-  };
-  counts: {
-    submitted: number;
-    approved: number;
-    missed: number;
-    skipped: number;
-  };
-  totals: {
-    paidReceived: number;
-    refundEarned: number;
-    refundPaid: number;
-    forfeited: number;
-    adjustments: number;
-    pendingRefund: number;
-  };
-  recentSubmissions: Array<{
-    id: Id<"betaSubmissions">;
-    date: string;
-    status: "submitted" | "approved" | "missed" | "skipped";
-    proofUrl?: string;
-    note?: string;
-  }>;
-};
-
-type LedgerRow = {
-  id: Id<"betaLedgerEntries">;
-  type:
-    | "payment_received"
-    | "refund_earned"
-    | "refund_paid"
-    | "forfeited"
-    | "adjustment";
-  amount: number;
-  currency: string;
-  occurredAt?: string;
-  createdAt: string;
-  externalReference?: string;
-  note?: string;
-  user: {
-    id: Id<"betaUsers">;
-    name: string;
-  };
-  commitment?: {
-    id: Id<"betaCommitments">;
-    title: string;
-  };
-};
-
-type RowForm = {
-  submissionDate: string;
-  submissionNote: string;
-  proofUrl: string;
-  paymentAmount: string;
-  paymentDate: string;
-  paymentReference: string;
-  paymentNote: string;
-  refundAmount: string;
-  refundDate: string;
-  refundReference: string;
-  refundNote: string;
-};
+type RangeKey = "allTime" | "last30Days";
+type TabKey =
+  | "overview"
+  | "deposits"
+  | "today"
+  | "reviews"
+  | "refunds"
+  | "settlements"
+  | "ledger";
 
 type AppProps = {
   userButton: ReactNode;
 };
+
+const TABS: Array<{ key: TabKey; label: string }> = [
+  { key: "overview", label: "Overview" },
+  { key: "deposits", label: "Deposits" },
+  { key: "today", label: "Today" },
+  { key: "reviews", label: "Reviews" },
+  { key: "refunds", label: "Refunds" },
+  { key: "settlements", label: "Settle" },
+  { key: "ledger", label: "Ledger" },
+];
 
 function formatCurrency(amount: number, currency = "INR") {
   return new Intl.NumberFormat("en-IN", {
@@ -158,70 +228,129 @@ function formatDate(date?: string) {
   }).format(new Date(`${date}T00:00:00`));
 }
 
-function ledgerLabel(type: LedgerRow["type"]) {
+function formatDateTime(value?: string) {
+  if (!value) return "None";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatPercent(metric: RateMetric) {
+  if (metric.value === null) return "N/A";
+  return `${Math.round(metric.value * 100)}%`;
+}
+
+function ratioLabel(metric: RateMetric) {
+  return `${metric.numerator}/${metric.denominator}`;
+}
+
+function formatDuration(minutes: number | null) {
+  if (minutes === null) return "N/A";
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  const hours = minutes / 60;
+  if (hours < 24) return `${Math.round(hours * 10) / 10}h`;
+  return `${Math.round((hours / 24) * 10) / 10}d`;
+}
+
+function ageLabel(value?: string) {
+  if (!value) return "N/A";
+  const minutes = Math.max(0, (Date.now() - new Date(value).getTime()) / 60000);
+  return formatDuration(minutes);
+}
+
+function userLabel(user: Partial<AdminUser>) {
+  return user.displayName ?? user.email ?? user.phone ?? user.whatsappNumber ?? "Unknown user";
+}
+
+function userContact(user: Partial<AdminUser>) {
+  return user.whatsappNumber ?? user.phone ?? user.email ?? "No contact";
+}
+
+function ledgerLabel(type: AdminOverview["recentLedger"][number]["type"]) {
   switch (type) {
-    case "payment_received":
-      return "Payment received";
-    case "refund_earned":
-      return "Refund earned";
-    case "refund_paid":
-      return "Refund paid";
+    case "deposit_confirmed":
+      return "Deposit";
+    case "approved_refund":
+      return "Refund credit";
     case "forfeited":
       return "Forfeited";
-    case "adjustment":
-      return "Adjustment";
+    case "manual_payout":
+      return "Payout";
+    case "charity_transfer":
+      return "Charity transfer";
   }
 }
 
-function defaultForm(row: CommitmentRow, today: string): RowForm {
-  const refundAmount =
-    row.totals.pendingRefund > 0
-      ? String(row.totals.pendingRefund)
-      : String(row.amountPerSubmission);
-
-  return {
-    submissionDate: row.nextDueDate ?? today,
-    submissionNote: "",
-    proofUrl: "",
-    paymentAmount: String(row.totalAmount),
-    paymentDate: today,
-    paymentReference: "",
-    paymentNote: "",
-    refundAmount,
-    refundDate: today,
-    refundReference: "",
-    refundNote: "",
-  };
+function statusLabel(status: string) {
+  if (status === "under_review") return "Under review";
+  return status.replace(/_/g, " ");
 }
 
-function StatCard({
-  label,
-  value,
-  icon,
-  tone = "neutral",
-}: {
-  label: string;
-  value: string;
-  icon: ReactNode;
-  tone?: "neutral" | "good" | "warn" | "bad";
+function proofDetails(args: {
+  goalType: "content" | "workout";
+  proofUrl?: string;
+  proofPrompt?: string;
+  proofLocation?: ProofLocation;
+  submissionStatement?: string;
+  stepCount?: number;
 }) {
+  const details: string[] = [];
+  if (args.proofPrompt) details.push(`prompt: ${args.proofPrompt}`);
+  if (args.submissionStatement) details.push(`signed: ${args.submissionStatement}`);
+  if (args.proofLocation && args.goalType === "workout") {
+    const accuracy =
+      typeof args.proofLocation.accuracy === "number"
+        ? ` +/-${Math.round(args.proofLocation.accuracy)}m`
+        : "";
+    details.push(
+      `location: ${args.proofLocation.latitude.toFixed(5)}, ${args.proofLocation.longitude.toFixed(5)}${accuracy}`,
+    );
+  }
+  if (args.stepCount !== undefined) {
+    details.push(`${args.stepCount.toLocaleString("en-IN")} legacy steps`);
+  }
+  return details;
+}
+
+function isImageUrl(value?: string) {
+  if (!value) return false;
+  return /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(value) || value.includes("convex.cloud");
+}
+
+function SessionActions() {
   return (
-    <article className={`stat-card ${tone}`}>
-      <div className="stat-icon">{icon}</div>
-      <div>
-        <p>{label}</p>
-        <strong>{value}</strong>
-      </div>
-    </article>
+    <div className="auth-actions">
+      <button className="secondary-button" onClick={() => window.location.reload()} type="button">
+        Retry
+      </button>
+      <SignOutButton>
+        <button className="primary-button" type="button">
+          Sign out
+        </button>
+      </SignOutButton>
+    </div>
   );
 }
 
-function LoadingScreen({ label }: { label: string }) {
+function LoadingScreen({
+  label,
+  showSessionActions = false,
+  userButton,
+}: {
+  label: string;
+  showSessionActions?: boolean;
+  userButton?: ReactNode;
+}) {
   return (
     <main className="setup-screen">
       <section className="setup-panel compact">
+        {userButton ? <div className="top-user">{userButton}</div> : null}
         <Loader2 className="spin" size={24} />
         <p>{label}</p>
+        {showSessionActions ? <SessionActions /> : null}
       </section>
     </main>
   );
@@ -232,84 +361,302 @@ function AccessBlocked({ userButton }: AppProps) {
     <main className="setup-screen">
       <section className="setup-panel compact">
         <div className="top-user">{userButton}</div>
+        <LockKeyhole size={26} />
         <p className="eyebrow">Pact Raven Admin</p>
         <h1>Admin access required</h1>
-        <p>The signed-in account is not in Convex `ADMIN_EMAILS`.</p>
+        <p>The signed-in account is not listed in Convex ADMIN_EMAILS.</p>
       </section>
     </main>
   );
 }
 
+function AuthIssue({
+  detail,
+  userButton,
+}: AppProps & {
+  detail: string;
+}) {
+  return (
+    <main className="setup-screen">
+      <section className="setup-panel compact">
+        <div className="top-user">{userButton}</div>
+        <AlertTriangle size={26} />
+        <p className="eyebrow">Pact Raven Admin</p>
+        <h1>Session did not finish</h1>
+        <p>{detail}</p>
+        <SessionActions />
+      </section>
+    </main>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  meta,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  meta?: string;
+  tone?: "neutral" | "good" | "warn" | "bad";
+}) {
+  return (
+    <article className={`metric-card ${tone}`}>
+      <p>{label}</p>
+      <strong>{value}</strong>
+      {meta ? <span>{meta}</span> : null}
+    </article>
+  );
+}
+
+function QueueCard({
+  label,
+  value,
+  icon,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  icon: ReactNode;
+  tone?: "neutral" | "warn" | "bad";
+}) {
+  return (
+    <article className={`queue-card ${tone}`}>
+      <div className="queue-icon">{icon}</div>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+    </article>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="empty-state">
+      {icon}
+      <h2>{title}</h2>
+      <p>{body}</p>
+    </div>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  inputMode,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  inputMode?: "decimal" | "text";
+  type?: "date" | "text";
+}) {
+  return (
+    <label>
+      {label}
+      <input
+        inputMode={inputMode}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        type={type}
+        value={value}
+      />
+    </label>
+  );
+}
+
+function ProofBlock({
+  goalType,
+  proofUrl,
+  proofPrompt,
+  proofLocation,
+  submissionStatement,
+  stepCount,
+}: {
+  goalType: "content" | "workout";
+  proofUrl?: string;
+  proofPrompt?: string;
+  proofLocation?: ProofLocation;
+  submissionStatement?: string;
+  stepCount?: number;
+}) {
+  const details = proofDetails({
+    goalType,
+    proofUrl,
+    proofPrompt,
+    proofLocation,
+    submissionStatement,
+    stepCount,
+  });
+
+  return (
+    <div className="proof-block">
+      {proofUrl ? (
+        isImageUrl(proofUrl) ? (
+          <a href={proofUrl} rel="noreferrer" target="_blank">
+            <img alt="Submitted proof" src={proofUrl} />
+          </a>
+        ) : (
+          <a href={proofUrl} rel="noreferrer" target="_blank">
+            {proofUrl}
+          </a>
+        )
+      ) : (
+        <span>{goalType === "workout" ? "Waiting for camera proof" : "Waiting for post link"}</span>
+      )}
+      {details.length > 0 ? (
+        <ul>
+          {details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 export function App({ userButton }: AppProps) {
   const { isLoading: authLoading, isAuthenticated } = useConvexAuth();
-  const upsertCurrentUser = useMutation(api.users.upsertCurrentUser);
-  const seedInitialBetaCohort = useMutation(api.betaOps.seedInitialBetaCohort);
-  const recordSubmission = useMutation(api.betaOps.recordSubmission);
-  const recordPaymentReceived = useMutation(api.betaOps.recordPaymentReceived);
-  const recordRefundPaid = useMutation(api.betaOps.recordRefundPaid);
+  const { isLoaded: clerkLoaded, isSignedIn: clerkSignedIn } = useClerkAuth();
+  const confirmPayment = useMutation(api.reviews.confirmPayment);
+  const recordManualPayout = useMutation(api.reviews.recordManualPayout);
+  const resolveEarlyEndSettlement = useMutation(api.reviews.resolveEarlyEndSettlement);
+  const approve = useMutation(api.reviews.approve);
+  const reject = useMutation(api.reviews.reject);
 
-  const [profileStatus, setProfileStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle");
+  const [tab, setTab] = useState<TabKey>("overview");
+  const [range, setRange] = useState<RangeKey>("allTime");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [forms, setForms] = useState<Record<string, RowForm>>({});
+  const [references, setReferences] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [payoutRefs, setPayoutRefs] = useState<Record<string, string>>({});
+  const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>({});
+  const [settlementRefunds, setSettlementRefunds] = useState<Record<string, string>>({});
+  const [settlementForfeits, setSettlementForfeits] = useState<Record<string, string>>({});
+  const [authWaitExpired, setAuthWaitExpired] = useState(false);
+  const [profileWaitExpired, setProfileWaitExpired] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || profileStatus !== "idle") return;
+    if (!authLoading) {
+      setAuthWaitExpired(false);
+      return;
+    }
 
-    let cancelled = false;
-    setProfileStatus("loading");
-    upsertCurrentUser()
-      .then(() => {
-        if (!cancelled) setProfileStatus("ready");
-      })
-      .catch(() => {
-        if (!cancelled) setProfileStatus("error");
-      });
+    const id = window.setTimeout(() => setAuthWaitExpired(true), 9000);
+    return () => window.clearTimeout(id);
+  }, [authLoading]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated, profileStatus, upsertCurrentUser]);
+  const adminSession = useQuery(
+    api.users.adminSession,
+    isAuthenticated ? {} : "skip",
+  ) as AdminSession | undefined;
+  const loadingAdminSession = isAuthenticated && adminSession === undefined;
 
-  const currentUser = useQuery(
-    api.users.current,
-    profileStatus === "ready" ? {} : "skip",
-  );
+  useEffect(() => {
+    if (!loadingAdminSession) {
+      setProfileWaitExpired(false);
+      return;
+    }
+
+    const id = window.setTimeout(() => setProfileWaitExpired(true), 9000);
+    return () => window.clearTimeout(id);
+  }, [loadingAdminSession]);
+
   const overview = useQuery(
-    api.betaOps.overview,
-    currentUser?.role === "admin" ? {} : "skip",
-  ) as BetaOverview | undefined;
+    api.reviews.adminOverview,
+    adminSession?.role === "admin" ? {} : "skip",
+  ) as AdminOverview | undefined;
 
-  if (authLoading || profileStatus === "idle" || profileStatus === "loading") {
-    return <LoadingScreen label="Preparing admin session" />;
+  const oldestPendingProofAge = useMemo(() => {
+    if (!overview || overview.pendingReviews.length === 0) return "N/A";
+    const oldest = [...overview.pendingReviews].sort((a, b) =>
+      a.checkIn.submittedAt.localeCompare(b.checkIn.submittedAt),
+    )[0];
+    return ageLabel(oldest.checkIn.submittedAt);
+  }, [overview]);
+
+  if (authLoading && !authWaitExpired) {
+    return (
+      <LoadingScreen
+        label="Preparing admin session"
+        showSessionActions
+        userButton={userButton}
+      />
+    );
   }
 
-  if (profileStatus === "error") {
-    return <LoadingScreen label="Could not prepare admin profile" />;
+  if (authLoading) {
+    return (
+      <AuthIssue
+        detail="Clerk is signed in, but Convex has not confirmed the session token yet."
+        userButton={userButton}
+      />
+    );
   }
 
-  if (currentUser === undefined)
-    return <LoadingScreen label="Loading profile" />;
-  if (currentUser.role !== "admin")
-    return <AccessBlocked userButton={userButton} />;
-  if (!overview) return <LoadingScreen label="Loading dashboard" />;
-  const loadedOverview = overview;
-
-  function rowForm(row: CommitmentRow) {
-    return forms[row.id] ?? defaultForm(row, loadedOverview.today);
+  if (!isAuthenticated) {
+    return (
+      <AuthIssue
+        detail={
+          clerkLoaded && clerkSignedIn
+            ? "Clerk is signed in, but Convex did not accept this session token."
+            : "The admin session is no longer signed in."
+        }
+        userButton={userButton}
+      />
+    );
   }
 
-  function updateForm(row: CommitmentRow, patch: Partial<RowForm>) {
-    setForms((current) => ({
-      ...current,
-      [row.id]: {
-        ...rowForm(row),
-        ...patch,
-      },
-    }));
+  if (loadingAdminSession) {
+    if (profileWaitExpired) {
+      return (
+        <AuthIssue
+          detail="Convex accepted the session, but the admin session query did not finish."
+          userButton={userButton}
+        />
+      );
+    }
+
+    return (
+      <LoadingScreen
+        label="Preparing admin profile"
+        showSessionActions
+        userButton={userButton}
+      />
+    );
   }
+
+  if (adminSession?.role !== "admin") return <AccessBlocked userButton={userButton} />;
+  if (!overview) {
+    return <LoadingScreen label="Loading dashboard" showSessionActions userButton={userButton} />;
+  }
+
+  const metrics = overview.metrics[range];
+  const tabCounts: Record<TabKey, number> = {
+    overview: 0,
+    deposits: overview.pendingPayments.length + overview.slotPurchases.length,
+    today: overview.todayCheckIns.length,
+    reviews: overview.pendingReviews.length,
+    refunds: overview.payoutRequests.length + overview.payoutBalances.length,
+    settlements: overview.earlyEndSettlements.length,
+    ledger: overview.recentLedger.length,
+  };
 
   async function runAction(id: string, action: () => Promise<unknown>) {
     setBusyId(id);
@@ -324,47 +671,67 @@ export function App({ userButton }: AppProps) {
     }
   }
 
-  async function seedCohort() {
-    await runAction("seed", () => seedInitialBetaCohort({}));
-  }
-
-  async function submit(row: CommitmentRow, status: "approved" | "missed") {
-    const form = rowForm(row);
-    await runAction(`${row.id}:${status}`, () =>
-      recordSubmission({
-        commitmentId: row.id,
-        date: form.submissionDate,
-        status,
-        proofUrl: form.proofUrl.trim() || undefined,
-        note: form.submissionNote.trim() || undefined,
+  async function handleConfirmPayment(commitmentId: Id<"commitments">) {
+    await runAction(`deposit:${commitmentId}`, () =>
+      confirmPayment({
+        commitmentId,
+        reference: references[commitmentId]?.trim() || undefined,
+        note: notes[commitmentId]?.trim() || undefined,
       }),
     );
+    setReferences((current) => ({ ...current, [commitmentId]: "" }));
+    setNotes((current) => ({ ...current, [commitmentId]: "" }));
   }
 
-  async function payment(row: CommitmentRow) {
-    const form = rowForm(row);
-    await runAction(`${row.id}:payment`, () =>
-      recordPaymentReceived({
-        commitmentId: row.id,
-        amount: Number(form.paymentAmount),
-        occurredAt: form.paymentDate,
-        externalReference: form.paymentReference.trim() || undefined,
-        note: form.paymentNote.trim() || undefined,
-      }),
-    );
+  async function handleApprove(checkInId: Id<"checkIns">) {
+    await runAction(`approve:${checkInId}`, () => approve({ checkInId }));
   }
 
-  async function refund(row: CommitmentRow) {
-    const form = rowForm(row);
-    await runAction(`${row.id}:refund`, () =>
-      recordRefundPaid({
-        commitmentId: row.id,
-        amount: Number(form.refundAmount),
-        occurredAt: form.refundDate,
-        externalReference: form.refundReference.trim() || undefined,
-        note: form.refundNote.trim() || undefined,
+  async function handleReject(checkInId: Id<"checkIns">) {
+    const reason = reasons[checkInId]?.trim();
+    if (!reason) {
+      setNotice("Add a rejection reason first");
+      return;
+    }
+    await runAction(`reject:${checkInId}`, () => reject({ checkInId, reason }));
+    setReasons((current) => ({ ...current, [checkInId]: "" }));
+  }
+
+  async function handlePayout(args: {
+    userId: Id<"users">;
+    amount: number;
+    currency: string;
+    requestId?: Id<"manualPayoutRequests">;
+  }) {
+    const key = args.requestId ?? `${args.userId}:${args.currency}`;
+    await runAction(`payout:${key}`, () =>
+      recordManualPayout({
+        userId: args.userId,
+        amount: args.amount,
+        currency: args.currency,
+        requestId: args.requestId,
+        reference: payoutRefs[key]?.trim() || undefined,
+        note: payoutNotes[key]?.trim() || undefined,
       }),
     );
+    setPayoutRefs((current) => ({ ...current, [key]: "" }));
+    setPayoutNotes((current) => ({ ...current, [key]: "" }));
+  }
+
+  async function handleSettlement(requestId: Id<"earlyEndSettlementRequests">) {
+    await runAction(`settlement:${requestId}`, () =>
+      resolveEarlyEndSettlement({
+        requestId,
+        refundAmount: Number(settlementRefunds[requestId] || 0),
+        forfeitAmount: Number(settlementForfeits[requestId] || 0),
+        reference: references[requestId]?.trim() || undefined,
+        note: notes[requestId]?.trim() || undefined,
+      }),
+    );
+    setSettlementRefunds((current) => ({ ...current, [requestId]: "" }));
+    setSettlementForfeits((current) => ({ ...current, [requestId]: "" }));
+    setReferences((current) => ({ ...current, [requestId]: "" }));
+    setNotes((current) => ({ ...current, [requestId]: "" }));
   }
 
   return (
@@ -372,7 +739,7 @@ export function App({ userButton }: AppProps) {
       <header className="app-header">
         <div>
           <p className="eyebrow">Pact Raven Admin</p>
-          <h1>Beta Ops</h1>
+          <h1>Ops</h1>
         </div>
         <div className="header-actions">
           {notice ? <span className="notice">{notice}</span> : null}
@@ -380,340 +747,247 @@ export function App({ userButton }: AppProps) {
         </div>
       </header>
 
-      {!loadedOverview.isSeeded ? (
-        <section className="empty-state">
-          <Database size={30} />
-          <h2>Seed beta cohort</h2>
-          <button
-            className="primary-button"
-            disabled={busyId === "seed"}
-            onClick={seedCohort}
-            type="button"
-          >
-            {busyId === "seed" ? (
-              <Loader2 className="spin" size={16} />
-            ) : (
-              <Plus size={16} />
-            )}
-            Seed 3 users
+      <section className="control-row" aria-label="Dashboard controls">
+        <div className="range-switch" role="tablist" aria-label="Metric range">
+          <button className={range === "allTime" ? "selected" : ""} onClick={() => setRange("allTime")} type="button">
+            All-time
           </button>
+          <button className={range === "last30Days" ? "selected" : ""} onClick={() => setRange("last30Days")} type="button">
+            30d
+          </button>
+        </div>
+        <nav className="tab-row" aria-label="Admin sections">
+          {TABS.map((item) => (
+            <button
+              className={tab === item.key ? "selected" : ""}
+              key={item.key}
+              onClick={() => setTab(item.key)}
+              type="button"
+            >
+              {item.label}
+              {tabCounts[item.key] > 0 ? <span>{tabCounts[item.key]}</span> : null}
+            </button>
+          ))}
+        </nav>
+      </section>
+
+      {tab === "overview" ? (
+        <section className="stack">
+          <div className="metrics-grid">
+            <MetricCard label="Users creating pact" value={formatPercent(metrics.usersCreatingPact)} meta={ratioLabel(metrics.usersCreatingPact)} />
+            <MetricCard label="Draft to deposit paid" value={formatPercent(metrics.draftToDepositPaid)} meta={ratioLabel(metrics.draftToDepositPaid)} />
+            <MetricCard label="Avg deposit amount" value={formatCurrency(metrics.averageDepositAmount.amount, metrics.averageDepositAmount.currency)} meta={`${metrics.averageDepositAmount.count} deposits`} />
+            <MetricCard label="Active pacts" value={String(metrics.activePacts)} meta="live now" />
+            <MetricCard label="Proof submission rate" value={formatPercent(metrics.proofSubmissionRate)} meta={ratioLabel(metrics.proofSubmissionRate)} />
+            <MetricCard label="Proof approval rate" value={formatPercent(metrics.proofApprovalRate)} meta={ratioLabel(metrics.proofApprovalRate)} />
+            <MetricCard label="Pact completion rate" value={formatPercent(metrics.pactCompletionRate)} meta={ratioLabel(metrics.pactCompletionRate)} />
+            <MetricCard label="Early quit rate" value={formatPercent(metrics.earlyQuitRate)} meta={ratioLabel(metrics.earlyQuitRate)} tone={metrics.earlyQuitRate.value && metrics.earlyQuitRate.value > 0 ? "warn" : "neutral"} />
+            <MetricCard label="Repeat pact rate" value={formatPercent(metrics.repeatPactRate)} meta={ratioLabel(metrics.repeatPactRate)} />
+            <MetricCard label="Refund request rate" value={formatPercent(metrics.refundRequestRate)} meta={ratioLabel(metrics.refundRequestRate)} />
+            <MetricCard label="Deposit liability locked" value={formatCurrency(metrics.depositLiabilityLocked.amount, metrics.depositLiabilityLocked.currency)} />
+            <MetricCard label="Forfeited to charity" value={formatCurrency(metrics.forfeitedToCharity.amount, metrics.forfeitedToCharity.currency)} />
+            <MetricCard label="Pending payout amount" value={formatCurrency(metrics.pendingPayoutAmount.amount, metrics.pendingPayoutAmount.currency)} tone={metrics.pendingPayoutAmount.amount > 0 ? "warn" : "neutral"} />
+            <MetricCard label="Median review time" value={formatDuration(metrics.medianReviewMinutes)} />
+          </div>
+
+          <div className="queue-grid">
+            <QueueCard icon={<CreditCard size={18} />} label="Pending deposits" value={String(overview.pendingPayments.length)} tone={overview.pendingPayments.length > 0 ? "warn" : "neutral"} />
+            <QueueCard icon={<ShieldCheck size={18} />} label="Pending proof reviews" value={String(overview.pendingReviews.length)} tone={overview.pendingReviews.length > 0 ? "warn" : "neutral"} />
+            <QueueCard icon={<Clock3 size={18} />} label="Oldest pending proof" value={oldestPendingProofAge} tone={oldestPendingProofAge === "N/A" ? "neutral" : "bad"} />
+            <QueueCard icon={<WalletCards size={18} />} label="Pending payouts" value={String(overview.payoutRequests.length + overview.payoutBalances.length)} tone={overview.payoutRequests.length + overview.payoutBalances.length > 0 ? "warn" : "neutral"} />
+            <QueueCard icon={<AlertTriangle size={18} />} label="Early-end settlements" value={String(overview.earlyEndSettlements.length)} tone={overview.earlyEndSettlements.length > 0 ? "warn" : "neutral"} />
+          </div>
         </section>
-      ) : (
-        <>
-          <section className="stats-grid" aria-label="Beta totals">
-            <StatCard
-              icon={<IndianRupee size={20} />}
-              label="Paid received"
-              value={formatCurrency(loadedOverview.totals.paidReceived)}
-              tone="good"
-            />
-            <StatCard
-              icon={<WalletCards size={20} />}
-              label="Refund paid"
-              value={formatCurrency(loadedOverview.totals.refundPaid)}
-            />
-            <StatCard
-              icon={<CircleDollarSign size={20} />}
-              label="Pending refund"
-              value={formatCurrency(loadedOverview.totals.pendingRefund)}
-              tone={
-                loadedOverview.totals.pendingRefund > 0 ? "warn" : "neutral"
-              }
-            />
-            <StatCard
-              icon={<CalendarClock size={20} />}
-              label="Remaining submissions"
-              value={String(loadedOverview.totals.remainingSubmissions)}
-            />
-          </section>
+      ) : null}
 
-          <section className="dashboard-grid">
-            <div className="panel wide">
-              <div className="panel-heading">
-                <div>
-                  <h2>Commitments</h2>
-                  <p>
-                    {loadedOverview.totals.activeUsers} users,{" "}
-                    {loadedOverview.totals.activeCommitments} commitments
-                  </p>
+      {tab === "deposits" ? (
+        <section className="stack">
+          {overview.slotPurchases.length === 0 && overview.pendingPayments.length === 0 ? (
+            <EmptyState icon={<CreditCard size={26} />} title="No pending deposits" body="Pending slot payments and pact deposits will appear here." />
+          ) : null}
+          {overview.slotPurchases.map((row) => (
+            <article className="ops-card" key={row.id}>
+              <CardHeader icon={<CreditCard size={18} />} title={row.user.label} meta={row.razorpayOrderId ?? formatDateTime(row.createdAt)} amount={formatCurrency(row.amount, row.currency)} />
+              <p>Pending Pact Pass payment. Inspect the Razorpay order if payment verification did not return.</p>
+            </article>
+          ))}
+          {overview.pendingPayments.map((row) => {
+            const id = row.commitment.id;
+            return (
+              <article className="ops-card" key={id}>
+                <CardHeader icon={<IndianRupee size={18} />} title={row.commitment.name} meta={`${row.user.label} - ${formatDate(row.commitment.startDate)}`} amount={formatCurrency(row.commitment.pactAmount, row.commitment.currency)} />
+                <div className="form-grid">
+                  <TextField label="Payment reference" onChange={(value) => setReferences((current) => ({ ...current, [id]: value }))} placeholder="Razorpay/UPI id" value={references[id] ?? ""} />
+                  <TextField label="Internal note" onChange={(value) => setNotes((current) => ({ ...current, [id]: value }))} placeholder="Optional" value={notes[id] ?? ""} />
+                  <button className="primary-button" disabled={busyId === `deposit:${id}`} onClick={() => handleConfirmPayment(id)} type="button">
+                    <Check size={15} />
+                    Confirm deposit
+                  </button>
                 </div>
-                <button
-                  className="secondary-button"
-                  disabled={busyId === "seed"}
-                  onClick={seedCohort}
-                  title="Sync initial beta records"
-                  type="button"
-                >
-                  <RefreshCw size={15} />
-                  Sync seed
-                </button>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
+
+      {tab === "today" ? (
+        <section className="stack">
+          {overview.todayCheckIns.length === 0 ? (
+            <EmptyState icon={<CalendarClock size={26} />} title="No proof due today" body="Scheduled proof days for active pacts will appear here." />
+          ) : (
+            overview.todayCheckIns.map((row) => (
+              <article className={`ops-card status-${row.status}`} key={`${row.commitment.id}:${row.date}`}>
+                <CardHeader icon={<CalendarClock size={18} />} title={row.commitment.name} meta={`${row.user.label} - ${formatDate(row.date)}`} amount={statusLabel(row.status)} />
+                <ProofBlock goalType={row.commitment.goalType} proofLocation={row.proofLocation} proofPrompt={row.proofPrompt} proofUrl={row.proofUrl} stepCount={row.stepCount} submissionStatement={row.submissionStatement} />
+              </article>
+            ))
+          )}
+        </section>
+      ) : null}
+
+      {tab === "reviews" ? (
+        <section className="stack">
+          {overview.pendingReviews.length === 0 ? (
+            <EmptyState icon={<ShieldCheck size={26} />} title="No proof waiting" body="Submitted proof appears here before it is approved or rejected." />
+          ) : (
+            overview.pendingReviews.map((row) => {
+              const id = row.checkIn.id;
+              return (
+                <article className="ops-card review-card" key={id}>
+                  <CardHeader icon={<ShieldCheck size={18} />} title={row.commitment.name} meta={`${userLabel(row.user)} - ${formatDate(row.checkIn.date)}`} amount={formatCurrency(row.commitment.refundPerDay, row.commitment.currency)} />
+                  <p>{userContact(row.user)} - submitted {formatDateTime(row.checkIn.submittedAt)}</p>
+                  <ProofBlock goalType={row.commitment.goalType} proofLocation={row.checkIn.proofLocation} proofPrompt={row.checkIn.proofPrompt} proofUrl={row.checkIn.proofUrl} stepCount={row.checkIn.stepCount} submissionStatement={row.checkIn.submissionStatement} />
+                  <div className="form-grid review-actions">
+                    <TextField label="Rejection reason" onChange={(value) => setReasons((current) => ({ ...current, [id]: value }))} placeholder="Required if rejecting" value={reasons[id] ?? ""} />
+                    <button className="success-button" disabled={busyId === `approve:${id}`} onClick={() => handleApprove(id)} type="button">
+                      <Check size={15} />
+                      Approve
+                    </button>
+                    <button className="danger-button" disabled={busyId === `reject:${id}`} onClick={() => handleReject(id)} type="button">
+                      <X size={15} />
+                      Reject
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </section>
+      ) : null}
+
+      {tab === "refunds" ? (
+        <section className="stack">
+          {overview.payoutRequests.length === 0 && overview.payoutBalances.length === 0 ? (
+            <EmptyState icon={<WalletCards size={26} />} title="No refund payouts pending" body="Approved refund credit and user payout requests appear here." />
+          ) : null}
+          {overview.payoutRequests.map((row) => {
+            const key = row.id;
+            return (
+              <article className="ops-card" key={row.id}>
+                <CardHeader icon={<WalletCards size={18} />} title={`${row.user.label} requested payout`} meta={`${row.payeeName ?? "UPI"} - ${row.upiId ?? "No UPI"}`} amount={formatCurrency(row.amount, row.currency)} />
+                <div className="form-grid">
+                  <TextField label="Payout reference" onChange={(value) => setPayoutRefs((current) => ({ ...current, [key]: value }))} placeholder="UPI transaction id" value={payoutRefs[key] ?? ""} />
+                  <TextField label="Payout note" onChange={(value) => setPayoutNotes((current) => ({ ...current, [key]: value }))} placeholder="Optional" value={payoutNotes[key] ?? ""} />
+                  <button className="primary-button" disabled={busyId === `payout:${key}`} onClick={() => handlePayout({ userId: row.user.id, amount: row.amount, currency: row.currency, requestId: row.id })} type="button">
+                    <Check size={15} />
+                    Record payout
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+          {overview.payoutBalances.map((row) => {
+            const key = `${row.user.id}:${row.currency}`;
+            return (
+              <article className="ops-card" key={key}>
+                <CardHeader icon={<WalletCards size={18} />} title={row.user.label} meta="Approved refund credit without request" amount={formatCurrency(row.amount, row.currency)} />
+                <div className="form-grid">
+                  <TextField label="Payout reference" onChange={(value) => setPayoutRefs((current) => ({ ...current, [key]: value }))} placeholder="UPI transaction id" value={payoutRefs[key] ?? ""} />
+                  <TextField label="Payout note" onChange={(value) => setPayoutNotes((current) => ({ ...current, [key]: value }))} placeholder="Optional" value={payoutNotes[key] ?? ""} />
+                  <button className="secondary-button" disabled={busyId === `payout:${key}`} onClick={() => handlePayout({ userId: row.user.id, amount: row.amount, currency: row.currency })} type="button">
+                    <Check size={15} />
+                    Record payout
+                  </button>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      ) : null}
+
+      {tab === "settlements" ? (
+        <section className="stack">
+          {overview.earlyEndSettlements.length === 0 ? (
+            <EmptyState icon={<AlertTriangle size={26} />} title="No early-end settlements" body="Pacts ended early will wait here until refund and forfeit amounts are recorded." />
+          ) : (
+            overview.earlyEndSettlements.map((row) => {
+              const id = row.id;
+              return (
+                <article className="ops-card" key={id}>
+                  <CardHeader icon={<AlertTriangle size={18} />} title={row.commitment.name} meta={`${row.user.label} - ${formatDateTime(row.requestedAt)}`} amount={formatCurrency(row.commitment.pactAmount, row.commitment.currency)} />
+                  {row.reason ? <p>{row.reason}</p> : null}
+                  <div className="form-grid settlement-grid">
+                    <TextField inputMode="decimal" label="Refund amount" onChange={(value) => setSettlementRefunds((current) => ({ ...current, [id]: value }))} value={settlementRefunds[id] ?? ""} />
+                    <TextField inputMode="decimal" label="Forfeit amount" onChange={(value) => setSettlementForfeits((current) => ({ ...current, [id]: value }))} value={settlementForfeits[id] ?? ""} />
+                    <TextField label="Reference" onChange={(value) => setReferences((current) => ({ ...current, [id]: value }))} placeholder="Optional" value={references[id] ?? ""} />
+                    <TextField label="Note" onChange={(value) => setNotes((current) => ({ ...current, [id]: value }))} placeholder="Optional" value={notes[id] ?? ""} />
+                    <button className="primary-button" disabled={busyId === `settlement:${id}`} onClick={() => handleSettlement(id)} type="button">
+                      <Check size={15} />
+                      Resolve
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </section>
+      ) : null}
+
+      {tab === "ledger" ? (
+        <section className="ledger-list">
+          {overview.recentLedger.map((entry) => (
+            <article className={`ledger-row ${entry.type}`} key={entry.id}>
+              <div>
+                <strong>{ledgerLabel(entry.type)}</strong>
+                <span>
+                  {entry.user.label}
+                  {entry.commitment ? ` - ${entry.commitment.name}` : ""}
+                </span>
+                {entry.note ? <small>{entry.note}</small> : null}
               </div>
-              <div className="commitment-list">
-                {loadedOverview.commitments.map((row) => {
-                  const form = rowForm(row);
-                  return (
-                    <article className="commitment-row" key={row.id}>
-                      <div className="row-main">
-                        <div className="avatar">
-                          <UserRound size={18} />
-                        </div>
-                        <div>
-                          <h3>
-                            {row.user.name} · {row.title}
-                          </h3>
-                          <p>
-                            {row.frequencyLabel} ·{" "}
-                            {formatCurrency(row.amountPerSubmission)} each ·{" "}
-                            {formatDate(row.nextDueDate)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="money-grid">
-                        <span>
-                          Paid
-                          <strong>
-                            {formatCurrency(row.totals.paidReceived)}
-                          </strong>
-                        </span>
-                        <span>
-                          Earned
-                          <strong>
-                            {formatCurrency(row.totals.refundEarned)}
-                          </strong>
-                        </span>
-                        <span>
-                          Refunded
-                          <strong>
-                            {formatCurrency(row.totals.refundPaid)}
-                          </strong>
-                        </span>
-                        <span>
-                          Pending
-                          <strong>
-                            {formatCurrency(row.totals.pendingRefund)}
-                          </strong>
-                        </span>
-                        <span>
-                          Left
-                          <strong>{row.remainingSubmissions}</strong>
-                        </span>
-                      </div>
-
-                      <div className="action-grid">
-                        <label>
-                          Submission date
-                          <input
-                            type="date"
-                            value={form.submissionDate}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                submissionDate: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Proof URL
-                          <input
-                            value={form.proofUrl}
-                            onChange={(event) =>
-                              updateForm(row, { proofUrl: event.target.value })
-                            }
-                            placeholder="https://..."
-                          />
-                        </label>
-                        <label>
-                          Submission note
-                          <input
-                            value={form.submissionNote}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                submissionNote: event.target.value,
-                              })
-                            }
-                            placeholder="Optional"
-                          />
-                        </label>
-                        <div className="button-row">
-                          <button
-                            className="success-button"
-                            disabled={busyId === `${row.id}:approved`}
-                            onClick={() => submit(row, "approved")}
-                            type="button"
-                          >
-                            <Check size={15} />
-                            Approved
-                          </button>
-                          <button
-                            className="danger-button"
-                            disabled={busyId === `${row.id}:missed`}
-                            onClick={() => submit(row, "missed")}
-                            type="button"
-                          >
-                            <X size={15} />
-                            Missed
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="action-grid compact-actions">
-                        <label>
-                          Payment
-                          <input
-                            inputMode="decimal"
-                            value={form.paymentAmount}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                paymentAmount: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Payment date
-                          <input
-                            type="date"
-                            value={form.paymentDate}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                paymentDate: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Payment ref
-                          <input
-                            value={form.paymentReference}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                paymentReference: event.target.value,
-                              })
-                            }
-                            placeholder="UPI/ref"
-                          />
-                        </label>
-                        <button
-                          className="secondary-button action-button"
-                          disabled={busyId === `${row.id}:payment`}
-                          onClick={() => payment(row)}
-                          type="button"
-                        >
-                          <IndianRupee size={15} />
-                          Log payment
-                        </button>
-                      </div>
-
-                      <div className="action-grid compact-actions">
-                        <label>
-                          Refund
-                          <input
-                            inputMode="decimal"
-                            value={form.refundAmount}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                refundAmount: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Refund date
-                          <input
-                            type="date"
-                            value={form.refundDate}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                refundDate: event.target.value,
-                              })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Refund ref
-                          <input
-                            value={form.refundReference}
-                            onChange={(event) =>
-                              updateForm(row, {
-                                refundReference: event.target.value,
-                              })
-                            }
-                            placeholder="UPI/ref"
-                          />
-                        </label>
-                        <button
-                          className="secondary-button action-button"
-                          disabled={busyId === `${row.id}:refund`}
-                          onClick={() => refund(row)}
-                          type="button"
-                        >
-                          <WalletCards size={15} />
-                          Log refund
-                        </button>
-                      </div>
-                    </article>
-                  );
-                })}
+              <div>
+                <strong>{formatCurrency(entry.amount, entry.currency)}</strong>
+                <span>{formatDateTime(entry.createdAt)}</span>
               </div>
-            </div>
-
-            <aside className="side-column">
-              <section className="panel">
-                <div className="panel-heading">
-                  <h2>Next Due</h2>
-                </div>
-                <div className="mini-list">
-                  {loadedOverview.upcoming.slice(0, 8).map((item) => (
-                    <div
-                      className="mini-row"
-                      key={`${item.commitmentId}:${item.date}`}
-                    >
-                      <span>{formatDate(item.date)}</span>
-                      <strong>
-                        {item.user.name} · {item.title}
-                      </strong>
-                      <small>
-                        {formatCurrency(
-                          item.amountPerSubmission,
-                          item.currency,
-                        )}
-                      </small>
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              <section className="panel">
-                <div className="panel-heading">
-                  <h2>Ledger</h2>
-                </div>
-                <div className="ledger-list">
-                  {loadedOverview.recentLedger.slice(0, 12).map((entry) => (
-                    <div className={`ledger-row ${entry.type}`} key={entry.id}>
-                      <div>
-                        <strong>{ledgerLabel(entry.type)}</strong>
-                        <span>
-                          {entry.user.name}
-                          {entry.commitment
-                            ? ` · ${entry.commitment.title}`
-                            : ""}
-                        </span>
-                      </div>
-                      <div>
-                        <strong>
-                          {formatCurrency(entry.amount, entry.currency)}
-                        </strong>
-                        <span>{formatDate(entry.occurredAt)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </aside>
-          </section>
-        </>
-      )}
+            </article>
+          ))}
+        </section>
+      ) : null}
     </main>
+  );
+}
+
+function CardHeader({
+  icon,
+  title,
+  meta,
+  amount,
+}: {
+  icon: ReactNode;
+  title: string;
+  meta: string;
+  amount: string;
+}) {
+  return (
+    <div className="card-header">
+      <div className="card-title-row">
+        <div className="card-icon">{icon}</div>
+        <div>
+          <h2>{title}</h2>
+          <span>{meta}</span>
+        </div>
+      </div>
+      <strong>{amount}</strong>
+    </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   type MutationCtx,
   type QueryCtx,
 } from "./_generated/server";
-import { requireAdmin } from "./lib/auth";
+import { requireAdmin, requireAdminIdentity } from "./lib/auth";
 import {
   addDays,
   daysBetween,
@@ -24,6 +24,7 @@ import {
   notifyManualPayoutRecorded,
   notifyPaymentConfirmed,
 } from "./lib/notifications";
+import { calculateAdminMetrics } from "./lib/adminMetrics";
 import { consumeSlotForCommitment } from "./lib/pactPasses";
 import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
@@ -128,7 +129,7 @@ async function pendingReviewRows(ctx: QueryCtx) {
 export const listPending = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireAdminIdentity(ctx);
     return await pendingReviewRows(ctx);
   },
 });
@@ -136,7 +137,15 @@ export const listPending = query({
 export const adminOverview = query({
   args: {},
   handler: async (ctx) => {
-    await requireAdmin(ctx);
+    await requireAdminIdentity(ctx);
+    const today = todayInTimeZone("Asia/Kolkata");
+    const last30SinceDate = addDays(today, -29);
+    const last30SinceIso = `${last30SinceDate}T00:00:00.000Z`;
+    const allUsers = await ctx.db.query("users").collect();
+    const allCommitments = await ctx.db.query("commitments").collect();
+    const allCheckIns = await ctx.db.query("checkIns").collect();
+    const allLedgerEntries = await ctx.db.query("walletLedgerEntries").collect();
+    const allPayoutRequests = await ctx.db.query("manualPayoutRequests").collect();
 
     const pendingDepositCommitments = await ctx.db
       .query("commitments")
@@ -192,10 +201,9 @@ export const adminOverview = query({
       });
     }
 
-    const activeCommitments = await ctx.db
-      .query("commitments")
-      .withIndex("by_status", (q) => q.eq("status", "active"))
-      .take(300);
+    const activeCommitments = allCommitments
+      .filter((commitment) => commitment.status === "active")
+      .slice(0, 300);
 
     const todayCheckIns = [];
     for (const commitment of activeCommitments) {
@@ -248,9 +256,8 @@ export const adminOverview = query({
 
     const pendingReviews = await pendingReviewRows(ctx);
 
-    const users = await ctx.db.query("users").take(300);
     const payoutBalances = [];
-    for (const user of users) {
+    for (const user of allUsers.slice(0, 300)) {
       const balances = await payoutBalanceByCurrency(ctx, user._id, {
         reservePendingRequests: true,
       });
@@ -269,10 +276,9 @@ export const adminOverview = query({
       }
     }
 
-    const payoutRequestsRaw = await ctx.db
-      .query("manualPayoutRequests")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .take(100);
+    const payoutRequestsRaw = allPayoutRequests
+      .filter((request) => request.status === "pending")
+      .slice(0, 100);
     const payoutRequests = [];
     for (const request of payoutRequestsRaw) {
       const user = await ctx.db.get(request.userId);
@@ -360,7 +366,58 @@ export const adminOverview = query({
       });
     }
 
+    const metrics = calculateAdminMetrics({
+      users: allUsers.map((user) => ({
+        id: user._id,
+        role: user.role,
+        createdAt: user.createdAt,
+      })),
+      commitments: allCommitments.map((commitment) => ({
+        id: commitment._id,
+        userId: commitment.userId,
+        daysOfWeek: commitment.daysOfWeek,
+        startDate: commitment.startDate,
+        endDate: commitment.endDate,
+        status: commitment.status,
+        pactAmount: commitment.pactAmount,
+        currency: commitment.currency,
+        createdAt: commitment.createdAt,
+        paymentConfirmedAt: commitment.paymentConfirmedAt,
+        earlyEndSettlementStatus: commitment.earlyEndSettlementStatus,
+        earlyEndReason: commitment.earlyEndReason,
+      })),
+      checkIns: allCheckIns.map((checkIn) => ({
+        id: checkIn._id,
+        commitmentId: checkIn.commitmentId,
+        date: checkIn.date,
+        status: checkIn.status,
+        submittedAt: checkIn.submittedAt,
+        reviewedAt: checkIn.reviewedAt,
+        createdAt: checkIn.createdAt,
+      })),
+      ledgerEntries: allLedgerEntries.map((entry) => ({
+        userId: entry.userId,
+        commitmentId: entry.commitmentId,
+        amount: entry.amount,
+        currency: entry.currency,
+        type: entry.type,
+        destination: entry.destination,
+        createdAt: entry.createdAt,
+      })),
+      payoutRequests: allPayoutRequests.map((request) => ({
+        userId: request.userId,
+        amount: request.amount,
+        currency: request.currency,
+        status: request.status,
+        createdAt: request.createdAt,
+      })),
+      today,
+      last30SinceDate,
+      last30SinceIso,
+    });
+
     return {
+      metrics,
       slotPurchases: slotPurchases.sort((a, b) =>
         a.createdAt.localeCompare(b.createdAt),
       ),

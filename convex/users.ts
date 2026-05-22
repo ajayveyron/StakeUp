@@ -70,6 +70,21 @@ export const current = query({
   },
 });
 
+export const adminSession = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await requireClerkIdentity(ctx);
+    const email = identityEmail(identity);
+
+    return {
+      email,
+      displayName: identityName(identity),
+      imageUrl: normalizeImageUrl(identityImage(identity)),
+      role: isAdminEmail(email) ? "admin" : "user",
+    };
+  },
+});
+
 export const upsertCurrentUser = mutation({
   args: {},
   handler: async (ctx) => {

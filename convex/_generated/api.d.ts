@@ -13,6 +13,7 @@ import type * as checkIns from "../checkIns.js";
 import type * as commitments from "../commitments.js";
 import type * as crons from "../crons.js";
 import type * as http from "../http.js";
+import type * as lib_adminMetrics from "../lib/adminMetrics.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_charities from "../lib/charities.js";
 import type * as lib_dates from "../lib/dates.js";
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   commitments: typeof commitments;
   crons: typeof crons;
   http: typeof http;
+  "lib/adminMetrics": typeof lib_adminMetrics;
   "lib/auth": typeof lib_auth;
   "lib/charities": typeof lib_charities;
   "lib/dates": typeof lib_dates;
