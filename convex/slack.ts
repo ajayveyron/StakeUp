@@ -19,6 +19,7 @@ import {
   notifyPaymentConfirmed,
   notifyPaymentDiscarded,
 } from "./lib/notifications";
+import { consumeSlotForCommitment } from "./lib/pactPasses";
 import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
 type ReviewNotificationData = {
@@ -129,47 +130,6 @@ function locationLabel(location?: ProofLocation) {
       ? ` ±${Math.round(location.accuracy)}m`
       : "";
   return `Location: ${location.latitude.toFixed(5)}, ${location.longitude.toFixed(5)}${accuracy}\nMap: https://www.google.com/maps?q=${location.latitude},${location.longitude}`;
-}
-
-async function slotBalance(ctx: any, userId: Id<"users">) {
-  const entries = await ctx.db
-    .query("pactSlotLedgerEntries")
-    .withIndex("by_user", (q: any) => q.eq("userId", userId))
-    .collect();
-  return entries.reduce((total: number, entry: { quantity: number }) => {
-    return total + entry.quantity;
-  }, 0);
-}
-
-async function consumeSlotFromSlack(
-  ctx: any,
-  args: {
-    userId: Id<"users">;
-    commitmentId: Id<"commitments">;
-    externalReference: string;
-    reviewer: string;
-  },
-) {
-  const existing = await ctx.db
-    .query("pactSlotLedgerEntries")
-    .withIndex("by_commitment", (q: any) =>
-      q.eq("commitmentId", args.commitmentId),
-    )
-    .filter((q: any) => q.eq(q.field("type"), "slot_consumed"))
-    .first();
-  if (existing) return existing._id;
-  if ((await slotBalance(ctx, args.userId)) < 1) {
-    throw new Error("User has no unused pact slot");
-  }
-  return await ctx.db.insert("pactSlotLedgerEntries", {
-    userId: args.userId,
-    commitmentId: args.commitmentId,
-    type: "slot_consumed",
-    quantity: -1,
-    externalReference: args.externalReference,
-    note: `Pact slot consumed from Slack by ${args.reviewer}`,
-    createdAt: new Date().toISOString(),
-  });
 }
 
 async function callSlack(method: string, payload: Record<string, unknown>) {
@@ -577,11 +537,12 @@ export const activateCommitmentFromSlack = internalMutation({
       updatedAt: now,
     });
 
-    await consumeSlotFromSlack(ctx, {
+    await consumeSlotForCommitment(ctx, {
       userId: commitment.userId,
       commitmentId: commitment._id,
       externalReference: `slack:${args.slackUserId}`,
-      reviewer,
+      note: `Pact Pass consumed from Slack by ${reviewer}`,
+      coveredNote: `Covered first Pact Pass consumed from Slack by ${reviewer}`,
     });
 
     await ensureDepositLedgerEntry(ctx, {

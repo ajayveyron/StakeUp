@@ -4,14 +4,14 @@
 
 Pact Raven starts as a PWA/web app, while staying inside the Expo codebase so a future native iOS/Android move is easier.
 
-Pact Raven is a pact-slot product with payment collection handled through Razorpay and user payouts handled manually by UPI for the first cohorts. Users buy one non-refundable pact slot at a time. One pact slot unlocks one pact challenge.
+Pact Raven is a Pact Pass product with payment collection handled through Razorpay and user payouts handled manually by UPI for the first cohorts. A Pact Pass unlocks one pact challenge.
 
 Users pay:
 
-- A non-refundable Rs 249 pact slot fee. This is revenue for access to one pact challenge.
+- The first Pact Pass is covered once per account. After that, each Pact Pass costs Rs 249 and is revenue for access to one pact challenge.
 - A separate refundable pact deposit when they start a pact. This is recorded as a deposit liability, not revenue.
 
-Users can draft a pact before buying a slot. The pact becomes active only after the user has an unused slot and the separate deposit payment is confirmed. Starting a pact consumes one slot permanently. Users then submit proof by the daily deadline and wait for review. Approved submissions become refund credits. Rejected or missed days are forfeited to the charity selected when the pact was created.
+Users can draft a pact before buying or receiving a Pact Pass. The pact becomes active only after the user has an unused pass and the separate deposit payment is confirmed. Starting a pact consumes one pass permanently. Users then submit proof by the daily deadline and wait for review. Approved submissions become refund credits. Rejected or missed days are forfeited to the charity selected when the pact was created.
 
 ## Initial Commitment Types
 
@@ -60,19 +60,20 @@ Rejected or missed days should be shown as `Forfeited to charity`, with the sele
 
 ## Fee Positioning
 
-Pact Raven charges users per pact slot.
+Pact Raven charges users per Pact Pass after the covered first pass.
 
 Starting price:
 
-- Rs 249 non-refundable pact slot fee.
+- First Pact Pass covered once per account.
+- Rs 249 non-refundable Pact Pass fee from the second pass onward.
 
 Recovery offer:
 
-- Do not discount by default during the first slot test.
+- Do not discount by default after the covered first pass.
 
 Recommended copy:
 
-"Buy one pact slot for Rs 249. The slot fee is non-refundable and unlocks one pact challenge. When you start the pact, you lock a separate refundable deposit. Approved proof creates refund credit. Missed or rejected proof is forfeited to the charity you selected before starting."
+"Your first Pact Pass is covered. After that, each Pact Pass is Rs 249. A Pact Pass unlocks one pact challenge. When you start the pact, you lock a separate refundable deposit. Approved proof creates refund credit. Missed or rejected proof is forfeited to the charity you selected before starting."
 
 ## Copy Rules
 
@@ -81,7 +82,7 @@ Recommended copy:
 - Use "Manual UPI payout requested" when the user requests money back.
 - Use "Refund sent" only after the UPI reference is recorded.
 - Use "Forfeited to charity" after rejection or missed days.
-- Use "Pact slot" for the Rs 249 non-refundable access purchase.
+- Use "Pact Pass" for the access purchase that unlocks one pact.
 - Use "Refundable pact deposit" for the separate deposit liability.
 - Never imply private posts are acceptable proof.
 - Never imply forfeited money becomes Pact Raven revenue.

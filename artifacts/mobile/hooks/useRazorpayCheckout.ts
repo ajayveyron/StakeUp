@@ -131,7 +131,7 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
     if (Platform.OS !== "web") {
       Alert.alert(
         "Use the web app for now",
-        "Pact slot checkout is wired for the PWA. Native checkout will land with the native app.",
+        "Pact Pass checkout is wired for the PWA. Native checkout will land with the native app.",
       );
       return;
     }

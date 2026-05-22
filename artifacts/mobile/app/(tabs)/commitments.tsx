@@ -136,7 +136,7 @@ export default function CommitmentsScreen() {
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
               {tab === "pending"
-                ? "Pacts waiting for a slot and deposit will appear here."
+                ? "Pacts waiting for a Pact Pass and deposit will appear here."
                 : tab === "active"
                 ? "Lock money. Show proof."
                 : "Finished records will appear here."}

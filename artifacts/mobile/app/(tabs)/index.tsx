@@ -212,7 +212,7 @@ export default function HomeScreen() {
   const { buySlot, payDeposit, paying } = useRazorpayCheckout({
     onSlotSuccess: () =>
       Alert.alert(
-        "Pact slot ready",
+        "Pact Pass ready",
         "Now lock the refundable deposit on one draft to start.",
       ),
     onDepositSuccess: () => Alert.alert("Deposit locked", "Your pact is live."),
@@ -295,7 +295,7 @@ export default function HomeScreen() {
         };
       }
       return {
-        label: paying ? "Opening payment..." : "Buy slot",
+        label: paying ? "Opening payment..." : "Buy Pact Pass",
         icon: "credit-card",
         disabled: paying,
         onPress: () => {

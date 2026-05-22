@@ -12,6 +12,7 @@ import {
   requireClerkIdentity,
   requireUser,
 } from "./lib/auth";
+import { ensureFirstPactPassCovered } from "./lib/pactPasses";
 
 function normalizeImageUrl(value: string | null | undefined) {
   const trimmed = value?.trim();
@@ -94,6 +95,7 @@ export const upsertCurrentUser = mutation({
         role,
         updatedAt: now,
       });
+      await ensureFirstPactPassCovered(ctx, existing._id);
       return { id: existing._id, role };
     }
 
@@ -108,6 +110,8 @@ export const upsertCurrentUser = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await ensureFirstPactPassCovered(ctx, userId);
 
     return { id: userId, role };
   },

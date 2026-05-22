@@ -119,7 +119,7 @@ Hook:
 
 Draft script:
 
-"I do not want Pact Raven to be a jackpot app. The clean version is simple: you pay a pact slot fee, and you keep a refundable commitment deposit. When you prove the work, your deposit comes back. The product should make money from accountability, not from your failure. That is the model I want to test. Comment PACT if you want the rules."
+"I do not want Pact Raven to be a jackpot app. The clean version is simple: your first Pact Pass is covered, and you still lock a refundable commitment deposit. When you prove the work, your deposit comes back. If you continue after the first pact, the next Pact Pass is paid. The product should make money from accountability, not from your failure. Comment PACT if you want the rules."
 
 Visual:
 
@@ -187,19 +187,19 @@ Comment PACT.
 
 ## Day 5
 
-### Reel 9: The Rs 249 Test
+### Reel 9: The Repeat Test
 
 Hook:
 
-> The real test is not the deposit. It is the fee.
+> The real test is not the first pact. It is the second.
 
 Draft script:
 
-"A refundable deposit alone does not prove a business. People can say yes because they expect the money back. The real test is whether someone will pay Rs 249 for one accountability cycle, plus a refundable deposit. That is what the first public cohort will test. If you would pay for this, comment PACT."
+"A refundable deposit alone does not prove a business. People can say yes because they expect the money back. For Pact Raven, the first Pact Pass is covered, but the deposit is real. The business test is whether someone completes one pact and then pays Rs 249 for the next accountability cycle. If you would try this, comment PACT."
 
 Visual:
 
-Two columns: refundable deposit vs pact slot fee.
+Two columns: covered first pass vs paid second pass.
 
 CTA:
 
@@ -233,7 +233,7 @@ Hook:
 
 Draft script:
 
-"Example: you commit to posting one LinkedIn post every day for 30 days. You pay the pact slot fee and a refundable deposit. Every day before 11:59 pm, you submit the public post link. If it is approved, that day is marked successful. At the end, you get the successful portion back. Comment CONTENT and I will send the checklist."
+"Example: you commit to posting one LinkedIn post every day for 30 days. Your first Pact Pass is covered, and you lock a refundable deposit. Every day before 11:59 pm, you submit the public post link. If it is approved, that day is marked successful. At the end, you get the successful portion back. Comment CONTENT and I will send the checklist."
 
 Visual:
 
@@ -537,11 +537,11 @@ Hook:
 
 Draft script:
 
-"I am opening limited slots for two pacts: daily content posting and workout consistency. You pay Rs 249 for the cycle, keep a refundable deposit, submit proof, and get the deposit back when you prove consistency. Missed-day money goes to charity. This is early and manual. If you want the rules, comment PACT."
+"I am opening limited places for two pacts: daily content posting and workout consistency. Your first Pact Pass is covered, you lock a refundable deposit, submit proof, and get the deposit back when you prove consistency. Missed-day money goes to charity. Second Pact Pass onward is Rs 249. This is early and manual. If you want the rules, comment PACT."
 
 Visual:
 
-Founder invite, cohort slots on screen.
+Founder invite, cohort places on screen.
 
 CTA:
 
@@ -745,7 +745,7 @@ Hook:
 
 Draft script:
 
-"Before joining, you should know the pact slot fee, the deposit amount, the proof rule, the deadline, and what happens if proof is rejected. If a commitment product hides any of these, do not join it. Pact Raven will put the rules upfront. Comment PACT if you want to see them."
+"Before joining, you should know whether the Pact Pass is covered or paid, the deposit amount, the proof rule, the deadline, and what happens if proof is rejected. If a commitment product hides any of these, do not join it. Pact Raven will put the rules upfront. Comment PACT if you want to see them."
 
 Visual:
 
@@ -783,7 +783,7 @@ Hook:
 
 Draft script:
 
-"A free beta can tell you if people like an idea. It cannot tell you if the business works. For Pact Raven, the critical question is whether strangers will pay a pact slot fee for accountability. That is why I want the first public cohort to be paid, even if small. Comment PACT if you want in."
+"A free beta can tell you if people like an idea. It cannot tell you if the business works. For Pact Raven, the first Pact Pass is covered, but the deposit is still real. The critical question is whether strangers finish one pact and come back for a second paid pass. Comment PACT if you want in."
 
 Visual:
 
@@ -1069,7 +1069,7 @@ Hook:
 
 Draft script:
 
-"This week I am testing three things: will strangers pay a pact slot fee, which pact gets more demand, and whether manual proof review can stay fast. If the answer is yes, then this becomes much more serious. If not, we change the format. Comment PACT if you want to be part of the test."
+"This week I am testing three things: will strangers lock a real deposit, which pact gets more demand, and whether manual proof review can stay fast. The repeat test comes next: will people pay Rs 249 for a second Pact Pass. Comment PACT if you want to be part of the test."
 
 Visual:
 
@@ -1107,11 +1107,11 @@ Hook:
 
 Draft script:
 
-"I am closing this week's small cohort soon. Two options: content posting or workout consistency. You will get the rules, the proof checklist, and the Razorpay payment details before joining. This is still early and manual, so slots are limited. Comment PACT and I will DM you."
+"I am closing this week's small cohort soon. Two options: content posting or workout consistency. You will get the rules, the proof checklist, and the Razorpay payment details before joining. This is still early and manual, so places are limited. Comment PACT and I will DM you."
 
 Visual:
 
-Countdown timer, cohort slots.
+Countdown timer, cohort places.
 
 CTA:
 
@@ -1177,19 +1177,19 @@ Comment PACT.
 
 Use this after someone comments `PACT`:
 
-> Hey, saw your comment. I am testing Pact Raven with two 30-day challenges: content posting and workout consistency. You pay Rs 249 for the commitment cycle and keep a refundable deposit that you earn back by submitting proof. Missed-day money goes to the charity you select before starting. Which one are you more interested in: CONTENT or WORKOUT?
+> Hey, saw your comment. I am testing Pact Raven with two 30-day challenges: content posting and workout consistency. Your first Pact Pass is covered. You still lock a refundable deposit that you earn back by submitting proof. Missed-day money goes to the charity you select before starting. Second Pact Pass onward is Rs 249. Which one are you more interested in: CONTENT or WORKOUT?
 
 If they pick content:
 
-> Content pact rules are simple: one public post daily, submit the public link before your deadline, private/deleted/late posts do not count. I can send you the Rs 249 cycle fee, deposit, Razorpay payment link, and next cohort details if you want.
+> Content pact rules are simple: one public post daily, submit the public link before your deadline, private/deleted/late posts do not count. I can send you the covered first Pact Pass, deposit, Razorpay payment link, and next cohort details if you want.
 
 If they pick workout:
 
-> Workout pact rules are simple: submit fresh workout proof with the daily gesture or pose prompt before your deadline. Old photos, late proof, or unclear proof do not count. I can send you the Rs 249 cycle fee, deposit, Razorpay payment link, and next cohort details if you want.
+> Workout pact rules are simple: submit fresh workout proof with the daily gesture or pose prompt before your deadline. Old photos, late proof, or unclear proof do not count. I can send you the covered first Pact Pass, deposit, Razorpay payment link, and next cohort details if you want.
 
 If they complete onboarding but do not start/pay:
 
-> Quick note: since you completed onboarding but did not start, I can give you Rs 50 off the pact slot fee for the next 6 hours. That makes this slot Rs 199 plus the refundable deposit. After that it goes back to Rs 249.
+> Quick note: since you completed onboarding for another pact but did not start, I can give you Rs 50 off the Pact Pass fee for the next 6 hours. That makes this pass Rs 199 plus the refundable deposit. After that it goes back to Rs 249.
 
 If they ask where missed-day money goes:
 

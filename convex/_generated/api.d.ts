@@ -18,6 +18,7 @@ import type * as lib_charities from "../lib/charities.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as lib_ledger from "../lib/ledger.js";
 import type * as lib_notifications from "../lib/notifications.js";
+import type * as lib_pactPasses from "../lib/pactPasses.js";
 import type * as lib_payments from "../lib/payments.js";
 import type * as lib_review from "../lib/review.js";
 import type * as notifications from "../notifications.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   "lib/dates": typeof lib_dates;
   "lib/ledger": typeof lib_ledger;
   "lib/notifications": typeof lib_notifications;
+  "lib/pactPasses": typeof lib_pactPasses;
   "lib/payments": typeof lib_payments;
   "lib/review": typeof lib_review;
   notifications: typeof notifications;

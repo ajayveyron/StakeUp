@@ -9,17 +9,10 @@ import {
   notifyPaymentConfirmed,
   notifySlotConfirmed,
 } from "./lib/notifications";
+import { consumeSlotForCommitment, slotBalance } from "./lib/pactPasses";
 import { PACT_SLOT_AMOUNT } from "./lib/payments";
 
 type PaymentPurpose = "slot_fee" | "pact_deposit";
-
-async function slotBalance(ctx: MutationCtx, userId: Id<"users">) {
-  const entries = await ctx.db
-    .query("pactSlotLedgerEntries")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
-  return entries.reduce((total, entry) => total + entry.quantity, 0);
-}
 
 async function existingPaidOrderForPurpose(
   ctx: MutationCtx,
@@ -35,35 +28,6 @@ async function existingPaidOrderForPurpose(
       ),
     )
     .first();
-}
-
-async function consumeSlotForCommitment(
-  ctx: MutationCtx,
-  args: {
-    userId: Id<"users">;
-    commitmentId: Id<"commitments">;
-    externalReference?: string;
-  },
-) {
-  const existing = await ctx.db
-    .query("pactSlotLedgerEntries")
-    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
-    .filter((q) => q.eq(q.field("type"), "slot_consumed"))
-    .first();
-  if (existing) return existing._id;
-
-  const available = await slotBalance(ctx, args.userId);
-  if (available < 1) throw new Error("Buy a pact slot before starting");
-
-  return await ctx.db.insert("pactSlotLedgerEntries", {
-    userId: args.userId,
-    commitmentId: args.commitmentId,
-    type: "slot_consumed",
-    quantity: -1,
-    externalReference: args.externalReference,
-    note: "Pact slot consumed when this pact started.",
-    createdAt: new Date().toISOString(),
-  });
 }
 
 function shiftCommitmentDates(commitment: Doc<"commitments">) {
@@ -148,7 +112,7 @@ export const prepareDepositCheckoutOrder = internalMutation({
       throw new Error("Draft pact not found");
     }
     if ((await slotBalance(ctx, user._id)) < 1) {
-      throw new Error("Buy a pact slot before starting");
+      throw new Error("Buy a Pact Pass before starting");
     }
     if (
       await existingPaidOrderForPurpose(ctx, {
@@ -279,7 +243,7 @@ export const markSlotCheckoutPaid = internalMutation({
         amount: PACT_SLOT_AMOUNT,
         currency: slotPurchase.currency,
         externalReference: args.razorpayPaymentId,
-        note: "Non-refundable pact slot fee collected as revenue.",
+        note: "Non-refundable Pact Pass fee collected as revenue.",
         createdAt: now,
       });
     }

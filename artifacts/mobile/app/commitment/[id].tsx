@@ -180,7 +180,7 @@ export default function CommitmentDetailScreen() {
   function handleEndEarly() {
     Alert.alert(
       "End this pact?",
-      "The pact slot will stay used. The remaining deposit will go to admin settlement review.",
+      "The Pact Pass will stay used. The remaining deposit will go to admin settlement review.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -392,7 +392,7 @@ export default function CommitmentDetailScreen() {
             {pendingPayment
               ? pendingDeposit
                 ? "Lock the deposit to start"
-                : "Buy a slot, then lock the deposit"
+                : "Buy a Pact Pass, then lock the deposit"
               : expired
                 ? `${rate}% success`
                 : ended
@@ -408,6 +408,7 @@ export default function CommitmentDetailScreen() {
             commitment={commitment}
             availableSlots={slotSummary?.available ?? 0}
             pendingPurchases={slotSummary?.pendingPurchases ?? 0}
+            firstPactPassAvailable={slotSummary?.firstPactPassAvailable ?? false}
             colors={colors}
           />
         )}
@@ -495,11 +496,11 @@ export default function CommitmentDetailScreen() {
           </View>
         )}
 
-        {/* ── Upcoming check-in slots ── */}
+        {/* ── Upcoming check-in days ── */}
         {upcomingDates.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Next proof slots
+              Next proof days
             </Text>
             <View
               style={[
@@ -604,7 +605,7 @@ export default function CommitmentDetailScreen() {
                 <Text
                   style={[styles.moreSlots, { color: colors.mutedForeground }]}
                 >
-                  + {upcomingDates.length - 6} more slots
+                  + {upcomingDates.length - 6} more days
                 </Text>
               )}
             </View>
@@ -848,7 +849,7 @@ export default function CommitmentDetailScreen() {
               <Text
                 style={[styles.charityMeta, { color: colors.mutedForeground }]}
               >
-                The slot stays used. Admin settles the remaining deposit.
+                The Pact Pass stays used. Admin settles the remaining deposit.
               </Text>
             </View>
           </TouchableOpacity>
@@ -965,39 +966,45 @@ function PaymentSetupCard({
   commitment,
   availableSlots,
   pendingPurchases,
+  firstPactPassAvailable,
   colors,
 }: {
   commitment: Commitment;
   availableSlots: number;
   pendingPurchases: number;
+  firstPactPassAvailable: boolean;
   colors: any;
 }) {
-  const hasSlot = availableSlots > 0;
+  const hasPass = availableSlots > 0;
   const { buySlot, payDeposit, paying } = useRazorpayCheckout({
     onSlotSuccess: () =>
       Alert.alert(
-        "Pact slot ready",
+        "Pact Pass ready",
         "Now lock the refundable deposit on this draft to start.",
       ),
     onDepositSuccess: () =>
       Alert.alert("Deposit locked", "Your pact is now live."),
   });
   const startPayment = () => {
-    if (!hasSlot) {
+    if (!hasPass) {
       void buySlot();
       return;
     }
     void payDeposit(commitment.id as Id<"commitments">);
   };
-  const title = hasSlot ? "Lock the deposit" : "Buy a pact slot";
-  const body = hasSlot
-    ? "Deposit payment starts the pact."
-    : "One slot unlocks one pact.";
+  const title = firstPactPassAvailable
+    ? "First Pact Pass covered"
+    : hasPass
+      ? "Lock the deposit"
+      : "Buy Pact Pass";
+  const body = hasPass
+    ? "Lock the refundable deposit to start."
+    : "One Pact Pass unlocks one pact.";
   const buttonLabel = paying
     ? "Opening payment…"
-    : hasSlot
+    : hasPass
       ? "Pay deposit"
-      : "Buy pact slot";
+      : "Buy Pact Pass";
 
   return (
     <View
@@ -1028,38 +1035,38 @@ function PaymentSetupCard({
         </View>
       </View>
       <View style={styles.paymentBreakdown}>
-        {!hasSlot && (
+        {!hasPass && (
           <PaymentBreakdownRow
-            label="Pact slot fee"
+            label="Pact Pass fee"
             value={formatCurrency(PACT_SLOT_AMOUNT, commitment.currency)}
             colors={colors}
           />
         )}
-        {hasSlot && (
+        {hasPass && (
           <PaymentBreakdownRow
-            label="Unused pact slots"
-            value={String(availableSlots)}
+            label={firstPactPassAvailable ? "Pact Pass" : "Unused Pact Passes"}
+            value={firstPactPassAvailable ? "Covered" : String(availableSlots)}
             colors={colors}
           />
         )}
         <PaymentBreakdownRow
-          label={hasSlot ? "Deposit to lock" : "Deposit comes next"}
+          label={hasPass ? "Deposit to lock" : "Deposit comes next"}
           value={formatCurrency(commitment.pactAmount, commitment.currency)}
           colors={colors}
         />
         <PaymentBreakdownRow
-          label={hasSlot ? "Due now" : "Slot due now"}
+          label={hasPass ? "Due now" : "Pass due now"}
           value={formatCurrency(
-            hasSlot ? commitment.pactAmount : PACT_SLOT_AMOUNT,
+            hasPass ? commitment.pactAmount : PACT_SLOT_AMOUNT,
             commitment.currency,
           )}
           colors={colors}
           strong
         />
       </View>
-      {pendingPurchases > 0 && !hasSlot && (
+      {pendingPurchases > 0 && !hasPass && (
         <Text style={[styles.paymentMeta, { color: colors.mutedForeground }]}>
-          {pendingPurchases} slot payment request is still pending.
+          {pendingPurchases} Pact Pass payment request is still pending.
         </Text>
       )}
       <TouchableOpacity
@@ -1396,7 +1403,7 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 17,
   },
-  // Upcoming slots
+  // Upcoming days
   section: { gap: 10 },
   sectionTitle: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
   upcomingCard: {

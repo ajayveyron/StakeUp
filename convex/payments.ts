@@ -5,6 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import { action, mutation, query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { notifyManualPayoutRequested } from "./lib/notifications";
+import { summarizePactPassEntries } from "./lib/pactPasses";
 import { toRazorpayMinorUnits } from "./lib/payments";
 
 type RazorpayOrderResponse = {
@@ -181,23 +182,10 @@ export const slotSummary = query({
       .withIndex("by_user", (q) => q.eq("userId", user._id))
       .collect();
 
-    const purchased = ledger
-      .filter((entry) => entry.type === "slot_purchased")
-      .reduce((sum, entry) => sum + entry.quantity, 0);
-    const consumed = Math.abs(
-      ledger
-        .filter((entry) => entry.type === "slot_consumed")
-        .reduce((sum, entry) => sum + entry.quantity, 0),
-    );
-    const adjusted = ledger
-      .filter((entry) => entry.type === "slot_adjustment")
-      .reduce((sum, entry) => sum + entry.quantity, 0);
+    const summary = summarizePactPassEntries(ledger);
 
     return {
-      purchased,
-      consumed,
-      adjusted,
-      available: Math.max(0, purchased - consumed + adjusted),
+      ...summary,
       pendingPurchases: purchases.filter(
         (purchase) => purchase.status === "pending_payment",
       ).length,
@@ -241,7 +229,7 @@ export const createSlotCheckoutOrder = action({
 
     const razorpayOrder = await createRazorpayOrder(data, "slot_fee");
     await attachOrder(ctx, data, razorpayOrder);
-    return orderResult(data, razorpayOrder, "One non-refundable pact slot");
+    return orderResult(data, razorpayOrder, "One Pact Pass");
   },
 });
 

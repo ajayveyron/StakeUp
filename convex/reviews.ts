@@ -24,50 +24,11 @@ import {
   notifyManualPayoutRecorded,
   notifyPaymentConfirmed,
 } from "./lib/notifications";
+import { consumeSlotForCommitment } from "./lib/pactPasses";
 import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
 
 function userLabel(user: Doc<"users"> | null) {
   return user?.email ?? user?.displayName ?? "Unknown user";
-}
-
-async function slotBalance(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  const entries = await ctx.db
-    .query("pactSlotLedgerEntries")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
-    .collect();
-  return entries.reduce((total, entry) => total + entry.quantity, 0);
-}
-
-async function consumeSlotForCommitment(
-  ctx: MutationCtx,
-  args: {
-    userId: Id<"users">;
-    commitmentId: Id<"commitments">;
-    externalReference?: string;
-    createdBy?: Id<"users">;
-  },
-) {
-  const existing = await ctx.db
-    .query("pactSlotLedgerEntries")
-    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
-    .filter((q) => q.eq(q.field("type"), "slot_consumed"))
-    .first();
-  if (existing) return existing._id;
-
-  if ((await slotBalance(ctx, args.userId)) < 1) {
-    throw new Error("User has no unused pact slot");
-  }
-
-  return await ctx.db.insert("pactSlotLedgerEntries", {
-    userId: args.userId,
-    commitmentId: args.commitmentId,
-    type: "slot_consumed",
-    quantity: -1,
-    externalReference: args.externalReference,
-    note: "Pact slot consumed by admin deposit confirmation.",
-    createdBy: args.createdBy,
-    createdAt: new Date().toISOString(),
-  });
 }
 
 async function payoutBalanceByCurrency(
@@ -474,6 +435,8 @@ export const confirmPayment = mutation({
       commitmentId: commitment._id,
       externalReference: reference,
       createdBy: reviewer._id,
+      note: "Pact Pass consumed by admin deposit confirmation.",
+      coveredNote: "Covered first Pact Pass consumed by admin deposit confirmation.",
     });
 
     await ensureDepositLedgerEntry(ctx, {

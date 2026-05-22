@@ -9,7 +9,7 @@ Start with two web-first commitment formats:
 
 Start as a PWA/web app, but keep the implementation inside Expo so a future native iOS/Android app is easier to ship. Do not make the first public launch depend on native app-store review, HealthKit, Health Connect, or app-store payment rules.
 
-The goal of this phase is not perfect verification. The goal is to prove that Indian users who are not close friends will pay a non-refundable fee plus a refundable commitment deposit to be held accountable.
+The goal of this phase is not perfect verification. The goal is to prove that Indian users who are not close friends will lock a refundable commitment deposit, complete one pact, and come back for a second Pact Pass at Rs 249.
 
 ## Core Positioning
 
@@ -17,7 +17,7 @@ Pact Raven is a paid accountability challenge.
 
 The user pays:
 
-- A non-refundable pact slot fee for accountability, review, reminders, operations, and support.
+- A Pact Pass for accountability, review, reminders, operations, and support. The first Pact Pass is covered once per account; the second pass onward is paid.
 - A refundable commitment deposit that is returned when the user proves consistency.
 
 Suggested public wording:
@@ -37,7 +37,7 @@ Avoid these words in public copy for now:
 Use these words instead:
 
 - Commitment challenge
-- pact slot fee
+- Pact Pass fee
 - Refundable deposit
 - Proof review
 - manual UPI payout
@@ -64,7 +64,7 @@ Avoid mass-market positioning in the first 100 users. The first wedge is people 
 
 30-Day Content Consistency Pact
 
-- pact slot fee: Rs 249
+- First Pact Pass covered; second pass onward Rs 249
 - Refundable deposit: Rs 2,000
 - Commitment: 1 public post per day for 30 days
 - Proof: public post URL submitted before the daily deadline
@@ -107,7 +107,7 @@ Content posting is the strongest first wedge because:
 
 30-Day Workout Pact
 
-- pact slot fee: Rs 249
+- First Pact Pass covered; second pass onward Rs 249
 - Refundable deposit: Rs 3,000
 - Commitment: default 30-day cycle with 5 workouts per week
 - Proof: mobile web camera snap/capture with physical prompt, optional location, and visible gym/home context
@@ -145,21 +145,23 @@ Pact Raven charges per commitment cycle. A user buys one 30-day cycle at a time.
 
 Starting price:
 
-- Content Posting Pact: Rs 249 fee + Rs 2,000 deposit
-- Workout Pact: Rs 249 fee + Rs 3,000 deposit
+- Content Posting Pact: first Pact Pass covered + Rs 2,000 deposit
+- Workout Pact: first Pact Pass covered + Rs 3,000 deposit
+- Second Pact Pass onward: Rs 249 fee + selected deposit
 
 Abandoned-onboarding recovery:
 
-- If a user completes onboarding but does not start/pay, offer Rs 50 off for the next 6 hours.
-- Discounted pact slot fee: Rs 199 for that commitment cycle.
+- Do not discount the covered first pass; it is already covered.
+- If a returning user completes onboarding for a second pact but does not buy/pay, offer Rs 50 off for the next 6 hours.
+- Discounted Pact Pass fee: Rs 199 for that commitment cycle.
 
-Do not hide the fee. The test is whether users will pay for accountability, not whether they will temporarily park refundable money.
+Do not hide the second-pass fee. The test is whether users lock a deposit, complete a pact, and return with enough intent to pay Rs 249 for the next accountability cycle.
 
 ### Later Tiers
 
 After 100 paid users:
 
-- Starter: Rs 249 fee + Rs 2,000 to Rs 3,000 deposit
+- Starter: first Pact Pass covered, then Rs 249 fee + Rs 2,000 to Rs 3,000 deposit
 - Serious: Rs 999 fee + Rs 5,000 deposit
 - Founder-reviewed: Rs 1,999 fee + Rs 10,000 deposit
 - Cohort/team challenge: custom fee and deposit
@@ -172,8 +174,8 @@ Razorpay collects money in v1, but user payouts are manual UPI transfers recorde
 
 Operational rules:
 
-- Collect pact slot fee and commitment deposit through Razorpay.
-- Keep the pact slot fee as revenue for the cycle.
+- Collect paid Pact Pass fees and commitment deposits through Razorpay.
+- Keep paid Pact Pass fees as revenue for the cycle.
 - Track the refundable deposit as a deposit liability until approved, forfeited, or refunded.
 - Record Razorpay payment IDs for collections and UPI references for manual payouts in the ledger.
 - Avoid daily automatic payouts in v1; use weekly or end-of-cycle manual UPI payout batches.
@@ -238,7 +240,7 @@ Do not promise instant refunds or automatic approval.
 
 Track money as an append-only ledger:
 
-- pact slot fee received
+- Pact Pass fee received
 - Commitment deposit received
 - Daily success credit approved
 - Daily amount forfeited
@@ -246,7 +248,7 @@ Track money as an append-only ledger:
 - manual UPI payout completed
 - Manual adjustment
 
-The commitment deposit should not be treated as revenue while it is refundable. pact slot fee is the clean revenue line.
+The commitment deposit should not be treated as revenue while it is refundable. Paid Pact Pass fees are the clean revenue line.
 
 ### Forfeit Rules
 
@@ -356,6 +358,7 @@ Native app v1 should be a companion verifier, not a full rebuild.
 ### Days 8-14: Cohort 1
 
 - Start with 10-15 users.
+- First Pact Pass is covered; deposit is still required.
 - Keep support high-touch.
 - Review proof daily.
 - Document every objection and dispute.
@@ -363,15 +366,15 @@ Native app v1 should be a companion verifier, not a full rebuild.
 
 ### Days 15-21: Cohort 2
 
-- Open 20-25 slots.
-- Keep the public pact slot fee at Rs 249.
-- Test the Rs 50 abandoned-onboarding recovery discount for users who complete onboarding but do not start/pay.
+- Open 20-25 cohort places.
+- Keep the second Pact Pass fee at Rs 249.
+- Test the Rs 50 abandoned-onboarding recovery discount for returning users who complete onboarding but do not start/pay.
 - Add referral ask.
 - Publish proof-of-work updates.
 
 ### Days 22-30: Cohort 3
 
-- Open another 25-30 slots.
+- Open another 25-30 cohort places.
 - Split messaging between content and workout.
 - Compare conversion, completion, proof effort, and dispute rate.
 - Decide which pact becomes the flagship for the next 60 days.
@@ -390,7 +393,7 @@ First 30 days:
 First 90 days:
 
 - 100 paid users
-- 50 users paying Rs 249 pact slot fee without heavy objection
+- 50 users starting a second pact or paying Rs 249 for a Pact Pass without heavy objection
 - 60%+ completion rate
 - 25%+ repeat or referral rate
 - Review time under 3 minutes per proof
@@ -426,7 +429,7 @@ Later moats:
 Mitigation:
 
 - Avoid "bet" language.
-- Charge a clear pact slot fee.
+- Charge a clear Pact Pass fee after the covered first pass.
 - Treat deposit as refundable commitment deposit.
 - Let users choose from five charity forfeit destinations.
 - Do not keep forfeited deposits as Pact Raven revenue.

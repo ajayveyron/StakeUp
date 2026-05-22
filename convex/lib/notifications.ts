@@ -137,16 +137,16 @@ export async function notifySlotConfirmed(
   await createUserNotification(ctx, {
     userId: args.user._id,
     type: "slot_confirmed",
-    title: "Pact slot ready",
-    body: `One pact slot has been added. ${amount} is the non-refundable slot fee.`,
+    title: "Pact Pass ready",
+    body: `One Pact Pass has been added. ${amount} is the non-refundable pass fee.`,
     route: "/profile",
     email: {
-      subject: "Your pact slot is ready",
+      subject: "Your Pact Pass is ready",
       body: `Hi ${name},
 
-Your ${amount} pact slot payment is confirmed. You now have one unused pact slot.
+Your ${amount} Pact Pass payment is confirmed. You now have one unused Pact Pass.
 
-The slot fee is non-refundable. A separate refundable deposit is collected when you start a pact.`,
+The pass fee is non-refundable. A separate refundable deposit is collected when you start a pact.`,
     },
   });
 }

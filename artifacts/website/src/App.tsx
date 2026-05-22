@@ -41,7 +41,7 @@ const steps = [
   },
   {
     title: "Lock",
-    body: "Pay slot. Lock deposit.",
+    body: "Use pass. Lock deposit.",
   },
   {
     title: "Prove",
@@ -52,8 +52,8 @@ const steps = [
 const moneyRules = [
   {
     icon: BadgeIndianRupee,
-    title: "One slot",
-    body: "Rs 249 starts one pact.",
+    title: "First pass covered",
+    body: "Next Pact Pass is Rs 249.",
   },
   {
     icon: ShieldCheck,
@@ -70,7 +70,7 @@ const moneyRules = [
 const faqs = [
   {
     title: "What does Rs 249 pay for?",
-    body: "One non-refundable pact slot.",
+    body: "One Pact Pass after your covered first pass.",
   },
   {
     title: "Can I draft before paying?",
@@ -105,12 +105,12 @@ const routeMeta: Record<string, { title: string; description: string }> = {
   "/terms": {
     title: "Terms of Use - Pact Raven",
     description:
-      "Terms for Pact Raven pact slots, deposits, proof review, forfeits, manual payouts, limits, and user responsibilities.",
+      "Terms for Pact Raven Pact Passes, deposits, proof review, forfeits, manual payouts, limits, and user responsibilities.",
   },
   "/refund-cancellation": {
     title: "Payment, Cancellation, Refund And Delivery Policy - Pact Raven",
     description:
-      "Payment, cancellation, refund, delivery, manual UPI payout, pact slot, deposit, proof, and charity forfeit rules for Pact Raven.",
+      "Payment, cancellation, refund, delivery, manual UPI payout, Pact Pass, deposit, proof, and charity forfeit rules for Pact Raven.",
   },
   "/privacy": {
     title: "Privacy Policy - Pact Raven",
@@ -148,11 +148,11 @@ const legalPages = {
         ],
       },
       {
-        title: "Pact Slots And Deposits",
+        title: "Pact Passes And Deposits",
         body: [
-          "A pact slot is a non-refundable access purchase. One pact slot unlocks one pact.",
-          "A pact deposit is separate from the pact slot fee. The deposit is held against the pact rules and is recorded internally as a refundable pact deposit liability until it is refunded, forfeited, or transferred to charity.",
-          "A draft pact does not consume a slot. A slot is consumed only when the pact starts after deposit confirmation. If a started pact ends early, the slot remains used.",
+          "A Pact Pass unlocks one pact. Every account gets the first Pact Pass covered once; after that, each Pact Pass is Rs 249.",
+          "A pact deposit is separate from the Pact Pass fee. The deposit is held against the pact rules and is recorded internally as a refundable pact deposit liability until it is refunded, forfeited, or transferred to charity.",
+          "A draft pact does not consume a pass. A pass is consumed only when the pact starts after deposit confirmation. If a started pact ends early, the pass remains used.",
         ],
       },
       {
@@ -176,7 +176,7 @@ const legalPages = {
         body: [
           "Pact Raven is not medical, fitness, legal, tax, financial, or mental health advice.",
           "Pact Raven is not a gambling, betting, jackpot, pooled-prize, or winner-takes-all product. Users do not win other users' money.",
-          "Forfeited deposit amounts are not Pact Raven revenue. Pact Raven's clean revenue line is the pact slot fee.",
+          "Forfeited deposit amounts are not Pact Raven revenue. Pact Raven's clean revenue line is the Pact Pass fee after the covered first pass.",
         ],
       },
       {
@@ -192,14 +192,14 @@ const legalPages = {
     title: "Payment, Cancellation, Refund And Delivery Policy",
     kicker: "Payments",
     intro:
-      "This policy separates the non-refundable pact slot fee from the refundable pact deposit. It also covers cancellations, manual UPI payouts, and digital service delivery.",
+      "This policy separates the Pact Pass fee from the refundable pact deposit. It also covers cancellations, manual UPI payouts, and digital service delivery.",
     sections: [
       {
-        title: "Pact Slot Fee",
+        title: "Pact Pass Fee",
         body: [
-          "The pact slot fee is Rs 249 for one pact slot unless a specific offer says otherwise.",
-          "The pact slot fee is non-refundable once bought. It pays for access to one pact and Pact Raven's accountability, review, reminders, operations, and support.",
-          "Buying a slot does not start a pact by itself. The user may draft a pact before or after owning a slot.",
+          "Every account gets the first Pact Pass covered once. After that, each Pact Pass is Rs 249 unless a specific offer says otherwise.",
+          "The Pact Pass fee is non-refundable once bought. It pays for access to one pact and Pact Raven's accountability, review, reminders, operations, and support.",
+          "A Pact Pass unlocks one pact. Buying or receiving a pass does not start a pact by itself. The user may draft a pact before or after owning a pass.",
         ],
       },
       {
@@ -207,7 +207,7 @@ const legalPages = {
         body: [
           "The pact deposit is a separate payment collected when the user chooses to start a pact.",
           "The deposit is not treated as Pact Raven revenue while it is refundable. It is recorded as a refundable pact deposit liability in Pact Raven's internal ledger.",
-          "The pact becomes active only after the user has an unused slot and the deposit payment is confirmed.",
+          "The pact becomes active only after the user has an unused pass and the deposit payment is confirmed.",
         ],
       },
       {
@@ -238,15 +238,15 @@ const legalPages = {
       {
         title: "Early End",
         body: [
-          "A user may end a pact early, but the consumed pact slot remains used and the slot fee remains non-refundable.",
+          "A user may end a pact early, but the consumed Pact Pass remains used and any paid pass fee remains non-refundable.",
           "The remaining deposit moves to admin settlement review. Admin records the refund and forfeit split based on the pact rules, proof history, and circumstances.",
         ],
       },
       {
         title: "Cancellations",
         body: [
-          "A draft pact may be abandoned before it starts. Abandoning a draft does not consume a slot.",
-          "A paid pact slot is not cancelled or refunded. It remains available until it is used for a pact, unless the account is closed for fraud, abuse, or legal reasons.",
+          "A draft pact may be abandoned before it starts. Abandoning a draft does not consume a pass.",
+          "A paid Pact Pass is not cancelled or refunded. It remains available until it is used for a pact, unless the account is closed for fraud, abuse, or legal reasons.",
           "A deposit payment that has not been matched to an active pact should be reviewed manually and either applied to the pact or returned according to the support record.",
         ],
       },
@@ -254,7 +254,7 @@ const legalPages = {
         title: "Digital Delivery",
         body: [
           "Pact Raven is a digital service. No physical product is shipped.",
-          "A paid pact slot is credited after successful payment verification. A pact starts after an unused slot is available and the separate deposit payment is confirmed.",
+          "A paid Pact Pass is credited after successful payment verification. A pact starts after an unused pass is available and the separate deposit payment is confirmed.",
           "Proof review, refund credit, payout requests, notifications, and support are delivered digitally.",
         ],
       },
