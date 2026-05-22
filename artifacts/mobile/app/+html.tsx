@@ -2,8 +2,7 @@ import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
 const title = "Pact Raven App";
-const description =
-  "Create a Pact Raven challenge, lock a deposit, submit proof, and build refund credit through successful days.";
+const description = "Lock money. Show proof daily. Missed days go to charity.";
 const appUrl = "https://app.pactraven.com";
 const ogImageUrl = `${appUrl}/api/og?surface=app`;
 

@@ -33,7 +33,7 @@ export default function CommitmentsScreen() {
   const active = commitments.filter(isActive);
   const past = commitments.filter(isExpired);
   const displayed = tab === "pending" ? pending : tab === "active" ? active : past;
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -55,14 +55,20 @@ export default function CommitmentsScreen() {
           <TouchableOpacity
             onPress={() => router.push("/commitment/new")}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Create pact"
           >
             <LinearGradient
-              colors={["#FFD800", "#FFD800"]}
+              colors={[colors.primary, colors.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.addBtn}
             >
-              <Feather name="plus" size={20} color="#000" />
+              <Feather
+                name="plus"
+                size={20}
+                color={colors.primaryForeground}
+              />
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -83,7 +89,7 @@ export default function CommitmentsScreen() {
             >
               {tab === t && (
                 <LinearGradient
-                  colors={["#FFD800", "#FFD800"]}
+                  colors={[colors.primary, colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={StyleSheet.absoluteFill}
@@ -93,7 +99,10 @@ export default function CommitmentsScreen() {
                 style={[
                   styles.tabText,
                   {
-                    color: tab === t ? "#000" : colors.mutedForeground,
+                    color:
+                      tab === t
+                        ? colors.primaryForeground
+                        : colors.mutedForeground,
                     fontFamily:
                       tab === t ? "Inter_600SemiBold" : "Inter_400Regular",
                   },
@@ -129,7 +138,7 @@ export default function CommitmentsScreen() {
               {tab === "pending"
                 ? "Pacts waiting for a slot and deposit will appear here."
                 : tab === "active"
-                ? "Make a pact you cannot casually ignore."
+                ? "Lock money. Show proof."
                 : "Finished records will appear here."}
             </Text>
             {tab === "active" && (
@@ -138,7 +147,7 @@ export default function CommitmentsScreen() {
                 activeOpacity={0.85}
               >
                 <LinearGradient
-                  colors={["#FFD800", "#FFD800"]}
+                  colors={[colors.primary, colors.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.createBtn}
@@ -217,6 +226,6 @@ const styles = StyleSheet.create({
   createBtnText: {
     fontSize: 14,
     fontFamily: "Inter_600SemiBold",
-    color: "#000",
+    color: "#fff",
   },
 });

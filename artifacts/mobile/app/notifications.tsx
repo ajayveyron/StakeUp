@@ -75,7 +75,7 @@ export default function NotificationsScreen() {
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
   const unreadCount = notifications.filter((item) => !item.readAt).length;
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
 
   function openNotification(item: NotificationItem) {
     void markRead({
@@ -128,12 +128,21 @@ export default function NotificationsScreen() {
             <Feather
               name="check"
               size={14}
-              color={unreadCount > 0 ? "#000" : colors.mutedForeground}
+              color={
+                unreadCount > 0
+                  ? colors.primaryForeground
+                  : colors.mutedForeground
+              }
             />
             <Text
               style={[
                 styles.markText,
-                { color: unreadCount > 0 ? "#000" : colors.mutedForeground },
+                {
+                  color:
+                    unreadCount > 0
+                      ? colors.primaryForeground
+                      : colors.mutedForeground,
+                },
               ]}
             >
               Read

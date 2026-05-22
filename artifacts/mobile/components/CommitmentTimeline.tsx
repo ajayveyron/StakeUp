@@ -78,12 +78,12 @@ export function CommitmentTimeline({ commitment }: Props) {
                     borderColor: broken
                       ? colors.border
                       : unlocked
-                      ? "#FFD700"
+                      ? colors.success
                       : colors.accent + "88",
                     backgroundColor: broken
                       ? colors.secondary
                       : unlocked
-                      ? "#FFD70022"
+                      ? colors.success + "18"
                       : colors.accent + "15",
                     opacity: broken ? 0.45 : 1,
                   },
@@ -106,7 +106,7 @@ export function CommitmentTimeline({ commitment }: Props) {
                     color: broken
                       ? colors.mutedForeground
                       : unlocked
-                      ? "#FFD700"
+                      ? colors.success
                       : colors.accent,
                     opacity: broken ? 0.5 : 1,
                   },
@@ -144,17 +144,20 @@ export function CommitmentTimeline({ commitment }: Props) {
               ]}
             >
               {verified && (
-                <Feather name="check" size={13} color="#000" />
+                <Feather name="check" size={13} color={colors.primaryForeground} />
               )}
               {missed && (
                 <Feather name="x" size={13} color="#fff" />
               )}
               {underReview && !verified && (
-                <Feather name="clock" size={12} color="#000" />
+                <Feather name="clock" size={12} color={colors.accentForeground} />
               )}
               {isToday && !verified && !underReview && !missed && (
                 <View
-                  style={[styles.todayInner, { backgroundColor: "#000" }]}
+                  style={[
+                    styles.todayInner,
+                    { backgroundColor: colors.accentForeground },
+                  ]}
                 />
               )}
               {isFuture && (

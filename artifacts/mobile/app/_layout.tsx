@@ -293,7 +293,7 @@ function WhatsAppOnboardingScreen() {
           activeOpacity={0.85}
         >
           <Text style={styles.retryText}>
-            {submitting ? "Saving..." : "Save WhatsApp number"}
+            {submitting ? "Saving…" : "Save WhatsApp number"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   retryText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 14,
     fontFamily: "Inter_700Bold",
   },

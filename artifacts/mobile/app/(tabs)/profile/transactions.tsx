@@ -73,7 +73,7 @@ export default function TransactionsScreen() {
       : 0;
 
   const past = commitments.filter(isExpired);
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
   const availableRefund = wallet?.availableToPayout ?? 0;
   const payoutRequested = wallet?.payoutRequested ?? 0;
   const normalizedUpiId = upiId.trim().toLowerCase();
@@ -194,18 +194,24 @@ export default function TransactionsScreen() {
               <Feather
                 name="download"
                 size={16}
-                color={canRequestRefund ? "#000" : colors.mutedForeground}
+                color={
+                  canRequestRefund
+                    ? colors.primaryForeground
+                    : colors.mutedForeground
+                }
               />
               <Text
                 style={[
                   styles.withdrawBtnText,
                   {
-                    color: canRequestRefund ? "#000" : colors.mutedForeground,
+                    color: canRequestRefund
+                      ? colors.primaryForeground
+                      : colors.mutedForeground,
                   },
                 ]}
               >
                 {withdrawing
-                  ? "Requesting refund..."
+                  ? "Requesting refund…"
                   : payoutRequested > 0
                     ? `${formatCurrency(payoutRequested)} payout requested`
                     : availableRefund > 0
@@ -285,7 +291,7 @@ export default function TransactionsScreen() {
               {firstName ? `No record yet, ${firstName}` : "No record yet"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Make a pact. Submit proof. The record will appear here.
+              Lock money. Show proof. The record will appear here.
             </Text>
           </View>
         ) : (

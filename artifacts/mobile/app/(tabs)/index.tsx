@@ -3,9 +3,11 @@ import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
+import { useQuery } from "convex/react";
 
 import { useCurrentUser, useFirstName } from "@/hooks/useCurrentUser";
 import {
+  Alert,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,30 +20,53 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentCard } from "@/components/CommitmentCard";
+import type { CommitmentCardAction } from "@/components/CommitmentCard";
 import { NotificationButton } from "@/components/NotificationButton";
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import {
   Commitment,
   ProofLocation,
   useCommitments,
 } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
+import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 import {
+  addDays,
   formatCountdown,
   formatCurrency,
+  formatDate,
   getCheckInForDate,
   getCheckInStatus,
   getDaysRemaining,
   getMsUntilDeadline,
-  getRefundPerDay,
+  getNextScheduledDate,
   getTodayStr,
   getTotalCommittedDays,
   getTotalRefunded,
   getVerifiedCheckIns,
   hasTodayCheckIn,
   isActive,
+  isDraft,
+  isNotStarted,
+  isPendingDeposit,
   isPendingPayment,
   isTodayScheduled,
 } from "@/utils/commitment";
+
+function formatComeBackLabel(date: string | null) {
+  if (!date) return "Come back on the next proof day";
+  const today = getTodayStr();
+  if (date === addDays(today, 1)) return "Come back tomorrow";
+
+  const d = new Date(date + "T00:00:00");
+  const submissionDay = d.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  return `Come back on ${submissionDay}`;
+}
 
 export default function HomeScreen() {
   const colors = useColors();
@@ -49,6 +74,15 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { commitments, submitContentCheckIn, submitWorkoutCheckIn } =
     useCommitments();
+  const slotSummary = useQuery(api.payments.slotSummary);
+  const { buySlot, payDeposit, paying } = useRazorpayCheckout({
+    onSlotSuccess: () =>
+      Alert.alert(
+        "Pact slot ready",
+        "Now lock the refundable deposit on one draft to start.",
+      ),
+    onDepositSuccess: () => Alert.alert("Deposit locked", "Your pact is live."),
+  });
 
   const [selectedCommitment, setSelectedCommitment] =
     useState<Commitment | null>(null);
@@ -64,8 +98,8 @@ export default function HomeScreen() {
 
   const today = getTodayStr();
   const activeCommitments = commitments.filter(isActive);
+  const notStartedCommitments = commitments.filter(isNotStarted);
   const pendingPaymentCommitments = commitments.filter(isPendingPayment);
-  const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
   const todayPending = activeCommitments.filter(
     (c) => isTodayScheduled(c) && !hasTodayCheckIn(c),
   );
@@ -76,15 +110,6 @@ export default function HomeScreen() {
     (c) => !isTodayScheduled(c),
   );
 
-  const totalCommitted = confirmedCommitments.reduce(
-    (s, c) => s + c.pactAmount,
-    0,
-  );
-  const totalRefunded = confirmedCommitments.reduce(
-    (s, c) => s + getTotalRefunded(c),
-    0,
-  );
-
   const currentUser = useCurrentUser();
   const displayName = currentUser?.displayName?.trim();
   const firstName = useFirstName();
@@ -92,12 +117,106 @@ export default function HomeScreen() {
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  // The "featured" commitment — pending today first, otherwise first active
-  const featuredCommitment = todayPending[0] ?? activeCommitments[0] ?? null;
+  // The "featured" commitment — pending today first, otherwise live/upcoming.
+  const featuredCommitment =
+    todayPending[0] ?? activeCommitments[0] ?? notStartedCommitments[0] ?? null;
+  const secondaryTodayPending = todayPending.filter(
+    (c) => c.id !== featuredCommitment?.id,
+  );
+  const secondaryTodayDone = todayDone.filter(
+    (c) => c.id !== featuredCommitment?.id,
+  );
+  const secondaryTodayNotScheduled = todayNotScheduled.filter(
+    (c) => c.id !== featuredCommitment?.id,
+  );
+  const secondaryNotStarted = notStartedCommitments.filter(
+    (c) => c.id !== featuredCommitment?.id,
+  );
 
   function openCheckIn(commitment: Commitment) {
     setSelectedCommitment(commitment);
     setModalVisible(true);
+  }
+
+  function openDetails(commitment: Commitment) {
+    router.push(`/commitment/${commitment.id}`);
+  }
+
+  function startDeposit(commitment: Commitment) {
+    void payDeposit(commitment.id as Id<"commitments">);
+  }
+
+  function homeActionFor(commitment: Commitment): CommitmentCardAction {
+    const availableSlots = slotSummary?.available ?? 0;
+
+    if (isDraft(commitment)) {
+      if (availableSlots > 0) {
+        return {
+          label: paying ? "Opening payment..." : "Deposit money",
+          icon: "lock",
+          disabled: paying,
+          onPress: () => startDeposit(commitment),
+        };
+      }
+      return {
+        label: paying ? "Opening payment..." : "Buy slot",
+        icon: "credit-card",
+        disabled: paying,
+        onPress: () => {
+          void buySlot();
+        },
+      };
+    }
+
+    if (isPendingDeposit(commitment)) {
+      return {
+        label: paying ? "Opening payment..." : "Deposit money",
+        icon: "lock",
+        disabled: paying,
+        onPress: () => startDeposit(commitment),
+      };
+    }
+
+    if (isNotStarted(commitment)) {
+      return {
+        label: "Start",
+        icon: "play",
+        onPress: () => openDetails(commitment),
+      };
+    }
+
+    if (isActive(commitment)) {
+      if (isTodayScheduled(commitment) && !hasTodayCheckIn(commitment)) {
+        return {
+          label: "Submit proof",
+          icon: commitment.goalType === "content" ? "link" : "activity",
+          onPress: () => openCheckIn(commitment),
+        };
+      }
+
+      if (isTodayScheduled(commitment)) {
+        const todayCheckIn = getCheckInForDate(commitment, today);
+        const todayStatus = getCheckInStatus(todayCheckIn);
+        return {
+          label: todayStatus === "approved" ? "View record" : "View proof",
+          icon: todayStatus === "approved" ? "check-circle" : "clock",
+          onPress: () => openDetails(commitment),
+        };
+      }
+
+      return {
+        label: formatComeBackLabel(getNextScheduledDate(commitment)),
+        icon: "calendar",
+        disabled: true,
+        muted: true,
+      };
+    }
+
+    return {
+      label: "Start",
+      icon: "play",
+      onPress: () => openDetails(commitment),
+    };
   }
 
   function handleSubmitContent(
@@ -140,7 +259,7 @@ export default function HomeScreen() {
     setModalVisible(false);
   }
 
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
   const isUrgent = countdown < 3600000;
 
   return (
@@ -171,63 +290,24 @@ export default function HomeScreen() {
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
               activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Create pact"
             >
               <LinearGradient
-                colors={["#FFD800", "#FFD800"]}
+                colors={[colors.primary, colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.addBtn}
               >
-                <Feather name="plus" size={20} color="#000" />
+                <Feather
+                  name="plus"
+                  size={20}
+                  color={colors.primaryForeground}
+                />
               </LinearGradient>
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* Summary strip */}
-        {commitments.length > 0 && (
-          <View
-            style={[
-              styles.summaryCard,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <SumStat
-              value={formatCurrency(totalRefunded)}
-              label="Refund credit"
-              color={colors.primary}
-              colors={colors}
-            />
-            <View
-              style={[
-                styles.summaryDivider,
-                { backgroundColor: colors.border },
-              ]}
-            />
-            <SumStat
-              value={formatCurrency(totalCommitted - totalRefunded)}
-              label="At risk"
-              color={colors.accent}
-              colors={colors}
-            />
-            <View
-              style={[
-                styles.summaryDivider,
-                { backgroundColor: colors.border },
-              ]}
-            />
-            <SumStat
-              value={String(todayPending.length)}
-              label="Due today"
-              color={
-                todayPending.length > 0
-                  ? colors.foreground
-                  : colors.mutedForeground
-              }
-              colors={colors}
-            />
-          </View>
-        )}
 
         {pendingPaymentCommitments.length > 0 && (
           <View style={styles.section}>
@@ -240,7 +320,12 @@ export default function HomeScreen() {
               Open a draft pact to buy a slot, lock the deposit, and start.
             </Text>
             {pendingPaymentCommitments.map((c) => (
-              <CommitmentCard key={c.id} commitment={c} compact />
+              <CommitmentCard
+                key={c.id}
+                commitment={c}
+                compact
+                action={homeActionFor(c)}
+              />
             ))}
           </View>
         )}
@@ -252,76 +337,69 @@ export default function HomeScreen() {
             countdown={countdown}
             isUrgent={isUrgent}
             colors={colors}
-            onCheckIn={() => openCheckIn(featuredCommitment)}
-            onViewDetails={() =>
-              router.push(`/commitment/${featuredCommitment.id}`)
-            }
+            action={homeActionFor(featuredCommitment)}
+            onViewDetails={() => openDetails(featuredCommitment)}
           />
         )}
 
-        {/* Deadline banner (when there are pending) */}
-        {todayPending.length > 0 && (
-          <View
-            style={[
-              styles.deadlineBanner,
-              {
-                backgroundColor: isUrgent
-                  ? colors.danger + "22"
-                  : colors.secondary,
-                borderColor: isUrgent ? colors.danger + "55" : colors.border,
-              },
-            ]}
-          >
-            <Feather
-              name="clock"
-              size={13}
-              color={isUrgent ? colors.danger : colors.mutedForeground}
-            />
-            <Text
-              style={[
-                styles.deadlineText,
-                { color: isUrgent ? colors.danger : colors.mutedForeground },
-              ]}
-            >
-              The pact closes in {formatCountdown(countdown)} · proof due by
-              11:59 PM
-            </Text>
-          </View>
-        )}
-
         {/* Today pending (excluding the featured one shown in widget) */}
-        {todayPending.length > 1 && (
+        {secondaryTodayPending.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Also due today
             </Text>
-            {todayPending.slice(1).map((c) => (
+            {secondaryTodayPending.map((c) => (
               <CommitmentCard
                 key={c.id}
                 commitment={c}
                 onCheckIn={openCheckIn}
+                action={homeActionFor(c)}
               />
             ))}
           </View>
         )}
 
         {/* Successful today */}
-        {todayDone.length > 0 && (
+        {secondaryTodayDone.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               In the record today
             </Text>
             <Text style={[styles.sectionSub, { color: colors.primary }]}>
-              {todayDone.length} signed
+              {secondaryTodayDone.length} signed
             </Text>
-            {todayDone.map((c) => (
-              <CommitmentCard key={c.id} commitment={c} compact />
+            {secondaryTodayDone.map((c) => (
+              <CommitmentCard
+                key={c.id}
+                commitment={c}
+                compact
+                action={homeActionFor(c)}
+              />
+            ))}
+          </View>
+        )}
+
+        {secondaryNotStarted.length > 0 && (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Not started
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              First proof starts the record.
+            </Text>
+            {secondaryNotStarted.map((c) => (
+              <CommitmentCard
+                key={c.id}
+                commitment={c}
+                compact
+                action={homeActionFor(c)}
+              />
             ))}
           </View>
         )}
 
         {/* Rest days */}
-        {todayNotScheduled.length > 0 && todayPending.length === 0 && (
+        {secondaryTodayNotScheduled.length > 0 && todayPending.length === 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Rest day
@@ -331,8 +409,13 @@ export default function HomeScreen() {
             >
               These pacts do not judge today.
             </Text>
-            {todayNotScheduled.map((c) => (
-              <CommitmentCard key={c.id} commitment={c} compact />
+            {secondaryTodayNotScheduled.map((c) => (
+              <CommitmentCard
+                key={c.id}
+                commitment={c}
+                compact
+                action={homeActionFor(c)}
+              />
             ))}
           </View>
         )}
@@ -352,15 +435,14 @@ export default function HomeScreen() {
               {firstName ? `No pacts yet, ${firstName}` : "No pacts on record"}
             </Text>
             <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              Make one you cannot casually ignore. The Raven will record the
-              proof.
+              Start with one pact.
             </Text>
             <TouchableOpacity
               onPress={() => router.push("/commitment/new")}
               activeOpacity={0.85}
             >
               <LinearGradient
-                colors={["#FFD800", "#FFD800"]}
+                colors={[colors.primary, colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.createBtn}
@@ -390,18 +472,17 @@ function ActiveWidget({
   countdown,
   isUrgent,
   colors,
-  onCheckIn,
+  action,
   onViewDetails,
 }: {
   commitment: Commitment;
   countdown: number;
   isUrgent: boolean;
   colors: any;
-  onCheckIn: () => void;
+  action: CommitmentCardAction;
   onViewDetails: () => void;
 }) {
   const today = getTodayStr();
-  const perDay = getRefundPerDay(commitment);
   const totalDays = getTotalCommittedDays(commitment);
   const verified = getVerifiedCheckIns(commitment).length;
   const daysLeft = getDaysRemaining(commitment);
@@ -411,6 +492,11 @@ function ActiveWidget({
   const todayStatus = getCheckInStatus(todayCheckIn);
   const progress = totalDays > 0 ? verified / totalDays : 0;
   const totalRefunded = getTotalRefunded(commitment);
+  const notStarted = isNotStarted(commitment);
+  const actionMuted = action.disabled || action.muted;
+  const actionFg = actionMuted
+    ? colors.mutedForeground
+    : colors.primaryForeground;
 
   return (
     <TouchableOpacity
@@ -477,6 +563,12 @@ function ActiveWidget({
                 {formatCountdown(countdown)}
               </Text>
             </View>
+          ) : notStarted ? (
+            <Text
+              style={[wStyles.countdown, { color: colors.mutedForeground }]}
+            >
+              Starts {formatDate(commitment.startDate)}
+            </Text>
           ) : todayStatus === "under_review" ? (
             <View style={wStyles.countdownRow}>
               <Feather name="clock" size={11} color={colors.accent} />
@@ -517,7 +609,7 @@ function ActiveWidget({
       {/* Progress */}
       <View style={[wStyles.progressBg, { backgroundColor: colors.border }]}>
         <LinearGradient
-          colors={["#FFD800", "#FFD800"]}
+          colors={[colors.primary, colors.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[
@@ -546,107 +638,66 @@ function ActiveWidget({
             successful days
           </Text>
         </View>
-        <View style={wStyles.statDivider} />
-        <View style={wStyles.stat}>
-          <Text style={[wStyles.statVal, { color: colors.accent }]}>
-            {formatCurrency(perDay, commitment.currency)}
-          </Text>
-          <Text style={[wStyles.statLabel, { color: colors.mutedForeground }]}>
-            per day
-          </Text>
-        </View>
       </View>
 
       {/* Action buttons */}
       <View style={wStyles.actions}>
-        {hasPending && (
+        {action.disabled ? (
+          <View
+            style={[
+              wStyles.actionBtn,
+              {
+                flex: 1,
+                backgroundColor: colors.secondary,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Feather name={action.icon as any} size={15} color={actionFg} />
+            <Text
+              style={[wStyles.actionTxt, { color: actionFg }]}
+              numberOfLines={1}
+            >
+              {action.label}
+            </Text>
+          </View>
+        ) : (
           <TouchableOpacity
             onPress={(e) => {
               e.stopPropagation?.();
-              onCheckIn();
+              action.onPress?.();
             }}
             activeOpacity={0.85}
             style={{ flex: 1 }}
           >
             <LinearGradient
-              colors={["#FFD800", "#FFD800"]}
+              colors={
+                actionMuted
+                  ? ([colors.secondary, colors.secondary] as [string, string])
+                  : ([colors.primary, colors.primary] as [string, string])
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={wStyles.checkInBtn}
+              style={[
+                wStyles.actionBtn,
+                {
+                  flex: 1,
+                  borderColor: actionMuted ? colors.border : colors.primary,
+                },
+              ]}
             >
-              <Feather
-                name={commitment.goalType === "content" ? "link" : "activity"}
-                size={15}
-                color="#000"
-              />
-              <Text style={wStyles.checkInTxt}>
-                {commitment.goalType === "content"
-                  ? "Submit post link"
-                  : "Show proof"}{" "}
-                · sign
+              <Feather name={action.icon as any} size={15} color={actionFg} />
+              <Text
+                style={[wStyles.actionTxt, { color: actionFg }]}
+                numberOfLines={1}
+              >
+                {action.label}
               </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-        {hasPending ? (
-          <TouchableOpacity
-            onPress={onViewDetails}
-            activeOpacity={0.8}
-            style={[wStyles.detailBtn, { backgroundColor: colors.secondary }]}
-          >
-            <Text
-              style={[wStyles.detailTxt, { color: colors.mutedForeground }]}
-            >
-              Details
-            </Text>
-            <Feather
-              name="arrow-right"
-              size={14}
-              color={colors.mutedForeground}
-            />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={onViewDetails}
-            activeOpacity={0.8}
-            style={{ flex: 1 }}
-          >
-            <LinearGradient
-              colors={["#FFD800", "#FFD800"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[wStyles.detailBtn, { flex: 1 }]}
-            >
-              <Text style={[wStyles.detailTxt, { color: "#000" }]}>
-                View details
-              </Text>
-              <Feather name="arrow-right" size={14} color="#000" />
             </LinearGradient>
           </TouchableOpacity>
         )}
       </View>
     </TouchableOpacity>
-  );
-}
-
-function SumStat({
-  value,
-  label,
-  color,
-  colors,
-}: {
-  value: string;
-  label: string;
-  color: string;
-  colors: any;
-}) {
-  return (
-    <View style={styles.summaryStat}>
-      <Text style={[styles.summaryValue, { color }]}>{value}</Text>
-      <Text style={[styles.summaryLabel, { color: colors.mutedForeground }]}>
-        {label}
-      </Text>
-    </View>
   );
 }
 
@@ -692,30 +743,23 @@ const wStyles = StyleSheet.create({
   statLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
   statDivider: { width: 1, height: 28, backgroundColor: "#222230" },
   actions: { flexDirection: "row", gap: 8, marginTop: 2 },
-  checkInBtn: {
+  actionBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 13,
+    paddingHorizontal: 14,
     borderRadius: 8,
+    borderWidth: 1,
   },
-  checkInTxt: {
+  actionTxt: {
+    flexShrink: 1,
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
-    color: "#000",
+    color: "#fff",
   },
-  detailBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  detailTxt: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 });
 
 const styles = StyleSheet.create({
@@ -741,29 +785,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  summaryCard: {
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    marginBottom: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  summaryStat: { flex: 1, alignItems: "center", gap: 4 },
-  summaryValue: { fontSize: 16, fontFamily: "Inter_700Bold" },
-  summaryLabel: { fontSize: 10, fontFamily: "Inter_400Regular" },
-  summaryDivider: { width: 1, height: 32 },
-  deadlineBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 18,
-  },
-  deadlineText: { fontSize: 13, fontFamily: "Inter_500Medium" },
   section: { marginBottom: 24 },
   sectionTitle: {
     fontSize: 17,
@@ -806,6 +827,6 @@ const styles = StyleSheet.create({
   createBtnText: {
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
-    color: "#000",
+    color: "#fff",
   },
 });

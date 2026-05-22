@@ -7,6 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Image,
+  Linking,
   Modal,
   PanResponder,
   Platform,
@@ -19,6 +20,7 @@ import {
 } from "react-native";
 import Svg, { Polyline } from "react-native-svg";
 
+import { LEGAL_URLS } from "@/constants/links";
 import { Commitment, ProofLocation } from "@/contexts/CommitmentsContext";
 import { selectWorkoutProofPrompt } from "@/constants/workoutProofPrompts";
 import { useColors } from "@/hooks/useColors";
@@ -57,7 +59,7 @@ interface Props {
 type SignaturePoint = { x: number; y: number };
 type SignatureStroke = SignaturePoint[];
 
-const SUBMISSION_STATEMENT = "I did today's submission";
+const SUBMISSION_STATEMENT = "I showed today's proof";
 
 export function CheckInModal({
   visible,
@@ -223,16 +225,6 @@ export function CheckInModal({
     };
   }
 
-  function formatLocation(location: ProofLocation) {
-    const accuracy =
-      typeof location.accuracy === "number"
-        ? ` · ±${Math.round(location.accuracy)}m`
-        : "";
-    return `${location.latitude.toFixed(5)}, ${location.longitude.toFixed(
-      5,
-    )}${accuracy}`;
-  }
-
   async function takeWorkoutProof() {
     if (!commitment || uploadingWorkoutProof) return;
     setUploadingWorkoutProof(true);
@@ -314,7 +306,7 @@ export function CheckInModal({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={[styles.title, { color: colors.foreground }]}>
-                {isContent ? "Show Proof" : "Show Workout Proof"}
+                {isContent ? "Show proof" : "Workout proof"}
               </Text>
               <Text
                 style={[styles.commitName, { color: colors.mutedForeground }]}
@@ -327,6 +319,8 @@ export function CheckInModal({
               onPress={onClose}
               style={styles.closeBtn}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Close proof sheet"
             >
               <Feather name="x" size={20} color={colors.mutedForeground} />
             </TouchableOpacity>
@@ -384,7 +378,7 @@ export function CheckInModal({
                 <Text
                   style={[styles.fieldHint, { color: colors.mutedForeground }]}
                 >
-                  Post it publicly. Paste the link. Sign the record.
+                  Public link only.
                 </Text>
                 <View
                   style={[
@@ -404,7 +398,7 @@ export function CheckInModal({
                   <TextInput
                     ref={urlRef}
                     style={[styles.input, { color: colors.foreground }]}
-                    placeholder="https://..."
+                    placeholder="https://post.example"
                     placeholderTextColor={colors.mutedForeground}
                     value={url}
                     onChangeText={setUrl}
@@ -446,115 +440,8 @@ export function CheckInModal({
                 <Text
                   style={[styles.fieldHint, { color: colors.mutedForeground }]}
                 >
-                  Use the camera now. Location is captured with the proof.
-                  Match the daily pose: {proofPrompt.text}
+                  Match: {proofPrompt.text}
                 </Text>
-
-                <View style={styles.uploadActions}>
-                  <TouchableOpacity
-                    onPress={() => void takeWorkoutProof()}
-                    disabled={uploadingWorkoutProof}
-                    activeOpacity={0.8}
-                    style={[
-                      styles.uploadBtn,
-                      {
-                        backgroundColor: colors.primary,
-                        opacity: uploadingWorkoutProof ? 0.55 : 1,
-                      },
-                    ]}
-                  >
-                    <Feather name="camera" size={14} color="#000" />
-                    <Text style={styles.uploadBtnText}>
-                      {uploadingWorkoutProof
-                        ? "Capturing..."
-                        : workoutProofStorageId
-                          ? "Retake camera proof"
-                          : "Take camera proof"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {workoutPreviewUri && (
-                  <View
-                    style={[
-                      styles.proofPreview,
-                      {
-                        backgroundColor: colors.secondary,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <Image
-                      source={{ uri: workoutPreviewUri }}
-                      accessibilityLabel="Attached workout proof"
-                      style={styles.proofPreviewImage}
-                      resizeMode="cover"
-                    />
-                    <TouchableOpacity
-                      onPress={() => {
-                        setWorkoutPreviewUri(undefined);
-                        setWorkoutProofStorageId(undefined);
-                        setWorkoutProofLocation(undefined);
-                      }}
-                      activeOpacity={0.75}
-                      style={[
-                        styles.removeProofBtn,
-                        { backgroundColor: colors.card },
-                      ]}
-                    >
-                      <Feather name="x" size={14} color={colors.foreground} />
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {workoutProofLocation && (
-                  <View
-                    style={[
-                      styles.locationBox,
-                      {
-                        backgroundColor: colors.secondary,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <Feather
-                      name="map-pin"
-                      size={14}
-                      color={colors.primary}
-                    />
-                    <Text
-                      style={[
-                        styles.locationText,
-                        { color: colors.mutedForeground },
-                      ]}
-                    >
-                      Location captured · {formatLocation(workoutProofLocation)}
-                    </Text>
-                  </View>
-                )}
-
-                {workoutUploadError && (
-                  <Text style={[styles.errorText, { color: colors.danger }]}>
-                    {workoutUploadError}
-                  </Text>
-                )}
-
-                <View
-                  style={[
-                    styles.proofPromptBox,
-                    {
-                      backgroundColor: colors.primary + "14",
-                      borderColor: colors.primary + "33",
-                    },
-                  ]}
-                >
-                  <Feather name="activity" size={14} color={colors.primary} />
-                  <Text
-                    style={[styles.proofPromptText, { color: colors.primary }]}
-                  >
-                    Fresh proof must clearly show: {proofPrompt.text}
-                  </Text>
-                </View>
 
                 <View
                   style={[
@@ -593,31 +480,114 @@ export function CheckInModal({
                   )}
                 </View>
 
-                <View
-                  style={[
-                    styles.healthBox,
-                    {
-                      backgroundColor: colors.secondary,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name="shield"
-                    size={14}
-                    color={colors.mutedForeground}
-                  />
-                  <Text
+                <View style={styles.uploadActions}>
+                  <TouchableOpacity
+                    onPress={() => void takeWorkoutProof()}
+                    disabled={uploadingWorkoutProof}
+                    activeOpacity={0.8}
                     style={[
-                      styles.healthText,
-                      { color: colors.mutedForeground },
+                      styles.uploadBtn,
+                      {
+                        backgroundColor: colors.primary,
+                        opacity: uploadingWorkoutProof ? 0.55 : 1,
+                      },
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Take camera proof"
+                  >
+                    <Feather
+                      name="camera"
+                      size={14}
+                      color={colors.primaryForeground}
+                    />
+                    <Text
+                      style={[
+                        styles.uploadBtnText,
+                        { color: colors.primaryForeground },
+                      ]}
+                    >
+                      {uploadingWorkoutProof
+                        ? "Capturing…"
+                        : workoutProofStorageId
+                          ? "Retake proof"
+                          : "Take proof"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {workoutPreviewUri && (
+                  <View
+                    style={[
+                      styles.proofPreview,
+                      {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.border,
+                      },
                     ]}
                   >
-                    Workout proof accepts only a fresh camera capture, device
-                    location, and the daily pose prompt. Gallery uploads and
-                    proof links are not accepted.
+                    <Image
+                      source={{ uri: workoutPreviewUri }}
+                      accessibilityLabel="Attached workout proof"
+                      style={styles.proofPreviewImage}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      onPress={() => {
+                        setWorkoutPreviewUri(undefined);
+                        setWorkoutProofStorageId(undefined);
+                        setWorkoutProofLocation(undefined);
+                      }}
+                      activeOpacity={0.75}
+                      style={[
+                        styles.removeProofBtn,
+                        { backgroundColor: colors.card },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove proof"
+                    >
+                      <Feather name="x" size={14} color={colors.foreground} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {workoutProofLocation && (
+                  <View
+                    style={[
+                      styles.locationBox,
+                      {
+                        backgroundColor: colors.secondary,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Feather
+                      name="map-pin"
+                      size={14}
+                      color={colors.primary}
+                    />
+                    <Text
+                      style={[
+                        styles.locationText,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Location captured
+                    </Text>
+                  </View>
+                )}
+
+                {workoutUploadError && (
+                  <Text style={[styles.errorText, { color: colors.danger }]}>
+                    {workoutUploadError}
                   </Text>
-                </View>
+                )}
+
+                <Text
+                  style={[styles.proofRulesLink, { color: colors.mutedForeground }]}
+                  onPress={() => void Linking.openURL(LEGAL_URLS.proofRules)}
+                >
+                  Proof rules
+                </Text>
               </View>
             )}
 
@@ -721,16 +691,16 @@ export function CheckInModal({
               <Feather name="rotate-ccw" size={14} color={colors.primary} />
               <Text style={[styles.refundText, { color: colors.primary }]}>
                 {proofReady && !hasSignature
-                  ? `Sign "${SUBMISSION_STATEMENT}" to lock this into the record`
+                  ? "Sign to record"
                   : isContent && canSubmit
-                    ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
+                    ? `${formatCurrency(refundPerDay, commitment.currency)} refund credit if approved`
                     : !isContent && canSubmit
-                      ? `If successful, ${formatCurrency(refundPerDay, commitment.currency)} comes back as refund credit`
-                      : `Show proof by the deadline. The Raven records the proof.`}
+                      ? `${formatCurrency(refundPerDay, commitment.currency)} refund credit if approved`
+                      : "Show proof by the deadline."}
               </Text>
             </View>
 
-            {/* Submit */}
+            {/* Record */}
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={!canSubmit}
@@ -748,10 +718,14 @@ export function CheckInModal({
               <Text
                 style={[
                   styles.submitText,
-                  { color: canSubmit ? "#000" : colors.mutedForeground },
+                  {
+                    color: canSubmit
+                      ? colors.primaryForeground
+                      : colors.mutedForeground,
+                  },
                 ]}
               >
-                Sign and Submit
+                Sign record
               </Text>
             </TouchableOpacity>
           </ScrollView>
@@ -878,23 +852,8 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   uploadBtnText: {
-    color: "#000",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
-  },
-  uploadSecondaryBtn: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  uploadSecondaryText: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
   },
   proofPreview: {
     height: 140,
@@ -931,20 +890,8 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     lineHeight: 16,
   },
-  proofPromptBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  proofPromptText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
   referenceImageBox: {
-    height: 112,
+    height: 160,
     overflow: "hidden",
     borderRadius: 8,
     borderWidth: 1,
@@ -965,6 +912,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontFamily: "Inter_400Regular",
+  },
+  proofRulesLink: {
+    alignSelf: "flex-start",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textDecorationLine: "underline",
   },
   signatureHeader: {
     flexDirection: "row",
@@ -1000,20 +953,6 @@ const styles = StyleSheet.create({
   signaturePlaceholder: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-  },
-  healthBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  healthText: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    flex: 1,
-    lineHeight: 16,
   },
   refundPreview: {
     flexDirection: "row",

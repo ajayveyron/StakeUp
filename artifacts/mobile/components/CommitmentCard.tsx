@@ -27,10 +27,22 @@ import {
   isTodayScheduled,
 } from "@/utils/commitment";
 
+type FeatherIconName = React.ComponentProps<typeof Feather>["name"];
+
+export interface CommitmentCardAction {
+  label: string;
+  icon: FeatherIconName;
+  onPress?: () => void;
+  disabled?: boolean;
+  muted?: boolean;
+  accessibilityLabel?: string;
+}
+
 interface Props {
   commitment: Commitment;
   onCheckIn?: (commitment: Commitment) => void;
   compact?: boolean;
+  action?: CommitmentCardAction;
 }
 
 const GOAL_ICONS: Record<string, string> = {
@@ -38,7 +50,12 @@ const GOAL_ICONS: Record<string, string> = {
   workout: "activity",
 };
 
-export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
+export function CommitmentCard({
+  commitment: c,
+  onCheckIn,
+  compact,
+  action,
+}: Props) {
   const colors = useColors();
   const router = useRouter();
   const refunded = getTotalRefunded(c);
@@ -65,6 +82,59 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
 
   const showCheckInBtn = active && todayScheduled && !checkedToday;
   const showSubmittedState = active && todayScheduled && checkedToday;
+  const actionFg = action?.muted
+    ? colors.mutedForeground
+    : colors.primaryForeground;
+  const actionBg = action?.muted ? colors.secondary : colors.primary;
+  const actionNode = action ? (
+    action.disabled ? (
+      <View
+        style={[
+          styles.cardAction,
+          {
+            backgroundColor: actionBg,
+            borderColor: colors.border,
+          },
+        ]}
+      >
+        <Feather name={action.icon as any} size={14} color={actionFg} />
+        <Text
+          style={[styles.cardActionText, { color: actionFg }]}
+          numberOfLines={1}
+        >
+          {action.label}
+        </Text>
+      </View>
+    ) : (
+      <TouchableOpacity
+        onPress={(event) => {
+          event.stopPropagation?.();
+          action.onPress?.();
+        }}
+        activeOpacity={0.82}
+        accessibilityRole="button"
+        accessibilityLabel={action.accessibilityLabel ?? action.label}
+      >
+        <View
+          style={[
+            styles.cardAction,
+            {
+              backgroundColor: actionBg,
+              borderColor: action.muted ? colors.border : actionBg,
+            },
+          ]}
+        >
+          <Feather name={action.icon as any} size={14} color={actionFg} />
+          <Text
+            style={[styles.cardActionText, { color: actionFg }]}
+            numberOfLines={1}
+          >
+            {action.label}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    )
+  ) : null;
 
   return (
     <LinearGradient
@@ -77,6 +147,8 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
         onPress={handlePress}
         activeOpacity={0.75}
         style={[styles.card, { backgroundColor: colors.card }]}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${c.name}`}
       >
         <View style={styles.header}>
           {active ? (
@@ -119,7 +191,12 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
           </View>
 
           {showCheckInBtn && (
-            <TouchableOpacity onPress={handleCheckIn} activeOpacity={0.8}>
+            <TouchableOpacity
+              onPress={handleCheckIn}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel={`Show proof for ${c.name}`}
+            >
               <LinearGradient
                 colors={gradients.primary}
                 start={{ x: 0, y: 0 }}
@@ -129,7 +206,7 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
                 <Feather
                   name={c.goalType === "content" ? "link" : "activity"}
                   size={15}
-                  color="#000"
+                  color={colors.primaryForeground}
                 />
               </LinearGradient>
             </TouchableOpacity>
@@ -241,6 +318,8 @@ export function CommitmentCard({ commitment: c, onCheckIn, compact }: Props) {
             </View>
           </View>
         )}
+
+        {actionNode}
       </TouchableOpacity>
     </LinearGradient>
   );
@@ -330,5 +409,21 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 28,
+  },
+  cardAction: {
+    marginTop: 14,
+    minHeight: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  cardActionText: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
   },
 });

@@ -25,7 +25,6 @@ import { selectProfileAvatar } from "@/constants/profileAvatars";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useRazorpayCheckout } from "@/hooks/useRazorpayCheckout";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import {
@@ -55,15 +54,8 @@ export default function ProfileScreen() {
   const [whatsAppInput, setWhatsAppInput] = useState("");
   const [savingWhatsApp, setSavingWhatsApp] = useState(false);
   const [updatingAvatar, setUpdatingAvatar] = useState(false);
-  const { buySlot, paying: buyingSlot } = useRazorpayCheckout({
-    onSlotSuccess: () =>
-      Alert.alert(
-        "Pact slot ready",
-        "Open any draft pact to lock its refundable deposit and start.",
-      ),
-  });
 
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
   const displayName = currentUser?.displayName?.trim() || "Pact Raven member";
   const email = currentUser?.email ?? "No email recorded";
   const whatsAppDisplay = whatsappNumberLabel(currentUser?.whatsappNumber);
@@ -87,10 +79,6 @@ export default function ProfileScreen() {
       setWhatsAppInput(currentUser?.whatsappNumber ?? "");
     }
   }, [currentUser?.whatsappNumber, editingWhatsApp]);
-
-  function handleBuySlot() {
-    void buySlot();
-  }
 
   function startWhatsAppEdit() {
     setWhatsAppInput(currentUser?.whatsappNumber ?? "");
@@ -232,7 +220,7 @@ export default function ProfileScreen() {
                 <Feather
                   name={updatingAvatar ? "loader" : "camera"}
                   size={13}
-                  color="#000"
+                  color={colors.primaryForeground}
                 />
               </View>
             </TouchableOpacity>
@@ -267,7 +255,7 @@ export default function ProfileScreen() {
               <Text
                 style={[styles.avatarUploadText, { color: colors.foreground }]}
               >
-                {updatingAvatar ? "Saving..." : "Upload picture"}
+                {updatingAvatar ? "Saving…" : "Upload picture"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -322,14 +310,6 @@ export default function ProfileScreen() {
         </Section>
 
         <Section title="Settings" colors={colors}>
-          <ActionRow
-            icon="key"
-            label="Pact slots"
-            value={buyingSlot ? "Opening payment..." : "Buy a ₹249 slot"}
-            onPress={handleBuySlot}
-            colors={colors}
-          />
-          <Divider colors={colors} />
           <ActionRow
             icon="repeat"
             label="Transactions"
@@ -592,7 +572,7 @@ function WhatsAppEditRow({
           activeOpacity={0.84}
         >
           <Text style={styles.saveBtnText}>
-            {saving ? "Saving..." : "Save"}
+            {saving ? "Saving…" : "Save"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -773,7 +753,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   saveBtnText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 12,
     fontFamily: "Inter_700Bold",
   },

@@ -23,86 +23,70 @@ const proofTypes = [
     title: "Workout pact",
     goalType: "workout",
     cta: "Start workout pact",
-    body: "Train on the days you promised. Submit fresh camera proof with location and the daily pose prompt before your deadline.",
+    body: "Camera, location, daily pose.",
   },
   {
     icon: Link2,
     title: "Content pact",
     goalType: "content",
     cta: "Start content pact",
-    body: "Publish the post, leave it public, and submit the link before the day closes. Deleted or private posts do not count.",
+    body: "Public post link before deadline.",
   },
 ];
 
 const steps = [
   {
-    title: "Choose the pact",
-    body: "Pick workout consistency or daily content posting. Set the schedule, deadline, deposit, and charity before you start.",
+    title: "Choose",
+    body: "Pick workout or content.",
   },
   {
-    title: "Buy one slot",
-    body: "Rs 249 buys one non-refundable pact slot. A draft pact does not use it. Starting a pact does.",
+    title: "Lock",
+    body: "Pay slot. Lock deposit.",
   },
   {
-    title: "Lock the deposit",
-    body: "Pay the separate deposit when you are ready to start. This money sits against the pact rules, not as a prize pool.",
-  },
-  {
-    title: "Show proof",
-    body: "Approved proof creates refund credit. Missed or rejected days forfeit the matching amount to your selected charity.",
+    title: "Prove",
+    body: "Show proof daily.",
   },
 ];
 
 const moneyRules = [
   {
     icon: BadgeIndianRupee,
-    title: "No subscription",
-    body: "Pay for one slot when you want one pact. Buy another slot only when you want another challenge.",
+    title: "One slot",
+    body: "Rs 249 starts one pact.",
   },
   {
     icon: ShieldCheck,
-    title: "Deposit comes back only when earned",
-    body: "Successful days create refund credit after manual review. Payouts are manual UPI for the first cohorts.",
+    title: "Earn it back",
+    body: "Approved proof creates refund credit.",
   },
   {
     icon: HeartHandshake,
-    title: "Missed-day money is not our upside",
-    body: "Forfeited deposit amounts are recorded for the selected charity. Pact Raven revenue is the slot fee.",
+    title: "Forfeit is charity",
+    body: "Missed-day money is not Pact Raven revenue.",
   },
 ];
 
 const faqs = [
   {
     title: "What does Rs 249 pay for?",
-    body: "Rs 249 buys one non-refundable pact slot. It covers the accountability record, manual review, reminders, operations, and support for one pact.",
+    body: "One non-refundable pact slot.",
   },
   {
     title: "Can I draft before paying?",
-    body: "Yes. Draft the pact first. The slot is consumed only when the pact starts after deposit confirmation.",
+    body: "Yes. Payment starts the pact.",
   },
   {
     title: "Is the deposit a prize pool?",
-    body: "No. The deposit is separate from the slot fee and sits behind your own pact rules. Users do not win another user's money.",
+    body: "No. Users do not win another user's money.",
   },
   {
     title: "What proof counts?",
-    body: "Workout pacts need fresh camera proof with location and the daily prompt. Content pacts need the published public link before the deadline. The Raven reviews the record manually.",
+    body: "Workout: camera, location, pose. Content: public link.",
   },
   {
-    title: "What if proof is late or rejected?",
-    body: "That day is marked missed or rejected. The matching deposit amount is forfeited to the charity selected before the pact started.",
-  },
-  {
-    title: "When do I get money back?",
-    body: "Approved proof creates refund credit. Request payout in the app, then admin pays through UPI and records the reference.",
-  },
-  {
-    title: "Can I end early?",
-    body: "Yes, but the used slot remains used. The remaining deposit goes to manual settlement review under the payment policy.",
-  },
-  {
-    title: "Where does forfeited money go?",
-    body: "Forfeited deposit amounts are recorded for the chosen charity. They are not Pact Raven revenue.",
+    title: "Where does missed-day money go?",
+    body: "To the charity you chose. Not Pact Raven.",
   },
 ];
 
@@ -116,8 +100,7 @@ const siteOrigin = "https://pactraven.com";
 const routeMeta: Record<string, { title: string; description: string }> = {
   "/": {
     title: "Pact Raven - Workout and content pacts",
-    description:
-      "Create a workout or content pact, lock a deposit behind the rules, submit proof, and earn refund credit when proof is approved.",
+    description: "Lock money. Show proof daily. Missed days go to charity.",
   },
   "/terms": {
     title: "Terms of Use - Pact Raven",
@@ -160,14 +143,14 @@ const legalPages = {
       {
         title: "Who We Are",
         body: [
-          "Pact Raven is a commitment and accountability product for users in India. Users create a pact, lock money behind it, submit proof, and receive refund credit when proof is approved.",
+          "Pact Raven is a commitment and accountability product for users in India. Users create a pact, lock money behind it, show proof, and receive refund credit when proof is approved.",
           "Legal entity, registered address, GST details, and final support contacts must be confirmed before paid public launch. The details shown on payment receipts and checkout records will identify the operating entity.",
         ],
       },
       {
         title: "Pact Slots And Deposits",
         body: [
-          "A pact slot is a non-refundable access purchase. One pact slot unlocks one pact challenge.",
+          "A pact slot is a non-refundable access purchase. One pact slot unlocks one pact.",
           "A pact deposit is separate from the pact slot fee. The deposit is held against the pact rules and is recorded internally as a refundable pact deposit liability until it is refunded, forfeited, or transferred to charity.",
           "A draft pact does not consume a slot. A slot is consumed only when the pact starts after deposit confirmation. If a started pact ends early, the slot remains used.",
         ],
@@ -175,7 +158,7 @@ const legalPages = {
       {
         title: "Proof Review",
         body: [
-          "Proof is reviewed manually. Pact Raven may approve, reject, or ask for clarification depending on the pact rules and the proof submitted.",
+          "Proof is reviewed manually. Pact Raven may approve, reject, or ask for clarification depending on the pact rules and the proof shown.",
           "Approved proof creates refund credit. Missed, late, unclear, deleted, private, or rejected proof may forfeit the relevant deposit amount to the user's selected charity.",
           "Review decisions are based on the rules visible before the pact starts. Pact Raven may correct an obvious error, but approval is not automatic.",
         ],
@@ -184,7 +167,7 @@ const legalPages = {
         title: "User Responsibilities",
         body: [
           "Users must provide accurate account, contact, payment, and payout information.",
-          "Users must not submit false proof, old proof, edited proof, proof from another person, or content that they do not have rights to share.",
+          "Users must not show false proof, old proof, edited proof, proof from another person, or content that they do not have rights to share.",
           "Users are responsible for checking deadlines, proof prompts, rules, refund credit, payout requests, and recorded settlement outcomes.",
         ],
       },
@@ -215,7 +198,7 @@ const legalPages = {
         title: "Pact Slot Fee",
         body: [
           "The pact slot fee is Rs 249 for one pact slot unless a specific offer says otherwise.",
-          "The pact slot fee is non-refundable once bought. It pays for access to one pact challenge and Pact Raven's accountability, review, reminders, operations, and support.",
+          "The pact slot fee is non-refundable once bought. It pays for access to one pact and Pact Raven's accountability, review, reminders, operations, and support.",
           "Buying a slot does not start a pact by itself. The user may draft a pact before or after owning a slot.",
         ],
       },
@@ -329,7 +312,7 @@ const legalPages = {
         title: "Security",
         body: [
           "Pact Raven uses third-party infrastructure and reasonable operational safeguards to protect account, payment, proof, and payout records.",
-          "No online system is perfectly secure. Users should not submit sensitive proof beyond what the pact requires.",
+          "No online system is perfectly secure. Users should not share sensitive proof beyond what the pact requires.",
         ],
       },
     ],
@@ -338,12 +321,12 @@ const legalPages = {
     title: "Proof Rules",
     kicker: "Proof review",
     intro:
-      "These rules explain what proof should show, when it must be submitted, and why proof can be approved or rejected.",
+      "These rules explain what proof should show, when it must be shown, and why proof can be approved or rejected.",
     sections: [
       {
         title: "Deadline",
         body: [
-          "Proof must be submitted on the scheduled date before the daily deadline shown in the app.",
+          "Proof must be shown on the scheduled date before the daily deadline shown in the app.",
           "Late proof may be rejected even if the activity happened. The record depends on timely proof, not memory.",
         ],
       },
@@ -397,7 +380,7 @@ const legalPages = {
         title: "Launch Details",
         body: [
           "Legal entity, registered address, GSTIN, and phone number must be inserted before paid public launch.",
-          "Users should not submit sensitive proof beyond what the pact requires.",
+          "Users should not share sensitive proof beyond what the pact requires.",
         ],
       },
     ],
@@ -462,59 +445,46 @@ function App() {
           <div className="nav-links">
             <a href="#how">How it works</a>
             <a href="#pacts">Choose pact</a>
-            <a href="#money">Money rules</a>
-            <a href="#charity">Charity</a>
-            <a href="#faq">FAQ</a>
             <a href="/proof-rules">Proof rules</a>
           </div>
         </nav>
 
-        <div className="shape shape-ring" />
-        <div className="shape shape-block" />
-        <div className="shape shape-slab" />
-
         <div className="hero-grid" id="top">
           <div className="hero-copy">
-            <p className="stamp">Workout and content pacts / India first</p>
-            <h1>Make a pact you cannot casually break.</h1>
+            <p className="stamp">30-day pact / daily proof</p>
+            <h1>Lock money. Show proof. Get Back Money</h1>
             <p className="lede">
-              Choose a 30-day challenge, buy one pact slot, lock a refundable
-              deposit, and submit proof. Successful days unlock refund credit.
-              Missed days forfeit to the charity you chose.
+              Successful days come back. Missed days go to charity.
             </p>
             <div className="hero-actions">
               <a
                 className="button primary"
-                href={appCreateUrl}
-                aria-label="Open Pact Raven app"
+                href={pactIntentUrl("workout")}
+                aria-label="Start a workout pact"
               >
-                Start a pact
+                Start workout pact
                 <ArrowRight size={20} />
               </a>
-              <a className="button secondary" href="#how">
-                How it works
+              <a className="button secondary" href={pactIntentUrl("content")}>
+                Start content pact
               </a>
             </div>
           </div>
 
           <div className="promise-panel" aria-label="Pact summary">
-            <p className="panel-kicker">What you sign</p>
+            <p className="panel-kicker">The record</p>
             <div className="promise-line">
-              <span>I will</span>
-              <strong>Show proof daily</strong>
+              <span>Daily</span>
+              <strong>Proof</strong>
             </div>
             <div className="promise-line">
-              <span>If successful</span>
-              <strong>Refund credit</strong>
+              <span>Approved</span>
+              <strong>Credit</strong>
             </div>
             <div className="promise-line">
-              <span>If missed</span>
-              <strong>Charity forfeit</strong>
+              <span>Missed</span>
+              <strong>Charity</strong>
             </div>
-            <a className="panel-link" href={appCreateUrl}>
-              Open the app
-              <ArrowRight size={18} />
-            </a>
           </div>
         </div>
       </section>
@@ -522,7 +492,7 @@ function App() {
       <section className="band" id="how">
         <div className="section-heading">
           <p className="stamp">How it works</p>
-          <h2>Start only when you are ready to sign the record.</h2>
+          <h2>Three steps.</h2>
         </div>
         <div className="step-list">
           {steps.map((step, index) => (
@@ -538,7 +508,7 @@ function App() {
       <section className="split-band" id="pacts">
         <div className="section-heading">
           <p className="stamp">Choose your pact</p>
-          <h2>Two first challenges. One clear proof rule.</h2>
+          <h2>Pick the proof you can show daily.</h2>
         </div>
         <div className="pact-grid">
           {proofTypes.map((item) => {
@@ -561,7 +531,7 @@ function App() {
       <section className="band money-band" id="money">
         <div className="section-heading">
           <p className="stamp">Money rules</p>
-          <h2>Simple enough to read before paying.</h2>
+          <h2>Simple before payment.</h2>
         </div>
         <div className="money-grid">
           {moneyRules.map((rule) => {
@@ -580,11 +550,11 @@ function App() {
       <section className="charity-band" id="charity">
         <div className="section-heading">
           <p className="stamp">If a day is missed or rejected</p>
-          <h2>Missed-day money goes to the charity you selected.</h2>
+          <h2>Missed days go where you chose.</h2>
         </div>
         <p className="charity-note">
-          You pick the destination before the pact starts. Pact Raven does not
-          treat forfeited deposit money as revenue.
+          Forfeited deposit money is recorded for charity, not Pact Raven
+          revenue.
         </p>
         <div className="charity-strip">
           {charities.map((charity) => (
@@ -596,7 +566,7 @@ function App() {
       <section className="policy-band" id="faq">
         <div className="section-heading">
           <p className="stamp">FAQ</p>
-          <h2>Questions before you sign the pact.</h2>
+          <h2>Before you sign.</h2>
         </div>
         <div className="faq-grid">
           {faqs.map((faq) => (
@@ -607,8 +577,8 @@ function App() {
           ))}
         </div>
         <div className="policy-cta">
-          <a className="button primary" href={appCreateUrl}>
-            Start a pact
+          <a className="button primary" href={pactIntentUrl("workout")}>
+            Start workout pact
             <ArrowRight size={20} />
           </a>
           <a className="button dark" href="/refund-cancellation">
@@ -620,7 +590,7 @@ function App() {
       <footer>
         <div>
           <strong>PACT RAVEN</strong>
-          <span>Make the pact. Record the proof.</span>
+          <span>Lock money. Show proof.</span>
         </div>
         <nav className="footer-links" aria-label="Legal links">
           <a href="/terms">Terms</a>

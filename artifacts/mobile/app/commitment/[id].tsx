@@ -78,7 +78,7 @@ export default function CommitmentDetailScreen() {
 
   const commitment = getCommitment(id ?? "");
   const today = getTodayStr();
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
 
   if (!commitment) {
     return (
@@ -92,6 +92,8 @@ export default function CommitmentDetailScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             style={styles.iconBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
@@ -263,6 +265,8 @@ export default function CommitmentDetailScreen() {
           onPress={() => router.back()}
           style={styles.iconBtn}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
           <Feather name="arrow-left" size={22} color={colors.foreground} />
         </TouchableOpacity>
@@ -278,6 +282,8 @@ export default function CommitmentDetailScreen() {
             disabled={deleting}
             style={[styles.iconBtn, deleting && { opacity: 0.45 }]}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Delete draft pact"
           >
             <Feather name="trash-2" size={18} color={colors.danger} />
           </TouchableOpacity>
@@ -526,10 +532,18 @@ export default function CommitmentDetailScreen() {
                         ]}
                       >
                         {checkInStatus === "approved" && (
-                          <Feather name="check" size={10} color="#000" />
+                          <Feather
+                            name="check"
+                            size={10}
+                            color={colors.primaryForeground}
+                          />
                         )}
                         {checkInStatus === "under_review" && (
-                          <Feather name="clock" size={9} color="#000" />
+                          <Feather
+                            name="clock"
+                            size={9}
+                            color={colors.accentForeground}
+                          />
                         )}
                       </View>
                       <View style={styles.upcomingInfo}>
@@ -900,6 +914,8 @@ export default function CommitmentDetailScreen() {
                     { backgroundColor: colors.secondary },
                   ]}
                   activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="Undo today's proof"
                 >
                   <Feather
                     name="rotate-ccw"
@@ -918,11 +934,11 @@ export default function CommitmentDetailScreen() {
               <Feather
                 name={commitment.goalType === "content" ? "link" : "activity"}
                 size={18}
-                color="#000"
+                color={colors.primaryForeground}
               />
               <Text style={styles.fabText}>
                 {commitment.goalType === "content"
-                  ? "Submit post link"
+                  ? "Show post link"
                   : "Show workout proof"}{" "}
                 · sign
               </Text>
@@ -957,7 +973,6 @@ function PaymentSetupCard({
   colors: any;
 }) {
   const hasSlot = availableSlots > 0;
-  const pendingDeposit = isPendingDeposit(commitment);
   const { buySlot, payDeposit, paying } = useRazorpayCheckout({
     onSlotSuccess: () =>
       Alert.alert(
@@ -976,10 +991,10 @@ function PaymentSetupCard({
   };
   const title = hasSlot ? "Lock the deposit" : "Buy a pact slot";
   const body = hasSlot
-    ? "After the deposit succeeds, one slot is consumed and the pact becomes live."
-    : "A pact slot costs ₹249, is non-refundable, and unlocks one challenge.";
+    ? "Deposit payment starts the pact."
+    : "One slot unlocks one pact.";
   const buttonLabel = paying
-    ? "Opening payment..."
+    ? "Opening payment…"
     : hasSlot
       ? "Pay deposit"
       : "Buy pact slot";
@@ -1052,11 +1067,15 @@ function PaymentSetupCard({
         disabled={paying}
         style={[
           styles.paymentBtn,
-          { backgroundColor: colors.accent, opacity: paying ? 0.55 : 1 },
+          { backgroundColor: colors.primary, opacity: paying ? 0.55 : 1 },
         ]}
         activeOpacity={0.85}
       >
-        <Feather name="credit-card" size={15} color="#000" />
+        <Feather
+          name="credit-card"
+          size={15}
+          color={colors.primaryForeground}
+        />
         <Text style={styles.paymentBtnText}>{buttonLabel}</Text>
       </TouchableOpacity>
       <Text style={[styles.paymentMeta, { color: colors.mutedForeground }]}>
@@ -1074,7 +1093,7 @@ function PaymentSetupCard({
         >
           Payment policy
         </Text>
-        . Ref: {commitment.id}
+        .
       </Text>
     </View>
   );
@@ -1338,7 +1357,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   paymentBtnText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
   },
@@ -1485,5 +1504,5 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 8,
   },
-  fabText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#000" },
+  fabText: { fontSize: 15, fontFamily: "Inter_600SemiBold", color: "#fff" },
 });

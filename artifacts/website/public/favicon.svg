@@ -1,5 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pact Raven">
-  <rect width="64" height="64" fill="#050505"/>
-  <path d="M12 14h40v8H34v8h14v8H34v12h-8V22H12z" fill="#FFD800"/>
-  <path d="M40 34l12 16H42L31 34z" fill="#F8F3D4"/>
+  <rect width="64" height="64" rx="14" fill="#F7F8FA"/>
+  <path
+    d="M10.5 39.5c7.1-11.4 16.2-18.1 27.4-20.1 6.3-1.1 11.8-.4 16.6 2.2-4.4 1.6-8 3.9-10.7 6.9l9.7 10.8H42.1l-6.4-6.7c-6.1 4.4-14.5 6.7-25.2 6.9Z"
+    fill="#1B1D24"
+  />
+  <path
+    d="M31.5 20.5c6.4 0 11.8 1.5 16.2 4.6-6-.8-11.4-.5-16.2.8l-5.2 1.5 5.2-6.9Z"
+    fill="#FFFFFF"
+    opacity=".92"
+  />
+  <circle cx="48.4" cy="24.4" r="1.6" fill="#F7F8FA"/>
 </svg>

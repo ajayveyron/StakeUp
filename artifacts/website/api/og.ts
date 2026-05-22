@@ -8,11 +8,11 @@ export const config = {
 const pactCopy = {
   workout: {
     title: "Start a workout pact",
-    proof: "Fresh workout proof before the deadline.",
+    proof: "Camera. Location. Daily pose.",
   },
   content: {
     title: "Start a content pact",
-    proof: "Public post link before the day closes.",
+    proof: "Public post link before deadline.",
   },
 } as const;
 
@@ -25,10 +25,10 @@ export default function handler(request: Request) {
   const pactType = getPactType(url.searchParams.get("type"));
   const title = pactType
     ? pactCopy[pactType].title
-    : "Make a pact you cannot casually break";
+    : "Lock money. Show proof.";
   const proof = pactType
     ? pactCopy[pactType].proof
-    : "Buy one slot. Lock a deposit. Submit proof.";
+    : "Missed days go to charity.";
 
   return new ImageResponse(
     React.createElement(
@@ -41,9 +41,9 @@ export default function handler(request: Request) {
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 64,
-          background: "#050505",
-          color: "#FFD800",
-          fontFamily: "Arial Black, Impact, sans-serif",
+          background: "#F7F8FA",
+          color: "#1B1D24",
+          fontFamily: "Inter, Arial, sans-serif",
         },
       },
       React.createElement(
@@ -60,14 +60,20 @@ export default function handler(request: Request) {
           "div",
           {
             style: {
-              background: "#FFD800",
-              color: "#050505",
+              border: "1px solid rgba(27,29,36,0.1)",
+              borderRadius: 8,
+              background: "#FFFFFF",
+              color: "#1B1D24",
               padding: "14px 18px",
             },
           },
           "PACT RAVEN",
         ),
-        React.createElement("div", null, "RS 249 SLOT"),
+        React.createElement(
+          "div",
+          { style: { color: "#737985" } },
+          "RS 249 SLOT",
+        ),
       ),
       React.createElement(
         "div",
@@ -83,10 +89,10 @@ export default function handler(request: Request) {
           "div",
           {
             style: {
-              color: "#F8F3D4",
+              color: "#515763",
               fontFamily: "Arial, sans-serif",
               fontSize: 34,
-              fontWeight: 900,
+              fontWeight: 700,
             },
           },
           proof,
@@ -95,9 +101,9 @@ export default function handler(request: Request) {
           "div",
           {
             style: {
-              fontSize: 92,
-              lineHeight: 0.92,
-              textTransform: "uppercase",
+              fontSize: 82,
+              fontWeight: 800,
+              lineHeight: 0.98,
             },
           },
           title,
@@ -110,13 +116,13 @@ export default function handler(request: Request) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "flex-end",
-            color: "#F8F3D4",
+            color: "#515763",
             fontFamily: "Arial, sans-serif",
             fontSize: 28,
-            fontWeight: 900,
+            fontWeight: 700,
           },
         },
-        React.createElement("div", null, "Successful days create refund credit."),
+        React.createElement("div", null, "Lock money. Show proof daily."),
         React.createElement("div", null, "pactraven.com"),
       ),
     ),

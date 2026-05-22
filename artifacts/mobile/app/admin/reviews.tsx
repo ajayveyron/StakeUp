@@ -274,7 +274,7 @@ export default function AdminReviewsScreen() {
   >({});
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
   const isAdmin = currentUser?.role === "admin";
   const loading =
     currentUser === undefined || (isAdmin && overview === undefined);
@@ -463,7 +463,11 @@ export default function AdminReviewsScreen() {
                   <Text
                     style={[
                       styles.tabText,
-                      { color: selected ? "#000" : colors.mutedForeground },
+                      {
+                        color: selected
+                          ? colors.primaryForeground
+                          : colors.mutedForeground,
+                      },
                     ]}
                   >
                     {item.label}
@@ -482,7 +486,11 @@ export default function AdminReviewsScreen() {
                       <Text
                         style={[
                           styles.countText,
-                          { color: selected ? "#000" : colors.foreground },
+                          {
+                            color: selected
+                              ? colors.primaryForeground
+                              : colors.foreground,
+                          },
                         ]}
                       >
                         {counts[item.key]}
@@ -628,7 +636,11 @@ export default function AdminReviewsScreen() {
                         ]}
                         activeOpacity={0.84}
                       >
-                        <Feather name="check" size={15} color="#000" />
+                        <Feather
+                          name="check"
+                          size={15}
+                          color={colors.primaryForeground}
+                        />
                         <Text style={styles.primaryBtnText}>
                           Confirm payment and activate
                         </Text>
@@ -833,7 +845,11 @@ export default function AdminReviewsScreen() {
                           ]}
                           activeOpacity={0.8}
                         >
-                          <Feather name="check" size={15} color="#000" />
+                          <Feather
+                            name="check"
+                            size={15}
+                            color={colors.primaryForeground}
+                          />
                           <Text style={styles.approveText}>Approve</Text>
                         </TouchableOpacity>
                       </View>
@@ -942,7 +958,11 @@ export default function AdminReviewsScreen() {
                           ]}
                           activeOpacity={0.84}
                         >
-                          <Feather name="check" size={15} color="#000" />
+                          <Feather
+                            name="check"
+                            size={15}
+                            color={colors.primaryForeground}
+                          />
                           <Text style={styles.primaryBtnText}>
                             Record UPI payout
                           </Text>
@@ -1094,7 +1114,11 @@ export default function AdminReviewsScreen() {
                         ]}
                         activeOpacity={0.84}
                       >
-                        <Feather name="check" size={15} color="#000" />
+                        <Feather
+                          name="check"
+                          size={15}
+                          color={colors.primaryForeground}
+                        />
                         <Text style={styles.primaryBtnText}>
                           Resolve settlement
                         </Text>
@@ -1371,7 +1395,7 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   approveText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
   },
@@ -1384,7 +1408,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryBtnText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 13,
     fontFamily: "Inter_700Bold",
   },

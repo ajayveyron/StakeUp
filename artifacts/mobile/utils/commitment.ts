@@ -204,6 +204,11 @@ export function getFirstScheduledDate(c: Commitment): string | null {
   return dates.length > 0 ? dates[0] : null;
 }
 
+export function getNextScheduledDate(c: Commitment): string | null {
+  const today = getTodayStr();
+  return getScheduledDates(c).find((date) => date >= today) ?? null;
+}
+
 export function getPastScheduledDates(c: Commitment): string[] {
   const today = getTodayStr();
   return getScheduledDates(c).filter((d) => d < today);
@@ -299,6 +304,11 @@ export function isActive(c: Commitment): boolean {
 export function isExpired(c: Commitment): boolean {
   if (c.status && c.status !== "active") return false;
   return c.endDate < getTodayStr();
+}
+
+export function isNotStarted(c: Commitment): boolean {
+  if (c.status && c.status !== "active") return false;
+  return c.startDate > getTodayStr();
 }
 
 export function isPendingPayment(c: Commitment): boolean {

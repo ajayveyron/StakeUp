@@ -6,6 +6,7 @@ import { useAction } from "convex/react";
 
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
+import colors from "@/constants/colors";
 
 type RazorpayCheckoutResponse = {
   razorpay_order_id: string;
@@ -94,7 +95,7 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
       description: args.order.description,
       order_id: args.order.orderId,
       prefill: args.order.prefill,
-      theme: { color: "#FACC15" },
+      theme: { color: colors.light.primary },
       modal: {
         ondismiss: () => {
           setPaying(false);

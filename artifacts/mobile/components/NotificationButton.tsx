@@ -23,7 +23,7 @@ export function NotificationButton() {
       <Feather name="bell" size={17} color={colors.mutedForeground} />
       {unreadCount > 0 && (
         <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-          <Text style={styles.badgeText}>
+          <Text style={[styles.badgeText, { color: colors.accentForeground }]}>
             {unreadCount > 9 ? "9+" : unreadCount}
           </Text>
         </View>
@@ -52,7 +52,6 @@ const styles = StyleSheet.create({
     right: -2,
   },
   badgeText: {
-    color: "#000",
     fontSize: 10,
     fontFamily: "Inter_700Bold",
   },

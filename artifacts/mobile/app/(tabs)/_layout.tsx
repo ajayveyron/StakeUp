@@ -6,7 +6,7 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View, useColorScheme } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 
 import { gradients } from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
@@ -32,8 +32,6 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
@@ -54,39 +52,27 @@ function ClassicTabLayout() {
           isIOS ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={[
-                  "transparent",
-                  "#FFD800",
-                  "#FFD800",
-                  "#F8F3D4",
-                  "transparent",
-                ]}
+                colors={gradients.tabBar}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
               />
               <BlurView
                 intensity={100}
-                tint={isDark ? "dark" : "dark"}
+                tint="light"
                 style={{ flex: 1 }}
               />
             </View>
           ) : isWeb ? (
             <View style={StyleSheet.absoluteFill}>
               <LinearGradient
-                colors={[
-                  "transparent",
-                  "#FFD800",
-                  "#FFD800",
-                  "#F8F3D4",
-                  "transparent",
-                ]}
+                colors={gradients.tabBar}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{ height: 1.5 }}
               />
               <View
-                style={{ flex: 1, backgroundColor: "rgba(10, 10, 15, 0.97)" }}
+                style={{ flex: 1, backgroundColor: "rgba(247, 248, 250, 0.97)" }}
               />
             </View>
           ) : null,

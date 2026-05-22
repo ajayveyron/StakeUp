@@ -49,9 +49,6 @@ import {
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
-const NO_OUTLINE =
-  Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : undefined;
-
 const NAME_EXAMPLES: Record<GoalType, string[]> = {
   content: [
     "Daily reels for June",
@@ -284,7 +281,7 @@ export default function NewCommitmentScreen() {
     router.replace(`/commitment/${commitmentId}`);
   }
 
-  const topPadding = Platform.OS === "web" ? 67 : insets.top;
+  const topPadding = Platform.OS === "web" ? 12 : insets.top;
   const progress = (safeStepIndex + 1) / steps.length;
   const isReview = stepKey === "review";
   const namePlaceholder = useRotatingPlaceholder(NAME_EXAMPLES[form.goalType]);
@@ -302,6 +299,8 @@ export default function NewCommitmentScreen() {
             onPress={handleBack}
             style={styles.headerBtn}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
           >
             <Feather name="arrow-left" size={22} color={colors.foreground} />
           </TouchableOpacity>
@@ -332,7 +331,7 @@ export default function NewCommitmentScreen() {
             style={styles.stepContent}
           >
             {stepKey === "type" && (
-              <StepQuestion text="What kind of pact?" colors={colors}>
+              <StepQuestion text="Pact type" colors={colors}>
                 <View style={styles.typeRow}>
                   {(
                     [
@@ -390,11 +389,7 @@ export default function NewCommitmentScreen() {
               <View style={styles.answerSlot}>
                 <TextInput
                   autoFocus
-                  style={[
-                    styles.bareInput,
-                    NO_OUTLINE,
-                    { color: colors.foreground },
-                  ]}
+                  style={[styles.bareInput, { color: colors.foreground }]}
                   placeholder={namePlaceholder}
                   placeholderTextColor={colors.mutedForeground + "66"}
                   value={form.name}
@@ -415,7 +410,7 @@ export default function NewCommitmentScreen() {
             )}
 
             {stepKey === "days" && (
-              <StepQuestion text="Which days?" colors={colors}>
+              <StepQuestion text="Days" colors={colors}>
                 <View style={styles.daysRow}>
                   {ALL_DAYS.map((d) => {
                     const sel = form.daysOfWeek.includes(d);
@@ -437,7 +432,11 @@ export default function NewCommitmentScreen() {
                         <Text
                           style={[
                             styles.dayChipText,
-                            { color: sel ? "#000" : colors.foreground },
+                            {
+                              color: sel
+                                ? colors.primaryForeground
+                                : colors.foreground,
+                            },
                           ]}
                         >
                           {getDayName(d)}
@@ -446,18 +445,11 @@ export default function NewCommitmentScreen() {
                     );
                   })}
                 </View>
-                {form.daysOfWeek.length > 0 && (
-                  <Text
-                    style={[styles.hint, { color: colors.mutedForeground }]}
-                  >
-                    {scheduledDays} active days over the month
-                  </Text>
-                )}
               </StepQuestion>
             )}
 
             {stepKey === "postsPerDay" && (
-              <StepQuestion text="How many posts per day?" colors={colors}>
+              <StepQuestion text="Posts per day" colors={colors}>
                 <View style={styles.countRow}>
                   {[1, 2, 3].map((n) => {
                     const sel = form.targetPerDay === n;
@@ -479,7 +471,11 @@ export default function NewCommitmentScreen() {
                         <Text
                           style={[
                             styles.countChipText,
-                            { color: sel ? "#000" : colors.foreground },
+                            {
+                              color: sel
+                                ? colors.primaryForeground
+                                : colors.foreground,
+                            },
                           ]}
                         >
                           {n}
@@ -492,7 +488,7 @@ export default function NewCommitmentScreen() {
             )}
 
             {stepKey === "start" && (
-              <StepQuestion text="When does it start?" colors={colors}>
+              <StepQuestion text="Start date" colors={colors}>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -519,7 +515,11 @@ export default function NewCommitmentScreen() {
                         <Text
                           style={[
                             styles.datePillTop,
-                            { color: sel ? "#000" : colors.mutedForeground },
+                            {
+                              color: sel
+                                ? colors.primaryForeground
+                                : colors.mutedForeground,
+                            },
                           ]}
                         >
                           {opt.line1}
@@ -527,7 +527,11 @@ export default function NewCommitmentScreen() {
                         <Text
                           style={[
                             styles.datePillBottom,
-                            { color: sel ? "#000" : colors.foreground },
+                            {
+                              color: sel
+                                ? colors.primaryForeground
+                                : colors.foreground,
+                            },
                           ]}
                         >
                           {opt.line2}
@@ -540,10 +544,7 @@ export default function NewCommitmentScreen() {
             )}
 
             {stepKey === "amount" && (
-              <StepQuestion
-                text="How much deposit will stand behind it?"
-                colors={colors}
-              >
+              <StepQuestion text="Deposit" colors={colors}>
                 <View style={styles.amountRow}>
                   <Text
                     style={[
@@ -555,11 +556,7 @@ export default function NewCommitmentScreen() {
                   </Text>
                   <TextInput
                     autoFocus
-                    style={[
-                      styles.amountInput,
-                      NO_OUTLINE,
-                      { color: colors.foreground },
-                    ]}
+                    style={[styles.amountInput, { color: colors.foreground }]}
                     placeholder="3000"
                     placeholderTextColor={colors.mutedForeground + "55"}
                     value={form.pactAmount}
@@ -633,10 +630,7 @@ export default function NewCommitmentScreen() {
             )}
 
             {stepKey === "charity" && (
-              <StepQuestion
-                text="If you break the pact, where does the money go?"
-                colors={colors}
-              >
+              <StepQuestion text="Charity" colors={colors}>
                 <View style={styles.charityList}>
                   {CHARITY_DESTINATIONS.map((opt) => {
                     const sel = form.forfeitDestination === opt.id;
@@ -659,7 +653,11 @@ export default function NewCommitmentScreen() {
                           ]}
                         >
                           {sel && (
-                            <Feather name="check" size={12} color="#000" />
+                            <Feather
+                              name="check"
+                              size={12}
+                              color={colors.primaryForeground}
+                            />
                           )}
                         </View>
                         <View style={{ flex: 1 }}>
@@ -692,9 +690,7 @@ export default function NewCommitmentScreen() {
             {stepKey === "review" && (
               <View style={styles.answerSlot}>
                 <Text style={[styles.question, { color: colors.foreground }]}>
-                  {firstName
-                    ? `${firstName}, ready to lock it in?`
-                    : "Ready to lock it in?"}
+                  {firstName ? `${firstName}, review the pact` : "Review the pact"}
                 </Text>
 
                 <Text style={[styles.reviewName, { color: colors.foreground }]}>
@@ -708,39 +704,34 @@ export default function NewCommitmentScreen() {
                   colors={colors}
                 />
 
-                {/* 4 metric blocks in a single row */}
-                <View style={styles.metricGrid}>
-                  <MetricBlock
-                    label="At stake"
+                <View style={styles.reviewList}>
+                  <ReviewLine
+                    label="Deposit"
                     value={formatCurrency(
                       parseFloat(form.pactAmount) || 0,
                       form.currency,
                     )}
-                    valueColor={colors.accent}
                     colors={colors}
                   />
-                  <MetricBlock
-                    label="Back/day"
+                  <ReviewLine
+                    label="Per successful day"
                     value={formatCurrency(perDay, form.currency)}
-                    valueColor={colors.primary}
                     colors={colors}
                   />
-                  <MetricBlock
-                    label="If broken"
+                  <ReviewLine
+                    label="If missed"
                     value={charityName(form.forfeitDestination)}
                     colors={colors}
                   />
-                  <MetricBlock
+                  <ReviewLine
                     label="First proof"
                     value={firstSubmissionShort}
-                    valueColor={colors.accent}
                     colors={colors}
                   />
                 </View>
 
                 <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                  Save this as a draft. Next: buy one pact slot, lock the
-                  refundable deposit, then the pact becomes live.
+                  Create draft. Pay to start.
                 </Text>
                 <View
                   style={[
@@ -754,7 +745,7 @@ export default function NewCommitmentScreen() {
                   <Text
                     style={[styles.rulesTitle, { color: colors.foreground }]}
                   >
-                    Rules before payment
+                    The deal
                   </Text>
                   <Text
                     style={[
@@ -762,11 +753,8 @@ export default function NewCommitmentScreen() {
                       { color: colors.mutedForeground },
                     ]}
                   >
-                    The slot fee is not refunded. Approved proof creates refund
-                    credit. Missed, late, private, unclear, or rejected proof
-                    forfeits that day's deposit credit to{" "}
-                    {charityName(form.forfeitDestination)}. First proof is due{" "}
-                    {firstSubmissionLabel}.
+                    Show proof by {firstSubmissionLabel}. Missed or rejected days
+                    go to {charityName(form.forfeitDestination)}.
                   </Text>
                 </View>
               </View>
@@ -815,13 +803,15 @@ function InlineActions({
   colors: any;
 }) {
   const busy = creating;
-  const label = creating ? "Creating..." : isReview ? "Save draft" : "Continue";
+  const label = creating ? "Creating…" : isReview ? "Create draft" : "Continue";
   return (
     <View style={styles.actionsRow}>
       <TouchableOpacity
         onPress={onBack}
         activeOpacity={0.7}
         style={[styles.backBtn, { borderColor: colors.border }]}
+        accessibilityRole="button"
+        accessibilityLabel="Go back"
       >
         <Feather name="arrow-left" size={18} color={colors.foreground} />
       </TouchableOpacity>
@@ -832,7 +822,7 @@ function InlineActions({
         style={[styles.nextBtnWrap, { opacity: canNext && !busy ? 1 : 0.4 }]}
       >
         <LinearGradient
-          colors={["#FFD800", "#FFD800"]}
+          colors={[colors.primary, colors.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.nextBtn}
@@ -841,7 +831,7 @@ function InlineActions({
           <Feather
             name={isReview ? "check" : "arrow-right"}
             size={18}
-            color="#000"
+            color={colors.primaryForeground}
           />
         </LinearGradient>
       </TouchableOpacity>
@@ -943,29 +933,27 @@ function PactScheduleCalendar({
   );
 }
 
-function MetricBlock({
+function ReviewLine({
   label,
   value,
-  valueColor,
   colors,
 }: {
   label: string;
   value: string;
-  valueColor?: string;
   colors: any;
 }) {
   return (
     <View
       style={[
-        styles.metricBlock,
+        styles.reviewRow,
         { borderColor: colors.border, backgroundColor: colors.card },
       ]}
     >
-      <Text style={[styles.metricLabel, { color: colors.mutedForeground }]}>
+      <Text style={[styles.reviewLabel, { color: colors.mutedForeground }]}>
         {label}
       </Text>
       <Text
-        style={[styles.metricValue, { color: valueColor ?? colors.foreground }]}
+        style={[styles.reviewValue, { color: colors.foreground }]}
         numberOfLines={2}
       >
         {value}
@@ -1174,27 +1162,28 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   calCellText: { fontSize: 11, fontFamily: "Inter_500Medium" },
-  // Metric blocks — 4 in a row
-  metricGrid: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  metricBlock: {
-    flex: 1,
-    borderRadius: 10,
+  reviewList: { gap: 8 },
+  reviewRow: {
+    minHeight: 48,
+    borderRadius: 8,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 10,
-    gap: 4,
-    minWidth: 0,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 16,
   },
-  metricLabel: {
-    fontSize: 9,
-    fontFamily: "Inter_600SemiBold",
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
+  reviewLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
   },
-  metricValue: { fontSize: 13, fontFamily: "Inter_700Bold", lineHeight: 18 },
+  reviewValue: {
+    flex: 1,
+    textAlign: "right",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 18,
+  },
 
   // Footer
   footer: {
@@ -1226,6 +1215,6 @@ const styles = StyleSheet.create({
   nextBtnText: {
     fontSize: 16,
     fontFamily: "Inter_700Bold",
-    color: "#000",
+    color: "#fff",
   },
 });

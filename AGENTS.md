@@ -42,7 +42,10 @@
 
 ## Product UX Direction
 
+- Use `docs/design-guidelines.md` as the central source of truth for Pact Raven design decisions.
 - Treat Cal AI as the benchmark for the level of mobile UX quality Pact Raven should strive toward: minimal, clean, calm, and psychologically sharp.
+- Keep Pact Raven very sparse, minimal, and spacious, with very little text and no redundant or duplicate explanations.
+- Optimize for the three-second Reel test: a viewer should understand `Lock money. Show proof daily. Missed days go to charity.` almost immediately from a TikTok, Instagram Reel, or creator screen recording.
 - Prefer sparse screens, clear hierarchy, low-friction decisions, precise next actions, and polished loading, empty, success, and failure states.
 - Avoid clutter, generic habit-app patterns, unnecessary decoration, and flows that make the user think harder than the pact requires.
 - When a UX tradeoff is unclear, choose the simpler flow that feels more intentional, more trustworthy, and easier to complete.

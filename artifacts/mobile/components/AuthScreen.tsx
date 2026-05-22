@@ -438,18 +438,18 @@ export function AuthScreen() {
       <View style={[styles.content, { paddingTop: topPadding }]}>
         <View style={styles.brandBlock}>
           <LinearGradient
-            colors={["#FFD800", "#FFD800"]}
+            colors={[colors.primary, colors.primary]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.logo}
           >
-            <Feather name="target" size={28} color="#000" />
+            <Feather name="target" size={28} color={colors.primaryForeground} />
           </LinearGradient>
           <Text style={[styles.brand, { color: colors.foreground }]}>
             Pact Raven
           </Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-            Pact Raven does not motivate you. It remembers what you agreed to.
+            Lock money. Show proof.
           </Text>
         </View>
 
@@ -733,7 +733,7 @@ export function AuthScreen() {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={["#FFD800", "#FFD800"]}
+              colors={[colors.primary, colors.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
@@ -751,7 +751,7 @@ export function AuthScreen() {
               ]}
             >
               {submitting ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={colors.primaryForeground} />
               ) : (
                 <Text style={styles.primaryText}>{primaryButtonText}</Text>
               )}
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primaryText: {
-    color: "#000",
+    color: "#fff",
     fontSize: 15,
     fontFamily: "Inter_700Bold",
   },
