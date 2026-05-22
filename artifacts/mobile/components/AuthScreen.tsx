@@ -1,6 +1,8 @@
-import { Feather } from "@expo/vector-icons";
-import { useSignIn, useSignUp } from "@clerk/clerk-expo";
+import { Feather, FontAwesome } from "@expo/vector-icons";
+import { useSSO, useSignIn, useSignUp } from "@clerk/clerk-expo";
+import * as AuthSession from "expo-auth-session";
 import { LinearGradient } from "expo-linear-gradient";
+import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -35,12 +37,15 @@ type SecondFactorState = {
 };
 
 const RESEND_COOLDOWN_MS = 30_000;
+const SSO_CALLBACK_PATH = "sso-callback";
 const SECOND_FACTOR_PRIORITY: SecondFactorStrategy[] = [
   "totp",
   "phone_code",
   "email_code",
   "backup_code",
 ];
+
+WebBrowser.maybeCompleteAuthSession();
 
 function errorMessage(error: unknown): string {
   if (
@@ -114,12 +119,14 @@ export function AuthScreen() {
   const insets = useSafeAreaInsets();
   const { isLoaded: signInLoaded, signIn, setActive } = useSignIn();
   const { isLoaded: signUpLoaded, signUp } = useSignUp();
+  const { startSSOFlow } = useSSO();
   const [mode, setMode] = useState<AuthMode>("signIn");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [pendingCode, setPendingCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signInStep, setSignInStep] = useState<SignInStep>("first");
   const [secondFactor, setSecondFactor] = useState<SecondFactorState | null>(
@@ -132,8 +139,17 @@ export function AuthScreen() {
   const [clockTick, setClockTick] = useState(Date.now());
 
   const loaded = signInLoaded && signUpLoaded;
+  const busy = submitting || googleSubmitting;
   const normalizedFullName = useMemo(() => fullName.trim(), [fullName]);
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
+  const ssoRedirectUrl = useMemo(
+    () =>
+      AuthSession.makeRedirectUri({
+        scheme: "pactraven",
+        path: SSO_CALLBACK_PATH,
+      }),
+    [],
+  );
   const resendCooldownSeconds = useMemo(() => {
     if (!lastCodeSentAt) return 0;
     return Math.max(
@@ -277,6 +293,37 @@ export function AuthScreen() {
       return true;
     }
     return false;
+  }
+
+  async function continueWithGoogle() {
+    if (!loaded) return;
+    setGoogleSubmitting(true);
+    setError(null);
+    resetCodeState();
+
+    try {
+      const ssoResult = await startSSOFlow({
+        strategy: "oauth_google",
+        redirectUrl: ssoRedirectUrl,
+      });
+      const activate = ssoResult.setActive ?? setActive;
+
+      if (ssoResult.createdSessionId && activate) {
+        await activate({ session: ssoResult.createdSessionId });
+        return;
+      }
+
+      if (ssoResult.authSessionResult?.type === "cancel") {
+        setError("Google sign-in was cancelled.");
+        return;
+      }
+
+      setError("Google sign-in could not be completed. Try again.");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setGoogleSubmitting(false);
+    }
   }
 
   async function continueToSecondFactor(result: unknown) {
@@ -459,6 +506,48 @@ export function AuthScreen() {
             </TouchableOpacity>
           </View>
 
+          <TouchableOpacity
+            onPress={continueWithGoogle}
+            disabled={!loaded || busy}
+            style={[
+              styles.googleBtn,
+              {
+                borderColor: colors.border,
+                opacity: !loaded || busy ? 0.5 : 1,
+              },
+            ]}
+            activeOpacity={0.82}
+          >
+            {googleSubmitting ? (
+              <ActivityIndicator color={colors.foreground} />
+            ) : (
+              <>
+                <FontAwesome
+                  name="google"
+                  size={16}
+                  color={colors.foreground}
+                />
+                <Text style={[styles.googleText, { color: colors.foreground }]}>
+                  Continue with Google
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+            <Text
+              style={[styles.dividerText, { color: colors.mutedForeground }]}
+            >
+              or use email
+            </Text>
+            <View
+              style={[styles.dividerLine, { backgroundColor: colors.border }]}
+            />
+          </View>
+
           {mode === "signUp" && !pendingCode && (
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.mutedForeground }]}>
@@ -482,7 +571,7 @@ export function AuthScreen() {
                   autoCorrect={false}
                   placeholder="Ajay Pawriya"
                   placeholderTextColor={colors.mutedForeground}
-                  editable={!submitting}
+                  editable={!busy}
                 />
               </View>
             </View>
@@ -511,7 +600,7 @@ export function AuthScreen() {
                 keyboardType="email-address"
                 placeholder="you@example.com"
                 placeholderTextColor={colors.mutedForeground}
-                editable={!submitting}
+                editable={!busy}
               />
             </View>
           </View>
@@ -575,7 +664,7 @@ export function AuthScreen() {
                         : "123456"
                     }
                     placeholderTextColor={colors.mutedForeground}
-                    editable={!submitting}
+                    editable={!busy}
                     autoFocus
                   />
                 </View>
@@ -585,7 +674,7 @@ export function AuthScreen() {
                 {canResendCurrentCode && (
                   <TouchableOpacity
                     onPress={() => requestCode({ resend: true })}
-                    disabled={submitting || resendCooldownSeconds > 0}
+                    disabled={busy || resendCooldownSeconds > 0}
                     activeOpacity={0.75}
                   >
                     <Text
@@ -593,7 +682,7 @@ export function AuthScreen() {
                         styles.secondaryAction,
                         {
                           color:
-                            submitting || resendCooldownSeconds > 0
+                            busy || resendCooldownSeconds > 0
                               ? colors.mutedForeground
                               : colors.primary,
                         },
@@ -610,7 +699,7 @@ export function AuthScreen() {
                     resetCodeState();
                     setError(null);
                   }}
-                  disabled={submitting}
+                  disabled={busy}
                   activeOpacity={0.75}
                 >
                   <Text
@@ -635,7 +724,7 @@ export function AuthScreen() {
           <TouchableOpacity
             onPress={pendingCode ? verifyCode : () => requestCode()}
             disabled={
-              submitting ||
+              busy ||
               !loaded ||
               !normalizedEmail ||
               (mode === "signUp" && !normalizedFullName) ||
@@ -651,7 +740,7 @@ export function AuthScreen() {
                 styles.primaryBtn,
                 {
                   opacity:
-                    submitting ||
+                    busy ||
                     !loaded ||
                     !normalizedEmail ||
                     (mode === "signUp" && !normalizedFullName) ||
@@ -736,6 +825,35 @@ const styles = StyleSheet.create({
   segmentText: {
     fontSize: 13,
     fontFamily: "Inter_600SemiBold",
+  },
+  googleBtn: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+  },
+  googleText: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0,
   },
   field: { gap: 8 },
   label: {

@@ -5,6 +5,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
+  canInferMissedDates,
   getCheckInForDate,
   getCheckInStatus,
   getMissedDates,
@@ -24,6 +25,7 @@ export function CommitmentTimeline({ commitment }: Props) {
   const scheduled = getScheduledDates(commitment);
   const perfect = isPerfectSoFar(commitment);
   const missedDates = getMissedDates(commitment);
+  const inferMisses = canInferMissedDates(commitment);
   const isExpired = commitment.endDate < today;
 
   // Auto-scroll to today's node
@@ -58,7 +60,10 @@ export function CommitmentTimeline({ commitment }: Props) {
         const underReview = status === "under_review";
         const missed =
           status === "missed" ||
-          (isPast && status !== "approved" && status !== "under_review");
+          (inferMisses &&
+            isPast &&
+            status !== "approved" &&
+            status !== "under_review");
 
         // Mystery card = last slot
         if (isLast) {

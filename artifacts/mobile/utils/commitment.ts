@@ -256,11 +256,25 @@ export function getAmountAtRisk(c: Commitment): number {
   return Math.max(0, c.pactAmount - getTotalRefunded(c));
 }
 
+export function canInferMissedDates(c: Commitment): boolean {
+  return !c.status || c.status === "active";
+}
+
 export function getMissedDates(c: Commitment): string[] {
-  const today = getTodayStr();
-  return getPastScheduledDates(c).filter(
-    (d) => !c.checkIns.some((ci) => ci.date === d && countsForDeadline(ci)),
+  const dates = new Set(
+    c.checkIns
+      .filter((ci) => getCheckInStatus(ci) === "missed")
+      .map((ci) => ci.date),
   );
+
+  if (canInferMissedDates(c)) {
+    for (const date of getPastScheduledDates(c)) {
+      const checkIn = getCheckInForDate(c, date);
+      if (!countsForDeadline(checkIn)) dates.add(date);
+    }
+  }
+
+  return [...dates].sort();
 }
 
 export function getCheckInForDate(
@@ -317,6 +331,7 @@ export function getDaysRemaining(c: Commitment): number {
 }
 
 export function getSuccessRate(c: Commitment): number {
+  if (c.status && c.status !== "active" && c.status !== "ended") return 0;
   const past = getPastScheduledDates(c).length;
   if (past === 0) return 0;
   return Math.round((getVerifiedCheckIns(c).length / past) * 100);

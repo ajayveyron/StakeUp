@@ -152,6 +152,8 @@ async function pendingReviewRows(ctx: QueryCtx) {
       user: {
         id: user._id,
         email: user.email,
+        phone: user.phone,
+        whatsappNumber: user.whatsappNumber,
         displayName: user.displayName,
       },
     });
@@ -199,6 +201,7 @@ export const adminOverview = query({
           label: userLabel(user),
           email: user?.email,
           phone: user?.phone,
+          whatsappNumber: user?.whatsappNumber,
           displayName: user?.displayName,
         },
       });
@@ -222,6 +225,7 @@ export const adminOverview = query({
           label: userLabel(user),
           email: user?.email,
           phone: user?.phone,
+          whatsappNumber: user?.whatsappNumber,
           displayName: user?.displayName,
         },
       });
@@ -275,6 +279,7 @@ export const adminOverview = query({
           label: userLabel(user),
           email: user?.email,
           phone: user?.phone,
+          whatsappNumber: user?.whatsappNumber,
           displayName: user?.displayName,
         },
       });
@@ -295,6 +300,7 @@ export const adminOverview = query({
             label: userLabel(user),
             email: user.email,
             phone: user.phone,
+            whatsappNumber: user.whatsappNumber,
             displayName: user.displayName,
           },
           ...balance,
@@ -322,6 +328,7 @@ export const adminOverview = query({
           label: userLabel(user),
           email: user?.email,
           phone: user?.phone,
+          whatsappNumber: user?.whatsappNumber,
           displayName: user?.displayName,
         },
       });
@@ -351,6 +358,7 @@ export const adminOverview = query({
           label: userLabel(user),
           email: user?.email,
           phone: user?.phone,
+          whatsappNumber: user?.whatsappNumber,
           displayName: user?.displayName,
         },
       });

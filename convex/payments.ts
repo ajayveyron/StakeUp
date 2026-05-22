@@ -24,6 +24,7 @@ type CheckoutOrderData = {
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  userWhatsAppNumber?: string;
   amount: number;
   currency: string;
   receipt: string;
@@ -162,7 +163,7 @@ function orderResult(
     prefill: {
       name: data.userName,
       email: data.userEmail,
-      contact: data.userPhone,
+      contact: data.userWhatsAppNumber ?? data.userPhone,
     },
   };
 }

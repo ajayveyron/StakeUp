@@ -5,7 +5,10 @@ import { internalMutation, type MutationCtx } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { addDays, daysBetween, todayInTimeZone } from "./lib/dates";
 import { ensureDepositLedgerEntry } from "./lib/ledger";
-import { notifyPaymentConfirmed, notifySlotConfirmed } from "./lib/notifications";
+import {
+  notifyPaymentConfirmed,
+  notifySlotConfirmed,
+} from "./lib/notifications";
 import { PACT_SLOT_AMOUNT } from "./lib/payments";
 
 type PaymentPurpose = "slot_fee" | "pact_deposit";
@@ -122,6 +125,7 @@ export const prepareSlotCheckoutOrder = internalMutation({
       userName: user.displayName,
       userEmail: user.email,
       userPhone: user.phone,
+      userWhatsAppNumber: user.whatsappNumber,
       amount: PACT_SLOT_AMOUNT,
       currency: "INR",
       receipt,
@@ -137,17 +141,21 @@ export const prepareDepositCheckoutOrder = internalMutation({
     if (
       !commitment ||
       commitment.userId !== user._id ||
-      !["draft", "pending_deposit", "pending_payment"].includes(commitment.status)
+      !["draft", "pending_deposit", "pending_payment"].includes(
+        commitment.status,
+      )
     ) {
       throw new Error("Draft pact not found");
     }
     if ((await slotBalance(ctx, user._id)) < 1) {
       throw new Error("Buy a pact slot before starting");
     }
-    if (await existingPaidOrderForPurpose(ctx, {
-      commitmentId: commitment._id,
-      purpose: "pact_deposit",
-    })) {
+    if (
+      await existingPaidOrderForPurpose(ctx, {
+        commitmentId: commitment._id,
+        purpose: "pact_deposit",
+      })
+    ) {
       throw new Error("This pact deposit is already paid");
     }
 
@@ -168,7 +176,10 @@ export const prepareDepositCheckoutOrder = internalMutation({
       updatedAt: now,
     });
 
-    if (commitment.status === "draft" || commitment.status === "pending_payment") {
+    if (
+      commitment.status === "draft" ||
+      commitment.status === "pending_payment"
+    ) {
       await ctx.db.patch(commitment._id, {
         status: "pending_deposit",
         updatedAt: now,
@@ -183,6 +194,7 @@ export const prepareDepositCheckoutOrder = internalMutation({
       userName: user.displayName,
       userEmail: user.email,
       userPhone: user.phone,
+      userWhatsAppNumber: user.whatsappNumber,
       amount: commitment.pactAmount,
       currency: commitment.currency,
       receipt,

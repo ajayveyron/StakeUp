@@ -50,6 +50,8 @@ type PendingReviewRow = {
   user: {
     id: string;
     email?: string;
+    phone?: string;
+    whatsappNumber?: string;
     displayName?: string;
   };
 };
@@ -151,6 +153,7 @@ type AdminUser = {
   label: string;
   email?: string;
   phone?: string;
+  whatsappNumber?: string;
   displayName?: string;
 };
 
@@ -172,6 +175,14 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "settlements", label: "Settle" },
   { key: "ledger", label: "Ledger" },
 ];
+
+function userContact(user: {
+  email?: string;
+  phone?: string;
+  whatsappNumber?: string;
+}) {
+  return user.whatsappNumber ?? user.phone ?? user.email ?? "No contact";
+}
 
 function statusColor(status: string, colors: any) {
   if (status === "approved") return colors.primary;
@@ -724,7 +735,7 @@ export default function AdminReviewsScreen() {
                             : "activity"
                         }
                         title={row.commitment.name}
-                        meta={`${row.user.email ?? row.user.displayName ?? "Unknown user"} · ${formatDate(row.checkIn.date)}`}
+                        meta={`${userContact(row.user)} · ${formatDate(row.checkIn.date)}`}
                         amount={formatCurrency(
                           row.commitment.refundPerDay,
                           row.commitment.currency,
@@ -873,7 +884,7 @@ export default function AdminReviewsScreen() {
                             { color: colors.mutedForeground },
                           ]}
                         >
-                          {row.user.phone ?? row.user.email ?? "No contact"}
+                          {userContact(row.user)}
                         </Text>
                         <TextInput
                           value={payoutRefs[key] ?? ""}
@@ -955,9 +966,7 @@ export default function AdminReviewsScreen() {
                         <CardTop
                           icon="send"
                           title={row.user.label}
-                          meta={
-                            row.user.phone ?? row.user.email ?? "No contact"
-                          }
+                          meta={userContact(row.user)}
                           amount={formatCurrency(row.amount, row.currency)}
                           amountColor={colors.primary}
                           colors={colors}

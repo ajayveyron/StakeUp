@@ -294,7 +294,7 @@ const legalPages = {
       {
         title: "Information We Collect",
         body: [
-          "Account data such as name, email, phone number, sign-in identifiers, and profile details.",
+          "Account data such as name, email, phone number, WhatsApp number, sign-in identifiers, and profile details.",
           "Pact data such as goals, schedule, deadline, deposit amount, selected charity, proof prompts, proof submissions, workout proof location, review decisions, payout requests, and support notes.",
           "Payment metadata such as Razorpay order IDs, payment IDs, payment purpose, amount, currency, status, and timestamps. Pact Raven should not store card numbers, UPI PINs, CVV, or payment instrument credentials.",
           "Manual payout data such as UPI IDs, payee names, UPI reference IDs, payout notes, amount, currency, and payout status.",
@@ -304,14 +304,14 @@ const legalPages = {
         title: "How We Use Data",
         body: [
           "To create accounts, draft pacts, start pacts, verify payments, review proof, calculate refund credit, record forfeits, process manual UPI payouts, prevent fraud, provide support, and maintain accounting records.",
-          "To send transactional notifications about payments, proof review, refund credit, payout requests, early-end settlements, and account operations.",
+          "To send transactional notifications about payments, pact reminders, proof review, refund credit, payout requests, early-end settlements, and account operations by in-app, email, WhatsApp, or similar channels.",
           "To improve pact rules, review quality, operations, support, and safety.",
         ],
       },
       {
         title: "Sharing",
         body: [
-          "Data may be shared with payment providers, authentication providers, hosting and database providers, email or notification providers, admin tools, and professional advisors where needed to operate Pact Raven.",
+          "Data may be shared with payment providers, authentication providers, hosting and database providers, email, WhatsApp, or notification providers, admin tools, and professional advisors where needed to operate Pact Raven.",
           "Payment data is shared with Razorpay to process collections. User payouts are currently handled manually by UPI and recorded internally.",
           "Data may be shared if required by law, regulation, court order, payment-provider investigation, fraud review, tax/accounting requirement, or user dispute.",
         ],

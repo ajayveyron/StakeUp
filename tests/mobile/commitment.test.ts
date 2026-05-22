@@ -5,9 +5,11 @@ import type { Commitment } from "../../artifacts/mobile/contexts/CommitmentsCont
 import {
   getAmountAtRisk,
   getEndDateForDuration,
+  getMissedDates,
   getPendingReviewCheckIns,
   getRefundPerDay,
   getScheduledDates,
+  getSuccessRate,
   getTotalCommittedDays,
   getTotalRefunded,
   isActive,
@@ -117,11 +119,32 @@ describe("commitment refund helpers", () => {
   it("does not treat draft pacts as active or at risk", () => {
     const commitment = makeCommitment({
       status: "draft",
-      startDate: "2026-01-01",
-      endDate: "2026-12-31",
+      startDate: "2020-01-01",
+      endDate: "2020-01-31",
     });
 
     assert.equal(isActive(commitment), false);
     assert.equal(getAmountAtRisk(commitment), 0);
+    assert.deepEqual(getMissedDates(commitment), []);
+    assert.equal(getSuccessRate(commitment), 0);
+  });
+
+  it("keeps explicit missed records after a pact stops inferring new misses", () => {
+    const commitment = makeCommitment({
+      status: "ended",
+      startDate: "2020-01-01",
+      endDate: "2020-01-31",
+      checkIns: [
+        {
+          id: "check-in-missed",
+          date: "2020-01-01",
+          status: "missed",
+          verified: false,
+          submittedAt: "2020-01-02T00:00:00.000Z",
+        },
+      ],
+    });
+
+    assert.deepEqual(getMissedDates(commitment), ["2020-01-01"]);
   });
 });

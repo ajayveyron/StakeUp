@@ -74,6 +74,7 @@ export default function CommitmentDetailScreen() {
   const endEarlyMutation = useMutation(api.commitments.endEarly);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const commitment = getCommitment(id ?? "");
   const today = getTodayStr();
@@ -120,6 +121,7 @@ export default function CommitmentDetailScreen() {
   const draft = isDraft(commitment);
   const pendingDeposit = isPendingDeposit(commitment);
   const ended = isEnded(commitment);
+  const showOperationalDetails = !pendingPayment;
   const todayScheduled = isTodayScheduled(commitment);
   const checkedToday = hasTodayCheckIn(commitment);
   const todayCheckIn = getCheckInForDate(commitment, today);
@@ -128,24 +130,49 @@ export default function CommitmentDetailScreen() {
 
   // Upcoming scheduled dates (today + future, not yet submitted)
   const scheduledDates = getScheduledDates(commitment);
-  const upcomingDates = scheduledDates.filter((d) => d >= today);
+  const upcomingDates = showOperationalDetails
+    ? scheduledDates.filter((d) => d >= today)
+    : [];
+
+  async function deleteCurrentPact() {
+    if (!commitment || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteCommitment(commitment.id);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      router.back();
+    } catch (error) {
+      setDeleting(false);
+      Alert.alert(
+        "Could not delete pact",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
+  }
 
   function handleDelete() {
-    Alert.alert(
-      "Delete commitment",
-      "This permanently removes all check-in history.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => {
-            deleteCommitment(commitment!.id);
-            router.back();
-          },
+    const title = draft ? "Delete draft pact?" : "Delete pact setup?";
+    const message =
+      "This removes the pact before it starts. This cannot be undone.";
+
+    if (Platform.OS === "web") {
+      const confirmed =
+        typeof globalThis.confirm !== "function" ||
+        globalThis.confirm(`${title}\n\n${message}`);
+      if (confirmed) void deleteCurrentPact();
+      return;
+    }
+
+    Alert.alert(title, message, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void deleteCurrentPact();
         },
-      ],
-    );
+      },
+    ]);
   }
 
   function handleEndEarly() {
@@ -245,13 +272,18 @@ export default function CommitmentDetailScreen() {
         >
           {commitment.name}
         </Text>
-        <TouchableOpacity
-          onPress={handleDelete}
-          style={styles.iconBtn}
-          activeOpacity={0.7}
-        >
-          <Feather name="trash-2" size={18} color={colors.danger} />
-        </TouchableOpacity>
+        {pendingPayment ? (
+          <TouchableOpacity
+            onPress={handleDelete}
+            disabled={deleting}
+            style={[styles.iconBtn, deleting && { opacity: 0.45 }]}
+            activeOpacity={0.7}
+          >
+            <Feather name="trash-2" size={18} color={colors.danger} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.iconBtn} />
+        )}
       </View>
 
       <ScrollView
@@ -262,36 +294,42 @@ export default function CommitmentDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* ── Horizontal date timeline ── */}
-        <View
-          style={[
-            styles.timelineCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.timelineHeader}>
-            <Text style={[styles.timelineTitle, { color: colors.foreground }]}>
-              Pact record
-            </Text>
-            <View style={styles.timelineLegend}>
-              <LegendDot color={colors.primary} label="Done" colors={colors} />
-              <LegendDot color={colors.danger} label="Missed" colors={colors} />
-              <LegendDot color={colors.accent} label="Today" colors={colors} />
+        {showOperationalDetails && (
+          <View
+            style={[
+              styles.timelineCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.timelineHeader}>
+              <Text style={[styles.timelineTitle, { color: colors.foreground }]}>
+                Pact record
+              </Text>
+              <View style={styles.timelineLegend}>
+                <LegendDot color={colors.primary} label="Done" colors={colors} />
+                <LegendDot
+                  color={colors.danger}
+                  label="Missed"
+                  colors={colors}
+                />
+                <LegendDot color={colors.accent} label="Today" colors={colors} />
+              </View>
+            </View>
+            <CommitmentTimeline commitment={commitment} />
+            <View style={styles.dateRangeRow}>
+              <Text
+                style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}
+              >
+                {formatDate(commitment.startDate)}
+              </Text>
+              <Text
+                style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}
+              >
+                → {formatDate(commitment.endDate)}
+              </Text>
             </View>
           </View>
-          <CommitmentTimeline commitment={commitment} />
-          <View style={styles.dateRangeRow}>
-            <Text
-              style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}
-            >
-              {formatDate(commitment.startDate)}
-            </Text>
-            <Text
-              style={[styles.dateRangeTxt, { color: colors.mutedForeground }]}
-            >
-              → {formatDate(commitment.endDate)}
-            </Text>
-          </View>
-        </View>
+        )}
 
         {/* ── Status badge ── */}
         <View style={styles.statusRow}>
@@ -369,66 +407,70 @@ export default function CommitmentDetailScreen() {
         )}
 
         {/* ── Refund card ── */}
-        <View
-          style={[
-            styles.refundCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
-            Refund credit unlocked
-          </Text>
-          <Text style={[styles.refundValue, { color: colors.primary }]}>
-            {formatCurrency(refunded, commitment.currency)}
-          </Text>
-          <Text style={[styles.refundOf, { color: colors.mutedForeground }]}>
-            of {formatCurrency(commitment.pactAmount, commitment.currency)}{" "}
-            committed
-          </Text>
-          <View style={[styles.progressBg, { backgroundColor: colors.border }]}>
+        {showOperationalDetails && (
+          <View
+            style={[
+              styles.refundCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.refundLabel, { color: colors.mutedForeground }]}>
+              Refund credit unlocked
+            </Text>
+            <Text style={[styles.refundValue, { color: colors.primary }]}>
+              {formatCurrency(refunded, commitment.currency)}
+            </Text>
+            <Text style={[styles.refundOf, { color: colors.mutedForeground }]}>
+              of {formatCurrency(commitment.pactAmount, commitment.currency)}{" "}
+              committed
+            </Text>
             <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${
-                    totalDays > 0
-                      ? Math.min((verified / totalDays) * 100, 100)
-                      : 0
-                  }%` as any,
-                  backgroundColor: colors.primary,
-                },
-              ]}
-            />
+              style={[styles.progressBg, { backgroundColor: colors.border }]}
+            >
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${
+                      totalDays > 0
+                        ? Math.min((verified / totalDays) * 100, 100)
+                        : 0
+                    }%` as any,
+                    backgroundColor: colors.primary,
+                  },
+                ]}
+              />
+            </View>
+            <View style={styles.statsRow}>
+              <StatCol
+                value={`${verified}/${totalDays}`}
+                label="Days done"
+                colors={colors}
+              />
+              <StatCol
+                value={formatCurrency(perDay, commitment.currency)}
+                label="Per day"
+                colors={colors}
+                valueColor={colors.primary}
+              />
+              <StatCol
+                value={expired ? `${rate}%` : `${daysLeft}d left`}
+                label={expired ? "Success" : "Remaining"}
+                colors={colors}
+                valueColor={
+                  expired
+                    ? rate >= 70
+                      ? colors.primary
+                      : colors.accent
+                    : colors.foreground
+                }
+              />
+            </View>
           </View>
-          <View style={styles.statsRow}>
-            <StatCol
-              value={`${verified}/${totalDays}`}
-              label="Days done"
-              colors={colors}
-            />
-            <StatCol
-              value={formatCurrency(perDay, commitment.currency)}
-              label="Per day"
-              colors={colors}
-              valueColor={colors.primary}
-            />
-            <StatCol
-              value={expired ? `${rate}%` : `${daysLeft}d left`}
-              label={expired ? "Success" : "Remaining"}
-              colors={colors}
-              valueColor={
-                expired
-                  ? rate >= 70
-                    ? colors.primary
-                    : colors.accent
-                  : colors.foreground
-              }
-            />
-          </View>
-        </View>
+        )}
 
         {/* ── Missed banner ── */}
-        {missed > 0 && (
+        {showOperationalDetails && missed > 0 && (
           <View
             style={[
               styles.missedBanner,
@@ -610,17 +652,19 @@ export default function CommitmentDetailScreen() {
         </View>
 
         {/* ── Calendar ── */}
-        <View
-          style={[
-            styles.calendarCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <MonthCalendar commitment={commitment} />
-        </View>
+        {showOperationalDetails && (
+          <View
+            style={[
+              styles.calendarCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <MonthCalendar commitment={commitment} />
+          </View>
+        )}
 
         {/* ── Recent check-ins ── */}
-        {commitment.checkIns.length > 0 && (
+        {showOperationalDetails && commitment.checkIns.length > 0 && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
               Recent record

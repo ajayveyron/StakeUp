@@ -72,7 +72,7 @@ interface CommitmentsContextType {
   addCommitment: (
     c: Omit<Commitment, "id" | "checkIns" | "createdAt">,
   ) => Promise<string | null>;
-  deleteCommitment: (id: string) => void;
+  deleteCommitment: (id: string) => Promise<void>;
   submitContentCheckIn: (
     commitmentId: string,
     date: string,
@@ -149,8 +149,8 @@ export function CommitmentsProvider({
   );
 
   const deleteCommitment = useCallback(
-    (id: string) => {
-      void deleteMine({ id: id as Id<"commitments"> }).catch(logMutationError);
+    async (id: string) => {
+      await deleteMine({ id: id as Id<"commitments"> });
     },
     [deleteMine],
   );

@@ -40,6 +40,13 @@
 - Do not call deposits `escrow`, `trust`, or `trustee-held` unless the legal/accounting structure has been explicitly reviewed and changed.
 - Before paid public launch, replace placeholder legal entity, registered address, GSTIN, phone, support, legal, and grievance contact details with reviewed production details.
 
+## Product UX Direction
+
+- Treat Cal AI as the benchmark for the level of mobile UX quality Pact Raven should strive toward: minimal, clean, calm, and psychologically sharp.
+- Prefer sparse screens, clear hierarchy, low-friction decisions, precise next actions, and polished loading, empty, success, and failure states.
+- Avoid clutter, generic habit-app patterns, unnecessary decoration, and flows that make the user think harder than the pact requires.
+- When a UX tradeoff is unclear, choose the simpler flow that feels more intentional, more trustworthy, and easier to complete.
+
 ## Product Copy Voice
 
 - Do not use generic habit-app copy like "great job", "you got this", "complete your task", "submit activity", or bland motivational language.

@@ -96,9 +96,16 @@ export function identityImage(identity: {
   pictureUrl?: string | null;
   picture?: string | null;
   imageUrl?: string | null;
+  profileImageUrl?: string | null;
+  avatarUrl?: string | null;
   [key: string]: unknown;
 }): string | undefined {
   return (
-    identity.pictureUrl ?? identity.picture ?? identity.imageUrl ?? undefined
+    identity.pictureUrl ??
+    identity.picture ??
+    identity.imageUrl ??
+    identity.profileImageUrl ??
+    identity.avatarUrl ??
+    undefined
   );
 }

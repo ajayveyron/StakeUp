@@ -5,7 +5,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
-import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth, useUser } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConvexReactClient } from "convex/react";
@@ -18,6 +18,7 @@ import {
   Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -29,8 +30,9 @@ import { AuthScreen } from "@/components/AuthScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommitmentsProvider } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
+import { normalizeWhatsAppNumber } from "@/utils/whatsapp";
 import { api } from "@convex/_generated/api";
-import { useConvexAuth, useMutation } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -114,7 +116,11 @@ function SetupRequiredScreen() {
 
 function AuthenticatedApp() {
   const colors = useColors();
+  const { user: clerkUser } = useUser();
   const upsertCurrentUser = useMutation(api.users.upsertCurrentUser);
+  const syncCurrentUserOAuthImage = useMutation(
+    api.users.syncCurrentUserOAuthImage,
+  );
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
@@ -124,7 +130,14 @@ function AuthenticatedApp() {
     let cancelled = false;
     setStatus("loading");
     upsertCurrentUser()
-      .then(() => {
+      .then(async () => {
+        if (clerkUser?.imageUrl) {
+          try {
+            await syncCurrentUserOAuthImage({ imageUrl: clerkUser.imageUrl });
+          } catch (error) {
+            console.warn(error);
+          }
+        }
         if (!cancelled) setStatus("ready");
       })
       .catch((error) => {
@@ -134,7 +147,12 @@ function AuthenticatedApp() {
     return () => {
       cancelled = true;
     };
-  }, [attempt, upsertCurrentUser]);
+  }, [
+    attempt,
+    clerkUser?.imageUrl,
+    syncCurrentUserOAuthImage,
+    upsertCurrentUser,
+  ]);
 
   if (status === "loading") {
     return <LoadingScreen message="Preparing account" />;
@@ -160,6 +178,18 @@ function AuthenticatedApp() {
     );
   }
 
+  return <AccountGate />;
+}
+
+function AccountGate() {
+  const currentUser = useQuery(api.users.current);
+
+  if (!currentUser) return <LoadingScreen message="Loading profile" />;
+
+  if (currentUser.role !== "admin" && !currentUser.whatsappNumber?.trim()) {
+    return <WhatsAppOnboardingScreen />;
+  }
+
   return (
     <CommitmentsProvider>
       <GestureHandlerRootView>
@@ -168,6 +198,106 @@ function AuthenticatedApp() {
         </KeyboardProvider>
       </GestureHandlerRootView>
     </CommitmentsProvider>
+  );
+}
+
+function WhatsAppOnboardingScreen() {
+  const colors = useColors();
+  const updateWhatsAppNumber = useMutation(api.users.updateWhatsAppNumber);
+  const [whatsappNumber, setWhatsAppNumber] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const normalized = normalizeWhatsAppNumber(whatsappNumber);
+
+  async function handleSave() {
+    if (!normalized || submitting) {
+      setError("Enter a valid WhatsApp mobile number.");
+      return;
+    }
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      await updateWhatsAppNumber({ whatsappNumber: normalized });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not save the WhatsApp number.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <View style={[styles.center, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.onboardingPanel,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.setupTitle, { color: colors.foreground }]}>
+          Record your WhatsApp number
+        </Text>
+        <Text style={[styles.setupText, { color: colors.mutedForeground }]}>
+          The Raven will use this number for pact reminders, proof nudges, and
+          review updates when WhatsApp flows are ready.
+        </Text>
+        <View style={styles.onboardingField}>
+          <Text style={[styles.fieldLabel, { color: colors.mutedForeground }]}>
+            WhatsApp mobile number
+          </Text>
+          <TextInput
+            value={whatsappNumber}
+            onChangeText={(value) => {
+              setWhatsAppNumber(value);
+              if (error) setError(null);
+            }}
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            autoComplete="tel"
+            placeholder="+91 98765 43210"
+            placeholderTextColor={colors.mutedForeground}
+            editable={!submitting}
+            style={[
+              styles.onboardingInput,
+              {
+                color: colors.foreground,
+                backgroundColor: colors.input,
+                borderColor: colors.border,
+              },
+            ]}
+          />
+          <Text style={[styles.fieldHint, { color: colors.mutedForeground }]}>
+            India numbers can be entered as 10 digits. Country code is stored
+            with the record.
+          </Text>
+          {error && (
+            <Text style={[styles.fieldError, { color: colors.danger }]}>
+              {error}
+            </Text>
+          )}
+        </View>
+        <TouchableOpacity
+          onPress={handleSave}
+          disabled={submitting || !normalized}
+          style={[
+            styles.saveBtn,
+            {
+              backgroundColor: colors.primary,
+              opacity: submitting || !normalized ? 0.5 : 1,
+            },
+          ]}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.retryText}>
+            {submitting ? "Saving..." : "Save WhatsApp number"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -255,6 +385,47 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     textAlign: "center",
     maxWidth: 320,
+  },
+  onboardingPanel: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 18,
+    gap: 14,
+  },
+  onboardingField: {
+    gap: 8,
+  },
+  fieldLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textTransform: "uppercase",
+    letterSpacing: 0,
+  },
+  onboardingInput: {
+    minHeight: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontFamily: "Inter_400Regular",
+  },
+  fieldHint: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 16,
+  },
+  fieldError: {
+    fontSize: 12,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+  },
+  saveBtn: {
+    minHeight: 48,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   retryBtn: {
     borderRadius: 8,

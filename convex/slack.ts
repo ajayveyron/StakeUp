@@ -32,6 +32,7 @@ type ReviewNotificationData = {
   userEmail?: string;
   userName?: string;
   userPhone?: string;
+  userWhatsAppNumber?: string;
   commitmentName: string;
   goalType: "content" | "workout";
   targetPerDay: number;
@@ -55,6 +56,7 @@ type PaymentNotificationData = {
   userEmail?: string;
   userName?: string;
   userPhone?: string;
+  userWhatsAppNumber?: string;
   commitmentName: string;
   goalType: "content" | "workout";
   targetPerDay: number;
@@ -84,13 +86,26 @@ function userLabel(args: {
   userName?: string;
   userEmail?: string;
   userPhone?: string;
+  userWhatsAppNumber?: string;
 }) {
-  return args.userName || args.userEmail || args.userPhone || "Unknown user";
+  return (
+    args.userName ||
+    args.userEmail ||
+    args.userWhatsAppNumber ||
+    args.userPhone ||
+    "Unknown user"
+  );
 }
 
-function contactLabel(args: { userEmail?: string; userPhone?: string }) {
+function contactLabel(args: {
+  userEmail?: string;
+  userWhatsAppNumber?: string;
+  userPhone?: string;
+}) {
   return (
-    [args.userEmail, args.userPhone].filter(Boolean).join("\n") || "No contact"
+    [args.userEmail, args.userWhatsAppNumber, args.userPhone]
+      .filter(Boolean)
+      .join("\n") || "No contact"
   );
 }
 
@@ -205,6 +220,7 @@ export const getReviewNotificationData = internalQuery({
       userEmail: user.email,
       userName: user.displayName,
       userPhone: user.phone,
+      userWhatsAppNumber: user.whatsappNumber,
       commitmentName: commitment.name,
       goalType: commitment.goalType,
       targetPerDay: commitment.targetPerDay,
@@ -231,6 +247,7 @@ export const getPaymentNotificationData = internalQuery({
       userEmail: user.email,
       userName: user.displayName,
       userPhone: user.phone,
+      userWhatsAppNumber: user.whatsappNumber,
       commitmentName: commitment.name,
       goalType: commitment.goalType,
       targetPerDay: commitment.targetPerDay,

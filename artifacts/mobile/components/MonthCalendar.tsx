@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Commitment } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import {
+  canInferMissedDates,
   getCheckInForDate,
   getCheckInStatus,
   getScheduledDates,
@@ -39,6 +40,7 @@ export function MonthCalendar({ commitment, year, month }: Props) {
   });
 
   const scheduledSet = new Set(getScheduledDates(commitment));
+  const inferMisses = canInferMissedDates(commitment);
 
   function pad(n: number) {
     return n.toString().padStart(2, "0");
@@ -97,7 +99,7 @@ export function MonthCalendar({ commitment, year, month }: Props) {
       };
     }
 
-    if (isPast) {
+    if (inferMisses && isPast) {
       return {
         bg: colors.danger + "11",
         textColor: colors.danger,
