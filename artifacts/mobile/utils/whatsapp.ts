@@ -1,4 +1,5 @@
 const INDIA_COUNTRY_CODE = "91";
+const DEFAULT_ADMIN_WHATSAPP_NUMBER = "917988810502";
 
 export function normalizeWhatsAppNumber(value: string): string | null {
   const compact = value.trim().replace(/[^\d+]/g, "");
@@ -18,4 +19,18 @@ export function normalizeWhatsAppNumber(value: string): string | null {
 
 export function whatsappNumberLabel(value?: string) {
   return value?.trim() || "No WhatsApp number recorded";
+}
+
+export function adminWhatsAppNumber() {
+  return (
+    process.env.EXPO_PUBLIC_ADMIN_WHATSAPP_NUMBER?.replace(/\D/g, "") ||
+    DEFAULT_ADMIN_WHATSAPP_NUMBER
+  );
+}
+
+export function adminWhatsAppUrl(message: string) {
+  const encoded = encodeURIComponent(message);
+  const phone = adminWhatsAppNumber();
+  if (phone) return `https://wa.me/${phone}?text=${encoded}`;
+  return `https://api.whatsapp.com/send?text=${encoded}`;
 }

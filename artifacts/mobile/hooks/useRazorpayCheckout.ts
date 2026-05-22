@@ -1,12 +1,13 @@
 import * as Haptics from "expo-haptics";
 import { useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 
 import { useAction } from "convex/react";
 
 import { api } from "@convex/_generated/api";
 import { Id } from "@convex/_generated/dataModel";
 import colors from "@/constants/colors";
+import { adminWhatsAppUrl } from "@/utils/whatsapp";
 
 type RazorpayCheckoutResponse = {
   razorpay_order_id: string;
@@ -63,6 +64,35 @@ interface PayCallbacks {
   onError?: (commitmentId: Id<"commitments"> | undefined, error: Error) => void;
 }
 
+function paymentIssueMessage(args: {
+  action: string;
+  commitmentId?: Id<"commitments">;
+  error: Error;
+}) {
+  return [
+    `Hi, Pact Raven is showing a payment service issue while trying to ${args.action}.`,
+    args.commitmentId ? `Pact ID: ${args.commitmentId}` : undefined,
+    `Error: ${args.error.message}`,
+    "Please check the app status.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function showPaymentIssueAlert(args: {
+  title: string;
+  body: string;
+  supportMessage: string;
+}) {
+  Alert.alert(args.title, args.body, [
+    {
+      text: "Contact admin",
+      onPress: () => void Linking.openURL(adminWhatsAppUrl(args.supportMessage)),
+    },
+    { text: "Close", style: "cancel" },
+  ]);
+}
+
 export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
   const createSlotCheckoutOrder = useAction(api.payments.createSlotCheckoutOrder);
   const verifySlotCheckoutPayment = useAction(
@@ -114,10 +144,15 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
               error instanceof Error
                 ? error
                 : new Error("Payment verification failed");
-            Alert.alert(
-              "Payment verification failed",
-              err.message || "Please contact support.",
-            );
+            showPaymentIssueAlert({
+              title: "Payment verification failed",
+              body: err.message || "Please contact support.",
+              supportMessage: paymentIssueMessage({
+                action: "verify a payment",
+                commitmentId: args.commitmentId,
+                error: err,
+              }),
+            });
             callbacks.onError?.(args.commitmentId, err);
           })
           .finally(() => setPaying(false));
@@ -151,7 +186,14 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
     } catch (error) {
       const err =
         error instanceof Error ? error : new Error("Could not start payment");
-      Alert.alert("Could not start payment", err.message || "Please try again.");
+      showPaymentIssueAlert({
+        title: "Could not start payment",
+        body: err.message || "Please try again.",
+        supportMessage: paymentIssueMessage({
+          action: "buy a Pact Pass",
+          error: err,
+        }),
+      });
       callbacks.onError?.(undefined, err);
       setPaying(false);
     }
@@ -184,7 +226,15 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
     } catch (error) {
       const err =
         error instanceof Error ? error : new Error("Could not start payment");
-      Alert.alert("Could not start payment", err.message || "Please try again.");
+      showPaymentIssueAlert({
+        title: "Could not start payment",
+        body: err.message || "Please try again.",
+        supportMessage: paymentIssueMessage({
+          action: "lock a pact deposit",
+          commitmentId,
+          error: err,
+        }),
+      });
       callbacks.onError?.(commitmentId, err);
       setPaying(false);
     }

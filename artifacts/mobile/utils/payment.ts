@@ -1,12 +1,6 @@
 import { Commitment } from "@/contexts/CommitmentsContext";
 import { formatCurrency, formatDate } from "@/utils/commitment";
-
-function adminWhatsAppNumber() {
-  return (
-    process.env.EXPO_PUBLIC_ADMIN_WHATSAPP_NUMBER?.replace(/\D/g, "") ??
-    "917988810502"
-  );
-}
+import { adminWhatsAppUrl } from "@/utils/whatsapp";
 
 export function paymentSetupMessage(commitment: Commitment) {
   return [
@@ -19,8 +13,5 @@ export function paymentSetupMessage(commitment: Commitment) {
 }
 
 export function paymentSetupUrl(commitment: Commitment) {
-  const encoded = encodeURIComponent(paymentSetupMessage(commitment));
-  const phone = adminWhatsAppNumber();
-  if (phone) return `https://wa.me/${phone}?text=${encoded}`;
-  return `https://api.whatsapp.com/send?text=${encoded}`;
+  return adminWhatsAppUrl(paymentSetupMessage(commitment));
 }

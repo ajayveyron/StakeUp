@@ -29,6 +29,12 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthScreen } from "@/components/AuthScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import {
+  ACCOUNT_STATUS_SERVICES,
+  RavenStatusScreen,
+  SESSION_STATUS_SERVICES,
+  SETUP_STATUS_SERVICES,
+} from "@/components/RavenStatus";
 import { CommitmentsProvider } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { normalizeWhatsAppNumber } from "@/utils/whatsapp";
@@ -113,22 +119,17 @@ function LoadingScreen({ message = "Loading" }: { message?: string }) {
 }
 
 function SetupRequiredScreen() {
-  const colors = useColors();
   return (
-    <View style={[styles.center, { backgroundColor: colors.background }]}>
-      <Text style={[styles.setupTitle, { color: colors.foreground }]}>
-        Backend setup required
-      </Text>
-      <Text style={[styles.setupText, { color: colors.mutedForeground }]}>
-        Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY and EXPO_PUBLIC_CONVEX_URL to the
-        mobile environment.
-      </Text>
-    </View>
+    <RavenStatusScreen
+      title="Backend setup required"
+      message="The app is missing the keys it needs to reach Clerk and Convex."
+      services={SETUP_STATUS_SERVICES}
+      contactMessage="Hi, Pact Raven is showing backend setup required. Please check the Clerk and Convex mobile environment values."
+    />
   );
 }
 
 function AuthenticatedApp() {
-  const colors = useColors();
   const { user: clerkUser } = useUser();
   const upsertCurrentUser = useMutation(api.users.upsertCurrentUser);
   const syncCurrentUserOAuthImage = useMutation(
@@ -137,11 +138,13 @@ function AuthenticatedApp() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading",
   );
+  const [lastError, setLastError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setStatus("loading");
+    setLastError(null);
     upsertCurrentUser()
       .then(async () => {
         if (clerkUser?.imageUrl) {
@@ -155,7 +158,12 @@ function AuthenticatedApp() {
       })
       .catch((error) => {
         console.error(error);
-        if (!cancelled) setStatus("error");
+        if (!cancelled) {
+          setLastError(
+            error instanceof Error ? error.message : "Unknown account setup error",
+          );
+          setStatus("error");
+        }
       });
     return () => {
       cancelled = true;
@@ -173,21 +181,19 @@ function AuthenticatedApp() {
 
   if (status === "error") {
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={[styles.setupTitle, { color: colors.foreground }]}>
-          Could not prepare your account
-        </Text>
-        <Text style={[styles.setupText, { color: colors.mutedForeground }]}>
-          Check the Convex and Clerk environment values, then try again.
-        </Text>
-        <TouchableOpacity
-          onPress={() => setAttempt((value) => value + 1)}
-          style={[styles.retryBtn, { backgroundColor: colors.primary }]}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.retryText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
+      <RavenStatusScreen
+        title="The Raven is reconnecting"
+        message="Your pact record is safe. Account setup did not finish, so pact actions are paused until the backend responds."
+        services={ACCOUNT_STATUS_SERVICES}
+        contactMessage={[
+          "Hi, Pact Raven could not prepare my account after sign-in.",
+          lastError ? `Error: ${lastError}` : undefined,
+          "Please check the app status.",
+        ]
+          .filter(Boolean)
+          .join("\n")}
+        onRetry={() => setAttempt((value) => value + 1)}
+      />
     );
   }
 
@@ -318,10 +324,32 @@ function AppGate() {
   const { isLoaded, isSignedIn } = useAuth();
   const { isLoading: convexAuthLoading, isAuthenticated: convexAuthenticated } =
     useConvexAuth();
+  const sessionIssue = isSignedIn && (convexAuthLoading || !convexAuthenticated);
+  const [sessionWaitExpired, setSessionWaitExpired] = useState(false);
+
+  useEffect(() => {
+    if (!sessionIssue) {
+      setSessionWaitExpired(false);
+      return;
+    }
+
+    const id = setTimeout(() => setSessionWaitExpired(true), 9000);
+    return () => clearTimeout(id);
+  }, [sessionIssue]);
 
   if (!isLoaded) return <LoadingScreen />;
   if (!isSignedIn) return <AuthScreen />;
-  if (convexAuthLoading || !convexAuthenticated) {
+  if (sessionIssue && sessionWaitExpired) {
+    return (
+      <RavenStatusScreen
+        title="The Raven is reconnecting"
+        message="You are signed in, but the app has not received a confirmed backend session yet."
+        services={SESSION_STATUS_SERVICES}
+        contactMessage="Hi, Pact Raven is stuck preparing my session after sign-in. Please check Clerk and Convex auth."
+      />
+    );
+  }
+  if (sessionIssue) {
     return <LoadingScreen message="Preparing session" />;
   }
   return <AuthenticatedApp />;
