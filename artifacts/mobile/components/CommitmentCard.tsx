@@ -38,11 +38,20 @@ export interface CommitmentCardAction {
   accessibilityLabel?: string;
 }
 
+export interface CommitmentCardStatus {
+  label: string;
+  icon: FeatherIconName;
+  color: string;
+  backgroundColor: string;
+  borderColor?: string;
+}
+
 interface Props {
   commitment: Commitment;
   onCheckIn?: (commitment: Commitment) => void;
   compact?: boolean;
   action?: CommitmentCardAction;
+  status?: CommitmentCardStatus;
 }
 
 const GOAL_ICONS: Record<string, string> = {
@@ -55,6 +64,7 @@ export function CommitmentCard({
   onCheckIn,
   compact,
   action,
+  status,
 }: Props) {
   const colors = useColors();
   const router = useRouter();
@@ -269,6 +279,26 @@ export function CommitmentCard({
           </Text>
         </View>
 
+        {status && (
+          <View
+            style={[
+              styles.statusPill,
+              {
+                backgroundColor: status.backgroundColor,
+                borderColor: status.borderColor ?? status.backgroundColor,
+              },
+            ]}
+          >
+            <Feather name={status.icon as any} size={13} color={status.color} />
+            <Text
+              style={[styles.statusText, { color: status.color }]}
+              numberOfLines={1}
+            >
+              {status.label}
+            </Text>
+          </View>
+        )}
+
         {!compact && (
           <View style={styles.statsRow}>
             <View style={styles.stat}>
@@ -388,6 +418,23 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     minWidth: 30,
     textAlign: "right",
+  },
+  statusPill: {
+    alignSelf: "flex-start",
+    minHeight: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 14,
+    maxWidth: "100%",
+  },
+  statusText: {
+    flexShrink: 1,
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
   },
   statsRow: {
     flexDirection: "row",

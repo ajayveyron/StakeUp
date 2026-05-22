@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 
-import { useCurrentUser, useFirstName } from "@/hooks/useCurrentUser";
+import { useFirstName } from "@/hooks/useCurrentUser";
 import {
   Alert,
   Platform,
@@ -20,8 +20,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CheckInModal } from "@/components/CheckInModal";
 import { CommitmentCard } from "@/components/CommitmentCard";
-import type { CommitmentCardAction } from "@/components/CommitmentCard";
-import { NotificationButton } from "@/components/NotificationButton";
+import type {
+  CommitmentCardAction,
+  CommitmentCardStatus,
+} from "@/components/CommitmentCard";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import {
@@ -35,11 +37,10 @@ import {
   addDays,
   formatCountdown,
   formatCurrency,
-  formatDate,
   getCheckInForDate,
   getCheckInStatus,
-  getDaysRemaining,
   getMsUntilDeadline,
+  getScheduledDates,
   getNextScheduledDate,
   getTodayStr,
   getTotalCommittedDays,
@@ -54,6 +55,8 @@ import {
   isTodayScheduled,
 } from "@/utils/commitment";
 
+type HomeIconName = React.ComponentProps<typeof Feather>["name"];
+
 function formatComeBackLabel(date: string | null) {
   if (!date) return "Come back on the next proof day";
   const today = getTodayStr();
@@ -66,6 +69,137 @@ function formatComeBackLabel(date: string | null) {
     month: "short",
   });
   return `Come back on ${submissionDay}`;
+}
+
+function dateStripFor(today: string) {
+  return [-5, -4, -3, -2, -1, 0, 1].map((offset) => addDays(today, offset));
+}
+
+function dayInitial(date: string) {
+  return new Date(date + "T00:00:00")
+    .toLocaleDateString("en-IN", { weekday: "short" })
+    .slice(0, 1);
+}
+
+function dayNumber(date: string) {
+  return new Date(date + "T00:00:00").getDate().toString();
+}
+
+function dateLabel(date: string) {
+  const today = getTodayStr();
+  if (date === today) return "Today";
+  if (date === addDays(today, -1)) return "Yesterday";
+  if (date === addDays(today, 1)) return "Tomorrow";
+  return new Date(date + "T00:00:00").toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function isScheduledForDate(commitment: Commitment, date: string) {
+  return getScheduledDates(commitment).includes(date);
+}
+
+function commitmentIsVisibleForDate(commitment: Commitment, date: string) {
+  if (isPendingPayment(commitment)) return false;
+  if (commitment.status === "deleted") return false;
+  if (date >= commitment.startDate && date <= commitment.endDate) return true;
+  return isNotStarted(commitment) && date < commitment.startDate;
+}
+
+function dayStatusRank(commitment: Commitment, date: string) {
+  const today = getTodayStr();
+  const checkInStatus = getCheckInStatus(getCheckInForDate(commitment, date));
+  const scheduled = isScheduledForDate(commitment, date);
+
+  if (scheduled && date === today && !hasTodayCheckIn(commitment)) return 0;
+  if (checkInStatus === "under_review") return 1;
+  if (checkInStatus === "approved") return 2;
+  if (checkInStatus === "rejected" || checkInStatus === "missed") return 3;
+  if (scheduled && date < today) return 4;
+  if (scheduled) return 5;
+  if (isNotStarted(commitment) || date < commitment.startDate) return 6;
+  return 7;
+}
+
+function statusTone(
+  colors: ReturnType<typeof useColors>,
+  tone: "good" | "warn" | "bad" | "muted",
+) {
+  if (tone === "good") {
+    return {
+      color: colors.success,
+      backgroundColor: colors.success + "14",
+      borderColor: colors.success + "33",
+    };
+  }
+  if (tone === "warn") {
+    return {
+      color: colors.accent,
+      backgroundColor: colors.accent + "14",
+      borderColor: colors.accent + "33",
+    };
+  }
+  if (tone === "bad") {
+    return {
+      color: colors.danger,
+      backgroundColor: colors.danger + "12",
+      borderColor: colors.danger + "33",
+    };
+  }
+  return {
+    color: colors.mutedForeground,
+    backgroundColor: colors.secondary,
+    borderColor: colors.border,
+  };
+}
+
+function dayStatusFor(
+  commitment: Commitment,
+  date: string,
+  colors: ReturnType<typeof useColors>,
+): CommitmentCardStatus {
+  const today = getTodayStr();
+  const checkInStatus = getCheckInStatus(getCheckInForDate(commitment, date));
+  const scheduled = isScheduledForDate(commitment, date);
+
+  function status(
+    label: string,
+    icon: HomeIconName,
+    tone: "good" | "warn" | "bad" | "muted",
+  ) {
+    return { label, icon, ...statusTone(colors, tone) };
+  }
+
+  if (isNotStarted(commitment) || date < commitment.startDate) {
+    return status("Not started", "play", "muted");
+  }
+  if (commitment.status === "ended") {
+    return status("Pact ended", "slash", "muted");
+  }
+  if (date > commitment.endDate) {
+    return status("Closed", "flag", "muted");
+  }
+  if (!scheduled) {
+    return status("No proof due", "calendar", "muted");
+  }
+  if (checkInStatus === "approved") {
+    return status("Successful day", "check-circle", "good");
+  }
+  if (checkInStatus === "under_review") {
+    return status("Proof with Raven", "clock", "warn");
+  }
+  if (checkInStatus === "rejected") {
+    return status("Rejected day", "x-circle", "bad");
+  }
+  if (checkInStatus === "missed" || date < today) {
+    return status("Missed day", "alert-circle", "bad");
+  }
+  if (date === today) {
+    return status("Proof due today", "clock", "warn");
+  }
+  return status("Proof day", "calendar", "muted");
 }
 
 export default function HomeScreen() {
@@ -88,6 +222,7 @@ export default function HomeScreen() {
     useState<Commitment | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [countdown, setCountdown] = useState(getMsUntilDeadline());
+  const [selectedDate, setSelectedDate] = useState(getTodayStr());
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -97,41 +232,42 @@ export default function HomeScreen() {
   }, []);
 
   const today = getTodayStr();
-  const activeCommitments = commitments.filter(isActive);
-  const notStartedCommitments = commitments.filter(isNotStarted);
   const pendingPaymentCommitments = commitments.filter(isPendingPayment);
-  const todayPending = activeCommitments.filter(
-    (c) => isTodayScheduled(c) && !hasTodayCheckIn(c),
+  const confirmedCommitments = commitments.filter((c) => !isPendingPayment(c));
+  const dateStrip = dateStripFor(today);
+  const dateStripKey = dateStrip.join("|");
+  const earnedBack = confirmedCommitments.reduce(
+    (sum, c) => sum + getTotalRefunded(c),
+    0,
   );
-  const todayDone = activeCommitments.filter(
-    (c) => isTodayScheduled(c) && hasTodayCheckIn(c),
-  );
-  const todayNotScheduled = activeCommitments.filter(
-    (c) => !isTodayScheduled(c),
-  );
+  const selectedDayCommitments = confirmedCommitments
+    .filter((c) => commitmentIsVisibleForDate(c, selectedDate))
+    .sort(
+      (a, b) =>
+        dayStatusRank(a, selectedDate) - dayStatusRank(b, selectedDate),
+    );
+  const featuredCommitment = selectedDayCommitments[0] ?? null;
+  const secondarySelectedCommitments = selectedDayCommitments.slice(1);
+  const selectedDayText = dateLabel(selectedDate);
+  const hasSelectedDayView =
+    pendingPaymentCommitments.length > 0 || selectedDayCommitments.length > 0;
 
-  const currentUser = useCurrentUser();
-  const displayName = currentUser?.displayName?.trim();
+  useEffect(() => {
+    if (!dateStrip.includes(selectedDate)) setSelectedDate(today);
+  }, [dateStripKey, selectedDate, today]);
+
   const firstName = useFirstName();
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const earnedCurrency =
+    confirmedCommitments.find((c) => c.currency)?.currency ?? "INR";
+  const earnedBackLabel = formatCurrency(earnedBack, earnedCurrency);
 
-  // The "featured" commitment — pending today first, otherwise live/upcoming.
-  const featuredCommitment =
-    todayPending[0] ?? activeCommitments[0] ?? notStartedCommitments[0] ?? null;
-  const secondaryTodayPending = todayPending.filter(
-    (c) => c.id !== featuredCommitment?.id,
-  );
-  const secondaryTodayDone = todayDone.filter(
-    (c) => c.id !== featuredCommitment?.id,
-  );
-  const secondaryTodayNotScheduled = todayNotScheduled.filter(
-    (c) => c.id !== featuredCommitment?.id,
-  );
-  const secondaryNotStarted = notStartedCommitments.filter(
-    (c) => c.id !== featuredCommitment?.id,
-  );
+  const pendingDraftStatus: CommitmentCardStatus = {
+    label: "Setup",
+    icon: "lock",
+    color: colors.accent,
+    backgroundColor: colors.accent + "14",
+    borderColor: colors.accent + "33",
+  };
 
   function openCheckIn(commitment: Commitment) {
     setSelectedCommitment(commitment);
@@ -219,6 +355,113 @@ export default function HomeScreen() {
     };
   }
 
+  function statusFor(commitment: Commitment) {
+    return dayStatusFor(commitment, selectedDate, colors);
+  }
+
+  function actionFor(commitment: Commitment) {
+    return homeActionFor(commitment);
+  }
+
+  function showDate(date: string) {
+    setSelectedDate(date);
+    void Haptics.selectionAsync();
+  }
+
+  function selectToday() {
+    showDate(today);
+  }
+
+  function selectedDateIsToday() {
+    return selectedDate === today;
+  }
+
+  function selectedDayEmptyTitle() {
+    if (selectedDateIsToday()) return "No pact on the record today";
+    return `No pact on ${selectedDayText}`;
+  }
+
+  function selectedDayEmptyBody() {
+    if (selectedDateIsToday()) return "Start with one pact.";
+    return "The Raven has nothing to record for this day.";
+  }
+
+  function selectedDayHeader() {
+    if (selectedDateIsToday()) return "Today";
+    return selectedDayText;
+  }
+
+  function selectedDaySubhead() {
+    const count =
+      selectedDayCommitments.length + pendingPaymentCommitments.length;
+    if (count === 0) return "No pact status";
+    if (count === 1) return "1 pact status";
+    return `${count} pact statuses`;
+  }
+
+  function selectedDayAccessibilityLabel(date: string) {
+    const d = new Date(date + "T00:00:00").toLocaleDateString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+    return date === today ? `Select today, ${d}` : `Select ${d}`;
+  }
+
+  function selectedDayColor(date: string) {
+    if (date > today) return colors.mutedForeground;
+    return colors.foreground;
+  }
+
+  function selectedDayCircleBorder(date: string) {
+    if (date === selectedDate) return colors.foreground;
+    if (date <= today) return colors.mutedForeground + "88";
+    return "transparent";
+  }
+
+  function selectedDayCircleBackground(date: string) {
+    if (date === selectedDate) return colors.card;
+    return "transparent";
+  }
+
+  function selectedDayDateColor(date: string) {
+    if (date === selectedDate) return colors.foreground;
+    if (date > today) return colors.mutedForeground + "99";
+    return colors.foreground;
+  }
+
+  function selectedDayWeight(date: string) {
+    return date === selectedDate ? "Inter_700Bold" : "Inter_500Medium";
+  }
+
+  function selectedDayCircleStyle(date: string) {
+    return {
+      borderColor: selectedDayCircleBorder(date),
+      backgroundColor: selectedDayCircleBackground(date),
+      borderWidth: date <= today || date === selectedDate ? 1.5 : 0,
+    };
+  }
+
+  function selectedDayDateStyle(date: string) {
+    return {
+      color: selectedDayDateColor(date),
+      fontFamily: selectedDayWeight(date),
+    };
+  }
+
+  function selectedDayInitialStyle(date: string) {
+    return {
+      color: selectedDayColor(date),
+      fontFamily: selectedDayWeight(date),
+    };
+  }
+
+  useEffect(() => {
+    setSelectedDate((current) =>
+      current === addDays(today, -1) ? today : current,
+    );
+  }, [today]);
+
   function handleSubmitContent(
     id: string,
     date: string,
@@ -275,152 +518,139 @@ export default function HomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-              {greeting}
-            </Text>
-            <Text style={[styles.title, { color: colors.foreground }]}>
-              {displayName ?? "Welcome"}
-            </Text>
-          </View>
-          <View style={styles.headerActions}>
-            <NotificationButton />
-            <TouchableOpacity
-              onPress={() => router.push("/commitment/new")}
-              activeOpacity={0.8}
-              accessibilityRole="button"
-              accessibilityLabel="Create pact"
-            >
+        <View style={styles.homeTop}>
+          <View style={styles.brandRow}>
+            <View style={styles.brandLeft}>
               <LinearGradient
                 colors={[colors.primary, colors.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.addBtn}
+                style={styles.brandMark}
               >
                 <Feather
-                  name="plus"
-                  size={20}
+                  name="target"
+                  size={18}
                   color={colors.primaryForeground}
                 />
               </LinearGradient>
+              <Text style={[styles.brandName, { color: colors.foreground }]}>
+                Pact Raven
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={selectToday}
+              activeOpacity={0.82}
+              style={[
+                styles.earnedPill,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`Earned back ${earnedBackLabel}. Select today.`}
+            >
+              <Feather name="repeat" size={15} color={colors.accent} />
+              <Text style={[styles.earnedText, { color: colors.foreground }]}>
+                {earnedBackLabel}
+              </Text>
             </TouchableOpacity>
+          </View>
+
+          <View style={styles.dateStrip}>
+            {dateStrip.map((date) => (
+              <TouchableOpacity
+                key={date}
+                onPress={() => showDate(date)}
+                activeOpacity={0.78}
+                style={styles.dateItem}
+                accessibilityRole="button"
+                accessibilityLabel={selectedDayAccessibilityLabel(date)}
+                accessibilityState={{ selected: date === selectedDate }}
+              >
+                <View style={[styles.dayCircle, selectedDayCircleStyle(date)]}>
+                  <Text
+                    style={[styles.dayInitial, selectedDayInitialStyle(date)]}
+                  >
+                    {dayInitial(date)}
+                  </Text>
+                </View>
+                <Text style={[styles.dayNumber, selectedDayDateStyle(date)]}>
+                  {dayNumber(date)}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
+        {hasSelectedDayView && (
+          <View style={styles.selectedDayHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              {selectedDayHeader()}
+            </Text>
+            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
+              {selectedDaySubhead()}
+            </Text>
+          </View>
+        )}
+
         {pendingPaymentCommitments.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Draft pacts
-            </Text>
-            <Text
-              style={[styles.sectionSub, { color: colors.mutedForeground }]}
-            >
-              Open a draft pact to buy a slot, lock the deposit, and start.
-            </Text>
             {pendingPaymentCommitments.map((c) => (
               <CommitmentCard
                 key={c.id}
                 commitment={c}
                 compact
-                action={homeActionFor(c)}
+                status={pendingDraftStatus}
+                action={actionFor(c)}
               />
             ))}
           </View>
         )}
 
-        {/* ── BIG ACTIVE COMMITMENT WIDGET ── */}
         {featuredCommitment && (
           <ActiveWidget
             commitment={featuredCommitment}
+            selectedDate={selectedDate}
+            dayStatus={statusFor(featuredCommitment)}
             countdown={countdown}
             isUrgent={isUrgent}
             colors={colors}
-            action={homeActionFor(featuredCommitment)}
+            action={actionFor(featuredCommitment)}
             onViewDetails={() => openDetails(featuredCommitment)}
           />
         )}
 
-        {/* Today pending (excluding the featured one shown in widget) */}
-        {secondaryTodayPending.length > 0 && (
+        {secondarySelectedCommitments.length > 0 && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Also due today
-            </Text>
-            {secondaryTodayPending.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                onCheckIn={openCheckIn}
-                action={homeActionFor(c)}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Successful today */}
-        {secondaryTodayDone.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              In the record today
-            </Text>
-            <Text style={[styles.sectionSub, { color: colors.primary }]}>
-              {secondaryTodayDone.length} signed
-            </Text>
-            {secondaryTodayDone.map((c) => (
+            {secondarySelectedCommitments.map((c) => (
               <CommitmentCard
                 key={c.id}
                 commitment={c}
                 compact
-                action={homeActionFor(c)}
+                status={statusFor(c)}
+                action={actionFor(c)}
               />
             ))}
           </View>
         )}
 
-        {secondaryNotStarted.length > 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Not started
-            </Text>
-            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              First proof starts the record.
-            </Text>
-            {secondaryNotStarted.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                compact
-                action={homeActionFor(c)}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* Rest days */}
-        {secondaryTodayNotScheduled.length > 0 && todayPending.length === 0 && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Rest day
+        {commitments.length > 0 && !hasSelectedDayView && (
+          <View
+            style={[
+              styles.selectedEmpty,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Feather name="calendar" size={18} color={colors.mutedForeground} />
+            <Text style={[styles.emptyTitleSmall, { color: colors.foreground }]}>
+              {selectedDayEmptyTitle()}
             </Text>
             <Text
-              style={[styles.sectionSub, { color: colors.mutedForeground }]}
+              style={[styles.emptyTextSmall, { color: colors.mutedForeground }]}
             >
-              These pacts do not judge today.
+              {selectedDayEmptyBody()}
             </Text>
-            {secondaryTodayNotScheduled.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                compact
-                action={homeActionFor(c)}
-              />
-            ))}
           </View>
         )}
 
-        {/* Empty state */}
         {commitments.length === 0 && (
           <View style={styles.empty}>
             <View
@@ -465,10 +695,11 @@ export default function HomeScreen() {
     </View>
   );
 }
-
 // ── Active commitment widget ───────────────────────────────────────────────
 function ActiveWidget({
   commitment,
+  selectedDate,
+  dayStatus,
   countdown,
   isUrgent,
   colors,
@@ -476,6 +707,8 @@ function ActiveWidget({
   onViewDetails,
 }: {
   commitment: Commitment;
+  selectedDate: string;
+  dayStatus: CommitmentCardStatus;
   countdown: number;
   isUrgent: boolean;
   colors: any;
@@ -485,14 +718,12 @@ function ActiveWidget({
   const today = getTodayStr();
   const totalDays = getTotalCommittedDays(commitment);
   const verified = getVerifiedCheckIns(commitment).length;
-  const daysLeft = getDaysRemaining(commitment);
   const hasPending =
-    isTodayScheduled(commitment) && !hasTodayCheckIn(commitment);
-  const todayCheckIn = getCheckInForDate(commitment, today);
-  const todayStatus = getCheckInStatus(todayCheckIn);
+    selectedDate === today &&
+    isTodayScheduled(commitment) &&
+    !hasTodayCheckIn(commitment);
   const progress = totalDays > 0 ? verified / totalDays : 0;
   const totalRefunded = getTotalRefunded(commitment);
-  const notStarted = isNotStarted(commitment);
   const actionMuted = action.disabled || action.muted;
   const actionFg = actionMuted
     ? colors.mutedForeground
@@ -547,48 +778,35 @@ function ActiveWidget({
           </Text>
         </View>
         <View style={wStyles.topRight}>
-          {hasPending ? (
-            <View style={wStyles.countdownRow}>
+          {hasPending && isUrgent ? (
+            <Text
+              style={[wStyles.countdown, { color: colors.danger }]}
+              numberOfLines={1}
+            >
+              {formatCountdown(countdown)}
+            </Text>
+          ) : (
+            <View
+              style={[
+                wStyles.dayStatus,
+                {
+                  backgroundColor: dayStatus.backgroundColor,
+                  borderColor: dayStatus.borderColor ?? dayStatus.backgroundColor,
+                },
+              ]}
+            >
               <Feather
-                name="clock"
+                name={dayStatus.icon as any}
                 size={11}
-                color={isUrgent ? colors.danger : colors.mutedForeground}
+                color={dayStatus.color}
               />
               <Text
-                style={[
-                  wStyles.countdown,
-                  { color: isUrgent ? colors.danger : colors.mutedForeground },
-                ]}
+                style={[wStyles.dayStatusText, { color: dayStatus.color }]}
+                numberOfLines={1}
               >
-                {formatCountdown(countdown)}
+                {dayStatus.label}
               </Text>
             </View>
-          ) : notStarted ? (
-            <Text
-              style={[wStyles.countdown, { color: colors.mutedForeground }]}
-            >
-              Starts {formatDate(commitment.startDate)}
-            </Text>
-          ) : todayStatus === "under_review" ? (
-            <View style={wStyles.countdownRow}>
-              <Feather name="clock" size={11} color={colors.accent} />
-              <Text style={[wStyles.countdown, { color: colors.accent }]}>
-                With the Raven
-              </Text>
-            </View>
-          ) : todayStatus === "approved" ? (
-            <View style={wStyles.countdownRow}>
-              <Feather name="check-circle" size={11} color={colors.primary} />
-              <Text style={[wStyles.countdown, { color: colors.primary }]}>
-                Successful today
-              </Text>
-            </View>
-          ) : (
-            <Text
-              style={[wStyles.countdown, { color: colors.mutedForeground }]}
-            >
-              {daysLeft}d left
-            </Text>
           )}
           <Feather
             name="chevron-right"
@@ -724,8 +942,22 @@ const wStyles = StyleSheet.create({
   },
   typeChipTxt: { fontSize: 11, fontFamily: "Inter_600SemiBold" },
   topRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  countdownRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   countdown: { fontSize: 12, fontFamily: "Inter_500Medium" },
+  dayStatus: {
+    minHeight: 25,
+    maxWidth: 150,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  dayStatusText: {
+    flexShrink: 1,
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
   name: { fontSize: 18, fontFamily: "Inter_700Bold", lineHeight: 24 },
   progressBg: {
     height: 5,
@@ -765,6 +997,78 @@ const wStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   scroll: { paddingHorizontal: 20 },
+  homeTop: {
+    gap: 18,
+    marginBottom: 18,
+  },
+  brandRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  brandLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 9,
+    flexShrink: 1,
+  },
+  brandMark: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  brandName: {
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    flexShrink: 1,
+  },
+  earnedPill: {
+    minHeight: 38,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    flexShrink: 0,
+  },
+  earnedText: {
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
+  },
+  dateStrip: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+  },
+  dateItem: {
+    width: 42,
+    alignItems: "center",
+    gap: 5,
+  },
+  dayCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayInitial: {
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  dayNumber: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  selectedDayHeader: {
+    marginBottom: 10,
+  },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -795,6 +1099,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Inter_400Regular",
     marginBottom: 12,
+  },
+  selectedEmpty: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 18,
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  emptyTitleSmall: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  emptyTextSmall: {
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
   },
   empty: { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyIcon: {
