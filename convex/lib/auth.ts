@@ -44,6 +44,16 @@ export async function requireClerkIdentity(ctx: IdentityAuthCtx) {
   return identity;
 }
 
+function withCurrentRole(
+  user: Doc<"users">,
+  identity: { email?: string | null; [key: string]: unknown },
+): Doc<"users"> {
+  return {
+    ...user,
+    role: isAdminEmail(identityEmail(identity)) ? "admin" : "user",
+  };
+}
+
 export async function requireAdminIdentity(ctx: IdentityAuthCtx) {
   const identity = await requireClerkIdentity(ctx);
   if (!isAdminEmail(identityEmail(identity))) {
@@ -58,7 +68,7 @@ export async function requireUser(ctx: AuthCtx): Promise<Doc<"users">> {
   if (!user) {
     throw new Error("User profile has not been initialized");
   }
-  return user;
+  return withCurrentRole(user, identity);
 }
 
 export async function requireAdmin(ctx: AuthCtx): Promise<Doc<"users">> {
