@@ -34,7 +34,7 @@ export default function handler(request: Request) {
     : "Make a pact you cannot casually break";
   const proof = pactType
     ? pactCopy[pactType].proof
-    : "Buy one slot. Lock a deposit. Submit proof.";
+    : "Use a Pact Pass. Lock a deposit. Show proof.";
   const footer = isApp ? "app.pactraven.com" : "pactraven.com";
 
   return new ImageResponse(
@@ -75,7 +75,7 @@ export default function handler(request: Request) {
           },
           "PACT RAVEN",
         ),
-        React.createElement("div", null, "RS 249 SLOT"),
+        React.createElement("div", null, "RS 249 PASS"),
       ),
       React.createElement(
         "div",

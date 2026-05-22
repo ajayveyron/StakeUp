@@ -619,7 +619,7 @@ export default function HomeScreen() {
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
               accessibilityRole="button"
-              accessibilityLabel={`Earned back ${earnedBackLabel}. Select today.`}
+              accessibilityLabel={`Refund credit ${earnedBackLabel}. Select today.`}
             >
               <Feather name="repeat" size={15} color={colors.accent} />
               <Text style={[styles.earnedText, { color: colors.foreground }]}>

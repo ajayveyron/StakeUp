@@ -180,7 +180,7 @@ export default function CommitmentDetailScreen() {
   function handleEndEarly() {
     Alert.alert(
       "End this pact?",
-      "The Pact Pass will stay used. The remaining deposit will go to admin settlement review.",
+      "The Pact Pass will stay used. The remaining unsettled deposit will be forfeited to the charity you chose. Approved refund credit stays subject to the payout rules.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -849,7 +849,8 @@ export default function CommitmentDetailScreen() {
               <Text
                 style={[styles.charityMeta, { color: colors.mutedForeground }]}
               >
-                The Pact Pass stays used. Admin settles the remaining deposit.
+                The Pact Pass stays used. Remaining unsettled deposit goes to
+                charity.
               </Text>
             </View>
           </TouchableOpacity>
@@ -998,8 +999,8 @@ function PaymentSetupCard({
       ? "Lock the deposit"
       : "Buy Pact Pass";
   const body = hasPass
-    ? "Lock the refundable deposit to start."
-    : "One Pact Pass unlocks one pact.";
+    ? "Lock the refundable deposit to start. Refund credit is created only after approved proof."
+    : "One Pact Pass unlocks one pact. The pass fee is non-refundable once bought.";
   const buttonLabel = paying
     ? "Opening payment…"
     : hasPass
@@ -1069,6 +1070,10 @@ function PaymentSetupCard({
           {pendingPurchases} Pact Pass payment request is still pending.
         </Text>
       )}
+      <Text style={[styles.paymentMeta, { color: colors.mutedForeground }]}>
+        Refund credit is paid manually by UPI after review. Missed or rejected
+        days forfeit to {charityName(commitment.forfeitDestination)}.
+      </Text>
       <TouchableOpacity
         onPress={startPayment}
         disabled={paying}
@@ -1092,13 +1097,20 @@ function PaymentSetupCard({
           onPress={() => void Linking.openURL(LEGAL_URLS.terms)}
         >
           Terms
-        </Text>{" "}
-        and{" "}
+        </Text>
+        {", "}
         <Text
           style={[styles.paymentLink, { color: colors.accent }]}
           onPress={() => void Linking.openURL(LEGAL_URLS.payments)}
         >
           Payment policy
+        </Text>
+        {", and "}
+        <Text
+          style={[styles.paymentLink, { color: colors.accent }]}
+          onPress={() => void Linking.openURL(LEGAL_URLS.proofRules)}
+        >
+          Proof rules
         </Text>
         .
       </Text>

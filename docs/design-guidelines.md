@@ -47,7 +47,7 @@ Core model: `Lock money. Show proof daily. Missed days go to charity.`
 - Inputs should be obvious, with short labels and minimal helper copy.
 - Proof submission should put the prompt image and camera action first.
 - Show the signature/record confirmation only after proof is attached.
-- Profile stays quiet: account, wallet, legal, support. It should not become the main activation surface.
+- Profile stays quiet: account, ledger, legal, support. It should not become the main activation surface.
 - Empty, loading, success, rejected, and missed states should be polished but sparse.
 
 ## Website

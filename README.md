@@ -1,6 +1,6 @@
 # Pact Raven
 
-Pact Raven is a mobile app for goal commitments at pactraven.com. Users create a pact, submit proof on scheduled days, and receive proportional wallet refunds for manually approved check-ins.
+Pact Raven is a mobile app for goal commitments at pactraven.com. Users create a pact, submit proof on scheduled days, and build proportional refund credit for manually approved check-ins.
 
 ## Quick Start
 

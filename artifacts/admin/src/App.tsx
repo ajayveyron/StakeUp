@@ -156,6 +156,7 @@ type AdminOverview = {
       id: Id<"commitments">;
       name: string;
       pactAmount: number;
+      remainingDeposit: number;
       currency: string;
     };
     user: AdminUser;
@@ -547,8 +548,6 @@ export function App({ userButton }: AppProps) {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [payoutRefs, setPayoutRefs] = useState<Record<string, string>>({});
   const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>({});
-  const [settlementRefunds, setSettlementRefunds] = useState<Record<string, string>>({});
-  const [settlementForfeits, setSettlementForfeits] = useState<Record<string, string>>({});
   const [authWaitExpired, setAuthWaitExpired] = useState(false);
   const [profileWaitExpired, setProfileWaitExpired] = useState(false);
 
@@ -718,20 +717,20 @@ export function App({ userButton }: AppProps) {
     setPayoutNotes((current) => ({ ...current, [key]: "" }));
   }
 
-  async function handleSettlement(requestId: Id<"earlyEndSettlementRequests">) {
-    await runAction(`settlement:${requestId}`, () =>
+  async function handleSettlement(row: AdminOverview["earlyEndSettlements"][number]) {
+    await runAction(`settlement:${row.id}`, () =>
       resolveEarlyEndSettlement({
-        requestId,
-        refundAmount: Number(settlementRefunds[requestId] || 0),
-        forfeitAmount: Number(settlementForfeits[requestId] || 0),
-        reference: references[requestId]?.trim() || undefined,
-        note: notes[requestId]?.trim() || undefined,
+        requestId: row.id,
+        refundAmount: 0,
+        forfeitAmount: row.commitment.remainingDeposit,
+        reference: references[row.id]?.trim() || undefined,
+        note:
+          notes[row.id]?.trim() ||
+          "Early-end rule: remaining unsettled deposit forfeited to charity.",
       }),
     );
-    setSettlementRefunds((current) => ({ ...current, [requestId]: "" }));
-    setSettlementForfeits((current) => ({ ...current, [requestId]: "" }));
-    setReferences((current) => ({ ...current, [requestId]: "" }));
-    setNotes((current) => ({ ...current, [requestId]: "" }));
+    setReferences((current) => ({ ...current, [row.id]: "" }));
+    setNotes((current) => ({ ...current, [row.id]: "" }));
   }
 
   return (
@@ -918,22 +917,21 @@ export function App({ userButton }: AppProps) {
       {tab === "settlements" ? (
         <section className="stack">
           {overview.earlyEndSettlements.length === 0 ? (
-            <EmptyState icon={<AlertTriangle size={26} />} title="No early-end settlements" body="Pacts ended early will wait here until refund and forfeit amounts are recorded." />
+            <EmptyState icon={<AlertTriangle size={26} />} title="No early-end settlements" body="Pacts ended early will wait here until the remaining unsettled deposit is forfeited to the selected charity." />
           ) : (
             overview.earlyEndSettlements.map((row) => {
               const id = row.id;
               return (
                 <article className="ops-card" key={id}>
-                  <CardHeader icon={<AlertTriangle size={18} />} title={row.commitment.name} meta={`${row.user.label} - ${formatDateTime(row.requestedAt)}`} amount={formatCurrency(row.commitment.pactAmount, row.commitment.currency)} />
+                  <CardHeader icon={<AlertTriangle size={18} />} title={row.commitment.name} meta={`${row.user.label} - ${formatDateTime(row.requestedAt)}`} amount={formatCurrency(row.commitment.remainingDeposit, row.commitment.currency)} />
                   {row.reason ? <p>{row.reason}</p> : null}
+                  <p>Early-end rule: remaining unsettled deposit forfeits to the selected charity. Approved refund credit stays separate.</p>
                   <div className="form-grid settlement-grid">
-                    <TextField inputMode="decimal" label="Refund amount" onChange={(value) => setSettlementRefunds((current) => ({ ...current, [id]: value }))} value={settlementRefunds[id] ?? ""} />
-                    <TextField inputMode="decimal" label="Forfeit amount" onChange={(value) => setSettlementForfeits((current) => ({ ...current, [id]: value }))} value={settlementForfeits[id] ?? ""} />
                     <TextField label="Reference" onChange={(value) => setReferences((current) => ({ ...current, [id]: value }))} placeholder="Optional" value={references[id] ?? ""} />
-                    <TextField label="Note" onChange={(value) => setNotes((current) => ({ ...current, [id]: value }))} placeholder="Optional" value={notes[id] ?? ""} />
-                    <button className="primary-button" disabled={busyId === `settlement:${id}`} onClick={() => handleSettlement(id)} type="button">
+                    <TextField label="Note" onChange={(value) => setNotes((current) => ({ ...current, [id]: value }))} placeholder="Early-end charity forfeit" value={notes[id] ?? ""} />
+                    <button className="primary-button" disabled={busyId === `settlement:${id}`} onClick={() => handleSettlement(row)} type="button">
                       <Check size={15} />
-                      Resolve
+                      Record charity forfeit
                     </button>
                   </div>
                 </article>

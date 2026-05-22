@@ -20,6 +20,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { NotificationButton } from "@/components/NotificationButton";
+import {
+  HEALTHY_STATUS_SERVICES,
+  RavenStatusChip,
+} from "@/components/RavenStatus";
 import { LEGAL_URLS } from "@/constants/links";
 import { selectProfileAvatar } from "@/constants/profileAvatars";
 import { useCommitments } from "@/contexts/CommitmentsContext";
@@ -279,6 +283,16 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        <Section title="Raven Status" colors={colors}>
+          <View style={styles.statusRow}>
+            <RavenStatusChip
+              services={HEALTHY_STATUS_SERVICES}
+              contactMessage="Hi, Pact Raven profile is showing a service issue. Please check the app status."
+              showWhenHealthy
+            />
+          </View>
+        </Section>
+
         <Section title="Account" colors={colors}>
           <InfoRow icon="mail" label="Email" value={email} colors={colors} />
           <Divider colors={colors} />
@@ -339,6 +353,14 @@ export default function ProfileScreen() {
             label="Payments and refunds"
             value="Policy record"
             onPress={() => void Linking.openURL(LEGAL_URLS.payments)}
+            colors={colors}
+          />
+          <Divider colors={colors} />
+          <ActionRow
+            icon="help-circle"
+            label="Support"
+            value="Support and grievances"
+            onPress={() => void Linking.openURL(LEGAL_URLS.support)}
             colors={colors}
           />
         </Section>
@@ -662,6 +684,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     paddingHorizontal: 14,
+  },
+  statusRow: {
+    minHeight: 58,
+    alignItems: "flex-start",
+    justifyContent: "center",
   },
   row: {
     minHeight: 52,

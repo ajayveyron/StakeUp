@@ -6,4 +6,5 @@ export const LEGAL_URLS = {
   privacy: `${WEBSITE_URL}/privacy`,
   payments: `${WEBSITE_URL}/refund-cancellation`,
   proofRules: `${WEBSITE_URL}/proof-rules`,
+  support: `${WEBSITE_URL}/support`,
 };

@@ -72,7 +72,7 @@ export default function handler(request: Request) {
         React.createElement(
           "div",
           { style: { color: "#737985" } },
-          "RS 249 SLOT",
+          "RS 249 PASS",
         ),
       ),
       React.createElement(

@@ -310,6 +310,19 @@ export const adminOverview = query({
       const user = await ctx.db.get(request.userId);
       const commitment = await ctx.db.get(request.commitmentId);
       if (!commitment) continue;
+      const existingLedger = await ctx.db
+        .query("walletLedgerEntries")
+        .withIndex("by_commitment", (q) => q.eq("commitmentId", commitment._id))
+        .collect();
+      const alreadyResolved = existingLedger.reduce((sum, entry) => {
+        if (entry.type === "approved_refund" || entry.type === "forfeited") {
+          return sum + entry.amount;
+        }
+        return sum;
+      }, 0);
+      const remainingDeposit =
+        Math.round(Math.max(0, commitment.pactAmount - alreadyResolved) * 100) /
+        100;
       earlyEndSettlements.push({
         id: request._id,
         reason: request.reason,
@@ -318,6 +331,7 @@ export const adminOverview = query({
           id: commitment._id,
           name: commitment.name,
           pactAmount: commitment.pactAmount,
+          remainingDeposit,
           currency: commitment.currency,
         },
         user: {
@@ -604,8 +618,10 @@ export const resolveEarlyEndSettlement = mutation({
     if (args.refundAmount < 0 || args.forfeitAmount < 0) {
       throw new Error("Settlement amounts cannot be negative");
     }
-    if (args.refundAmount === 0 && args.forfeitAmount === 0) {
-      throw new Error("Record a refund or forfeit amount");
+    if (args.refundAmount > 0) {
+      throw new Error(
+        "Early-end settlements must forfeit the remaining deposit to charity",
+      );
     }
 
     const request = await ctx.db.get(args.requestId);
@@ -614,8 +630,6 @@ export const resolveEarlyEndSettlement = mutation({
     }
     const commitment = await ctx.db.get(request.commitmentId);
     if (!commitment) throw new Error("Commitment not found");
-    const total =
-      Math.round((args.refundAmount + args.forfeitAmount) * 100) / 100;
     const existingLedger = await ctx.db
       .query("walletLedgerEntries")
       .withIndex("by_commitment", (q) => q.eq("commitmentId", commitment._id))
@@ -629,25 +643,28 @@ export const resolveEarlyEndSettlement = mutation({
     const remainingDeposit =
       Math.round(Math.max(0, commitment.pactAmount - alreadyResolved) * 100) /
       100;
-    if (total > remainingDeposit + 0.01) {
-      throw new Error("Settlement exceeds remaining pact deposit");
+    if (Math.abs(args.forfeitAmount - remainingDeposit) > 0.01) {
+      throw new Error("Forfeit amount must equal the remaining pact deposit");
+    }
+    const now = new Date().toISOString();
+    if (remainingDeposit === 0 && args.forfeitAmount === 0) {
+      await ctx.db.patch(request._id, {
+        status: "resolved",
+        refundAmount: 0,
+        forfeitAmount: 0,
+        reference: args.reference?.trim() || undefined,
+        note: args.note?.trim() || "Early-end settlement had no remaining deposit.",
+        resolvedAt: now,
+        resolvedBy: reviewer._id,
+        updatedAt: now,
+      });
+      await ctx.db.patch(commitment._id, {
+        earlyEndSettlementStatus: "resolved",
+        updatedAt: now,
+      });
+      return { ok: true };
     }
 
-    const now = new Date().toISOString();
-    if (args.refundAmount > 0) {
-      await ctx.db.insert("walletLedgerEntries", {
-        userId: request.userId,
-        commitmentId: commitment._id,
-        amount: Math.round(args.refundAmount * 100) / 100,
-        currency: commitment.currency,
-        type: "approved_refund",
-        destination: "user",
-        externalReference: args.reference?.trim() || undefined,
-        note: args.note?.trim() || "Early-end settlement refund payable.",
-        createdBy: reviewer._id,
-        createdAt: now,
-      });
-    }
     if (args.forfeitAmount > 0) {
       await ctx.db.insert("walletLedgerEntries", {
         userId: request.userId,
@@ -665,7 +682,7 @@ export const resolveEarlyEndSettlement = mutation({
 
     await ctx.db.patch(request._id, {
       status: "resolved",
-      refundAmount: Math.round(args.refundAmount * 100) / 100,
+      refundAmount: 0,
       forfeitAmount: Math.round(args.forfeitAmount * 100) / 100,
       reference: args.reference?.trim() || undefined,
       note: args.note?.trim() || undefined,

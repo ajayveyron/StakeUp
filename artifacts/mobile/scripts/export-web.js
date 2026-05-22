@@ -6,7 +6,7 @@ const workspaceRoot = path.resolve(__dirname, "../../..");
 const distIndex = path.resolve(__dirname, "../dist/index.html");
 const appUrl = "https://app.pactraven.com";
 const description =
-  "Create a Pact Raven challenge, lock a deposit, submit proof, and build refund credit through successful days.";
+  "Create a Pact Raven record, lock a deposit, show proof, and build refund credit through successful days.";
 const metadataBlock = `    <!-- Pact Raven web metadata -->
     <meta name="description" content="${description}" />
     <meta property="og:type" content="website" />

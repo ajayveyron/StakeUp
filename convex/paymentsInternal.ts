@@ -13,6 +13,8 @@ import { consumeSlotForCommitment, slotBalance } from "./lib/pactPasses";
 import { PACT_SLOT_AMOUNT } from "./lib/payments";
 
 type PaymentPurpose = "slot_fee" | "pact_deposit";
+const LEGAL_ACCEPTANCE_NOTE =
+  "User accepted Terms, Payment Policy, and Proof Rules version 2026-05-22 before checkout.";
 
 async function existingPaidOrderForPurpose(
   ctx: MutationCtx,
@@ -243,7 +245,7 @@ export const markSlotCheckoutPaid = internalMutation({
         amount: PACT_SLOT_AMOUNT,
         currency: slotPurchase.currency,
         externalReference: args.razorpayPaymentId,
-        note: "Non-refundable Pact Pass fee collected as revenue.",
+        note: `Non-refundable Pact Pass fee collected as revenue. ${LEGAL_ACCEPTANCE_NOTE}`,
         createdAt: now,
       });
     }
@@ -304,7 +306,7 @@ export const markDepositCheckoutPaid = internalMutation({
       });
 
       const paymentNote =
-        "Razorpay pact deposit collected. Deposit recorded as refundable pact liability.";
+        `Razorpay pact deposit collected. Deposit recorded as refundable pact liability. ${LEGAL_ACCEPTANCE_NOTE}`;
       await ctx.db.patch(commitment._id, {
         status: "active",
         ...shifted,
@@ -321,7 +323,7 @@ export const markDepositCheckoutPaid = internalMutation({
         amount: commitment.pactAmount,
         currency: commitment.currency,
         externalReference: args.razorpayPaymentId,
-        note: "Refundable pact deposit liability collected through Razorpay.",
+        note: `Refundable pact deposit liability collected through Razorpay. ${LEGAL_ACCEPTANCE_NOTE}`,
       });
 
       await notifyPaymentConfirmed(ctx, {

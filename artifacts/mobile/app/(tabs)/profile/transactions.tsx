@@ -102,7 +102,7 @@ export default function TransactionsScreen() {
       );
     } catch (error) {
       Alert.alert(
-        "Refund failed",
+        "Request failed",
         error instanceof Error ? error.message : "Please try again.",
       );
     } finally {

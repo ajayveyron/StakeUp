@@ -69,7 +69,7 @@ Avoid mass-market positioning in the first 100 users. The first wedge is people 
 - Commitment: 1 public post per day for 30 days
 - Proof: public post URL submitted before the daily deadline
 - Review: manual review by Pact Raven
-- Refund style: weekly or end-of-challenge manual UPI payout
+- Refund style: approved credit is available after review; users may submit up to two manual UPI withdrawal requests per week
 
 ### Accepted Proof
 
@@ -112,7 +112,7 @@ Content posting is the strongest first wedge because:
 - Commitment: default 30-day cycle with 5 workouts per week
 - Proof: mobile web camera snap/capture with physical prompt, optional location, and visible gym/home context
 - Review: manual review by Pact Raven
-- Refund style: weekly or end-of-challenge manual UPI payout
+- Refund style: approved credit is available after review; users may submit up to two manual UPI withdrawal requests per week
 
 ### Accepted Proof
 
@@ -170,15 +170,15 @@ Do not launch a recurring plan yet. Sell one commitment cycle at a time.
 
 ## Payment And Manual Payouts
 
-Razorpay collects money in v1, but user payouts are manual UPI transfers recorded by the operator.
+Razorpay or another approved provider is expected to collect money in v1, but written provider comfort for the exact refundable deposit, manual UPI payout, and charity forfeit flow is not confirmed yet. User payouts are manual UPI transfers recorded by the operator.
 
 Operational rules:
 
-- Collect paid Pact Pass fees and commitment deposits through Razorpay.
+- Collect paid Pact Pass fees and commitment deposits through Razorpay or another approved provider only when the provider/compliance posture is acceptable.
 - Keep paid Pact Pass fees as revenue for the cycle.
 - Track the refundable deposit as a deposit liability until approved, forfeited, or refunded.
 - Record Razorpay payment IDs for collections and UPI references for manual payouts in the ledger.
-- Avoid daily automatic payouts in v1; use weekly or end-of-cycle manual UPI payout batches.
+- Avoid daily automatic payouts in v1. Approved refund credit is available after review, and users may submit up to two manual UPI withdrawal requests per week.
 - Show refund status clearly: pending review, approved refund credit, payout requested, paid by UPI.
 
 ## Funnel For First 100 Customers
@@ -221,7 +221,7 @@ Suggested rhythm:
 - Daily: proof due by user deadline.
 - Daily morning: pending-proof reminders.
 - Daily night: missed-deadline checks.
-- Weekly: manual UPI payout batch and public progress recap.
+- Weekly: payout reconciliation and public progress recap.
 
 Weekly cohorts create urgency and make operations easier.
 
@@ -232,7 +232,7 @@ Early promise:
 - Proof reviewed within 24 hours.
 - Rejection reason is mandatory.
 - Disputed proof can be appealed once.
-- manual UPI payout happens weekly or at the end of the cycle.
+- Approved refund credit is available after review; users may submit up to two manual UPI withdrawal requests per week.
 
 Do not promise instant refunds or automatic approval.
 
@@ -464,6 +464,6 @@ Mitigation:
 
 ## Open Decisions
 
-- Whether payout is weekly or end-of-challenge.
+- Whether formal checkout stays live for the first cohort or the paid beta uses a more manual invite flow until provider comfort is clear.
 - Whether content posting or workout becomes the flagship offer after 30 days.
 - Whether the public brand voice should be founder-led under Ajay or company-led under Pact Raven.

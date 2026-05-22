@@ -745,7 +745,7 @@ export default function NewCommitmentScreen() {
                   <Text
                     style={[styles.rulesTitle, { color: colors.foreground }]}
                   >
-                    The deal
+                    The record
                   </Text>
                   <Text
                     style={[
@@ -753,8 +753,9 @@ export default function NewCommitmentScreen() {
                       { color: colors.mutedForeground },
                     ]}
                   >
-                    Show proof by {firstSubmissionLabel}. Missed or rejected days
-                    go to {charityName(form.forfeitDestination)}.
+                    Show proof by {firstSubmissionLabel}. Approved proof creates
+                    refund credit. Missed or rejected days go to{" "}
+                    {charityName(form.forfeitDestination)}.
                   </Text>
                 </View>
               </View>

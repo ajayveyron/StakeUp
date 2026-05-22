@@ -1,0 +1,41 @@
+# Pact Raven
+
+Pact Raven is a commitment and accountability product for users in India. Users create a pact, lock money behind it, show proof, and receive refund credit when proof is approved. Missed or rejected days forfeit to the user's chosen charity, not Pact Raven revenue.
+
+## Core model
+
+- Lock money. Show proof daily. Missed days go to charity.
+- Pact Raven starts with workout pacts and content pacts.
+- Every account gets the first Pact Pass covered once. After that, each Pact Pass is Rs 249.
+- A Pact Pass unlocks one pact record. The separate pact deposit is refundable only through approved proof and manual settlement rules.
+- Workout proof requires fresh in-app camera capture, captured device location, and the daily physical prompt.
+- Content proof requires a public post link that matches the pact rules.
+- Approved proof creates refund credit for manual UPI payout.
+- Missed, late, unclear, private, deleted, or rejected proof may forfeit the related deposit credit to the selected charity.
+- Pact Raven is currently a paid beta for India-based users who are at least 18 years old.
+- Approved refund credit is available for manual UPI payout after approval. Users may submit up to two manual withdrawal requests per week.
+- Current charity choices are user-selected destinations, not formal Pact Raven charity partners unless stated otherwise. Forfeited amounts are transferred in monthly batches.
+
+## Important pages
+
+- Homepage: https://pactraven.com/
+- Workout accountability: https://pactraven.com/workout-accountability
+- Proof rules: https://pactraven.com/proof-rules
+- Payment, cancellation, refund, and delivery policy: https://pactraven.com/refund-cancellation
+- Terms of Use: https://pactraven.com/terms
+- Privacy Policy: https://pactraven.com/privacy
+- Support: https://pactraven.com/support
+
+## App links
+
+- Start a workout pact: https://app.pactraven.com/commitment/new?type=workout&step=name
+- Start a content pact: https://app.pactraven.com/commitment/new?type=content&step=name
+
+## Support
+
+- Support: support@pactraven.com
+- Legal and policy: legal@pactraven.com
+- Privacy and grievance: support@pactraven.com
+- Grievance officer: Ajay Pawriya
+- Business phone: +91 7988810502
+- Registered address: Hustlehub tech park, Sector 2, HSR Layout, Bengaluru, Karnataka 560068
