@@ -1,8 +1,9 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
+  type LayoutRectangle,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,12 +15,35 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CommitmentCard } from "@/components/CommitmentCard";
+import {
+  DirectionalSwap,
+  type MotionDirection,
+} from "@/components/motion/DirectionalSwap";
+import { MotionPressable } from "@/components/motion/MotionPressable";
+import { SlidingIndicator } from "@/components/motion/SlidingIndicator";
 import { useCommitments } from "@/contexts/CommitmentsContext";
 import { useColors } from "@/hooks/useColors";
 import { useFirstName } from "@/hooks/useCurrentUser";
 import { isActive, isExpired, isPendingPayment } from "@/utils/commitment";
 
 type Tab = "pending" | "active" | "past";
+
+const TABS: Tab[] = ["pending", "active", "past"];
+const TAB_ORDER: Record<Tab, number> = {
+  pending: 0,
+  active: 1,
+  past: 2,
+};
+
+function layoutsMatch(a: LayoutRectangle | undefined, b: LayoutRectangle) {
+  if (!a) return false;
+  return (
+    Math.abs(a.x - b.x) < 0.5 &&
+    Math.abs(a.y - b.y) < 0.5 &&
+    Math.abs(a.width - b.width) < 0.5 &&
+    Math.abs(a.height - b.height) < 0.5
+  );
+}
 
 export default function CommitmentsScreen() {
   const colors = useColors();
@@ -28,12 +52,29 @@ export default function CommitmentsScreen() {
   const { commitments } = useCommitments();
   const firstName = useFirstName();
   const [tab, setTab] = useState<Tab>("active");
+  const [tabDirection, setTabDirection] = useState<MotionDirection>(0);
+  const [tabLayouts, setTabLayouts] = useState<
+    Record<string, LayoutRectangle | undefined>
+  >({});
 
   const pending = commitments.filter(isPendingPayment);
   const active = commitments.filter(isActive);
   const past = commitments.filter(isExpired);
   const displayed = tab === "pending" ? pending : tab === "active" ? active : past;
   const topPadding = Platform.OS === "web" ? 12 : insets.top;
+
+  const updateTabLayout = useCallback((key: string, layout: LayoutRectangle) => {
+    setTabLayouts((current) => {
+      if (layoutsMatch(current[key], layout)) return current;
+      return { ...current, [key]: layout };
+    });
+  }, []);
+
+  function selectTab(nextTab: Tab) {
+    if (nextTab === tab) return;
+    setTabDirection(TAB_ORDER[nextTab] > TAB_ORDER[tab] ? 1 : -1);
+    setTab(nextTab);
+  }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -80,21 +121,21 @@ export default function CommitmentsScreen() {
             { backgroundColor: colors.card, borderColor: colors.border },
           ]}
         >
-          {(["pending", "active", "past"] as Tab[]).map((t) => (
-            <TouchableOpacity
+          <SlidingIndicator
+            selectedKey={tab}
+            layouts={tabLayouts}
+            style={[styles.tabIndicator, { backgroundColor: colors.primary }]}
+          />
+          {TABS.map((t) => (
+            <MotionPressable
               key={t}
-              onPress={() => setTab(t)}
-              activeOpacity={0.8}
-              style={[styles.tabItem, { overflow: "hidden" }]}
+              onLayout={(event) => updateTabLayout(t, event.nativeEvent.layout)}
+              onPress={() => selectTab(t)}
+              pressedOpacity={0.9}
+              style={styles.tabItem}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: tab === t }}
             >
-              {tab === t && (
-                <LinearGradient
-                  colors={[colors.primary, colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={StyleSheet.absoluteFill}
-                />
-              )}
               <Text
                 style={[
                   styles.tabText,
@@ -114,56 +155,60 @@ export default function CommitmentsScreen() {
                   ? `Live (${active.length})`
                   : `Closed (${past.length})`}
               </Text>
-            </TouchableOpacity>
+            </MotionPressable>
           ))}
         </View>
 
-        {displayed.length === 0 ? (
-          <View style={styles.empty}>
-            <Feather
-              name={tab === "active" ? "target" : "archive"}
-              size={36}
-              color={colors.mutedForeground}
-            />
-            <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-              {tab === "pending"
-                ? "No draft pacts"
-                : tab === "active"
-                ? firstName
-                  ? `Ready to commit, ${firstName}?`
-                  : "No live pacts"
-                : "No closed pacts"}
-            </Text>
-            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-              {tab === "pending"
-                ? "Pacts waiting for a Pact Pass and deposit will appear here."
-                : tab === "active"
-                ? "Lock money. Show proof."
-                : "Finished records will appear here."}
-            </Text>
-            {tab === "active" && (
-              <TouchableOpacity
-                onPress={() => router.push("/commitment/new")}
-                activeOpacity={0.85}
+        <DirectionalSwap direction={tabDirection} transitionKey={tab}>
+          {displayed.length === 0 ? (
+            <View style={styles.empty}>
+              <Feather
+                name={tab === "active" ? "target" : "archive"}
+                size={36}
+                color={colors.mutedForeground}
+              />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                {tab === "pending"
+                  ? "No draft pacts"
+                  : tab === "active"
+                  ? firstName
+                    ? `Ready to commit, ${firstName}?`
+                    : "No live pacts"
+                  : "No closed pacts"}
+              </Text>
+              <Text
+                style={[styles.emptyText, { color: colors.mutedForeground }]}
               >
-                <LinearGradient
-                  colors={[colors.primary, colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.createBtn}
+                {tab === "pending"
+                  ? "Pacts waiting for a Pact Pass and deposit will appear here."
+                  : tab === "active"
+                  ? "Lock money. Show proof."
+                  : "Finished records will appear here."}
+              </Text>
+              {tab === "active" && (
+                <TouchableOpacity
+                  onPress={() => router.push("/commitment/new")}
+                  activeOpacity={0.85}
                 >
-                  <Text style={styles.createBtnText}>Make a Pact</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          <View>
-            {displayed.map((c) => (
-              <CommitmentCard key={c.id} commitment={c} />
-            ))}
-          </View>
-        )}
+                  <LinearGradient
+                    colors={[colors.primary, colors.primary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.createBtn}
+                  >
+                    <Text style={styles.createBtnText}>Make a Pact</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View>
+              {displayed.map((c) => (
+                <CommitmentCard key={c.id} commitment={c} />
+              ))}
+            </View>
+          )}
+        </DirectionalSwap>
       </ScrollView>
     </View>
   );
@@ -192,12 +237,19 @@ const styles = StyleSheet.create({
     padding: 4,
     borderWidth: 1,
     marginBottom: 20,
+    overflow: "hidden",
+    position: "relative",
+  },
+  tabIndicator: {
+    borderRadius: 8,
+    zIndex: 0,
   },
   tabItem: {
     flex: 1,
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: "center",
+    zIndex: 1,
   },
   tabText: { fontSize: 13 },
   empty: {

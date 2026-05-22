@@ -6,7 +6,8 @@ import { Icon, Label, NativeTabs } from "expo-router/unstable-native-tabs";
 import { SymbolView } from "expo-symbols";
 import { Feather } from "@expo/vector-icons";
 import React from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Easing, Platform, StyleSheet, View } from "react-native";
+import { useReducedMotion } from "react-native-reanimated";
 
 import { gradients } from "@/constants/colors";
 import { useColors } from "@/hooks/useColors";
@@ -32,15 +33,44 @@ function NativeTabLayout() {
 
 function ClassicTabLayout() {
   const colors = useColors();
+  const reduceMotion = useReducedMotion();
   const isIOS = Platform.OS === "ios";
   const isWeb = Platform.OS === "web";
 
   return (
     <Tabs
       screenOptions={{
+        animation: reduceMotion ? "none" : "shift",
+        sceneStyleInterpolator: reduceMotion
+          ? undefined
+          : ({ current }) => ({
+              sceneStyle: {
+                opacity: current.progress.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: [0.94, 1, 0.94],
+                }),
+                transform: [
+                  {
+                    translateX: current.progress.interpolate({
+                      inputRange: [-1, 0, 1],
+                      outputRange: [-28, 0, 28],
+                    }),
+                  },
+                ],
+              },
+            }),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
+        transitionSpec: reduceMotion
+          ? { animation: "timing", config: { duration: 0 } }
+          : {
+              animation: "timing",
+              config: {
+                duration: 220,
+                easing: Easing.out(Easing.cubic),
+              },
+            },
         tabBarStyle: {
           position: "absolute",
           backgroundColor: "transparent",

@@ -24,6 +24,7 @@ import {
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthScreen } from "@/components/AuthScreen";
@@ -70,19 +71,31 @@ const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
 const convexClient = convexUrl ? new ConvexReactClient(convexUrl) : null;
 
 function RootLayoutNav() {
+  const reduceMotion = useReducedMotion();
+  const screenAnimation = reduceMotion
+    ? "fade"
+    : Platform.OS === "web"
+    ? "slide_from_right"
+    : "default";
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        animation: screenAnimation,
+      }}
+    >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen
         name="commitment/new"
         options={{
+          animation: reduceMotion ? "fade" : "slide_from_bottom",
           headerShown: false,
           presentation: "modal",
         }}
       />
       <Stack.Screen name="commitment/[id]" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
-      <Stack.Screen name="admin/reviews" options={{ headerShown: false }} />
     </Stack>
   );
 }

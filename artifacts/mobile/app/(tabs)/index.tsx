@@ -2,12 +2,13 @@ import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useQuery } from "convex/react";
 
 import { useFirstName } from "@/hooks/useCurrentUser";
 import {
   Alert,
+  type LayoutRectangle,
   Platform,
   ScrollView,
   StyleSheet,
@@ -19,11 +20,19 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
 import { CheckInModal } from "@/components/CheckInModal";
+import { CompactCycleCalendar } from "@/components/CompactCycleCalendar";
 import { CommitmentCard } from "@/components/CommitmentCard";
 import type {
   CommitmentCardAction,
   CommitmentCardStatus,
 } from "@/components/CommitmentCard";
+import {
+  DirectionalSwap,
+  type MotionDirection,
+} from "@/components/motion/DirectionalSwap";
+import { ExpandablePanel } from "@/components/motion/ExpandablePanel";
+import { MotionPressable } from "@/components/motion/MotionPressable";
+import { SlidingIndicator } from "@/components/motion/SlidingIndicator";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import {
@@ -95,6 +104,16 @@ function dateLabel(date: string) {
     day: "numeric",
     month: "short",
   });
+}
+
+function layoutsMatch(a: LayoutRectangle | undefined, b: LayoutRectangle) {
+  if (!a) return false;
+  return (
+    Math.abs(a.x - b.x) < 0.5 &&
+    Math.abs(a.y - b.y) < 0.5 &&
+    Math.abs(a.width - b.width) < 0.5 &&
+    Math.abs(a.height - b.height) < 0.5
+  );
 }
 
 function isScheduledForDate(commitment: Commitment, date: string) {
@@ -223,6 +242,11 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [countdown, setCountdown] = useState(getMsUntilDeadline());
   const [selectedDate, setSelectedDate] = useState(getTodayStr());
+  const [dateDirection, setDateDirection] = useState<MotionDirection>(0);
+  const [dateLayouts, setDateLayouts] = useState<
+    Record<string, LayoutRectangle | undefined>
+  >({});
+  const [cycleCalendarOpen, setCycleCalendarOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -248,13 +272,27 @@ export default function HomeScreen() {
     );
   const featuredCommitment = selectedDayCommitments[0] ?? null;
   const secondarySelectedCommitments = selectedDayCommitments.slice(1);
+  const selectedDateHasCommitment = confirmedCommitments.some((c) =>
+    commitmentIsVisibleForDate(c, selectedDate),
+  );
+  const calendarCommitment =
+    featuredCommitment ??
+    confirmedCommitments.find(
+      (c) => selectedDate >= c.startDate && selectedDate <= c.endDate,
+    ) ??
+    confirmedCommitments.find(isActive) ??
+    confirmedCommitments[0] ??
+    null;
   const selectedDayText = dateLabel(selectedDate);
   const hasSelectedDayView =
     pendingPaymentCommitments.length > 0 || selectedDayCommitments.length > 0;
 
   useEffect(() => {
-    if (!dateStrip.includes(selectedDate)) setSelectedDate(today);
-  }, [dateStripKey, selectedDate, today]);
+    if (!dateStrip.includes(selectedDate) && !selectedDateHasCommitment) {
+      setDateDirection(today > selectedDate ? 1 : -1);
+      setSelectedDate(today);
+    }
+  }, [dateStripKey, selectedDate, selectedDateHasCommitment, today]);
 
   const firstName = useFirstName();
   const earnedCurrency =
@@ -268,6 +306,26 @@ export default function HomeScreen() {
     backgroundColor: colors.accent + "14",
     borderColor: colors.accent + "33",
   };
+
+  const dateIndicatorFrame = useCallback((layout: LayoutRectangle) => {
+    const size = 34;
+    return {
+      x: layout.x + (layout.width - size) / 2,
+      y: layout.y,
+      width: size,
+      height: size,
+    };
+  }, []);
+
+  const updateDateLayout = useCallback(
+    (date: string, layout: LayoutRectangle) => {
+      setDateLayouts((current) => {
+        if (layoutsMatch(current[date], layout)) return current;
+        return { ...current, [date]: layout };
+      });
+    },
+    [],
+  );
 
   function openCheckIn(commitment: Commitment) {
     setSelectedCommitment(commitment);
@@ -364,6 +422,8 @@ export default function HomeScreen() {
   }
 
   function showDate(date: string) {
+    if (date === selectedDate) return;
+    setDateDirection(date > selectedDate ? 1 : -1);
     setSelectedDate(date);
     void Haptics.selectionAsync();
   }
@@ -435,6 +495,13 @@ export default function HomeScreen() {
   }
 
   function selectedDayCircleStyle(date: string) {
+    if (date === selectedDate) {
+      return {
+        borderColor: "transparent",
+        backgroundColor: "transparent",
+        borderWidth: 0,
+      };
+    }
     return {
       borderColor: selectedDayCircleBorder(date),
       backgroundColor: selectedDayCircleBackground(date),
@@ -456,11 +523,18 @@ export default function HomeScreen() {
     };
   }
 
+  function toggleCycleCalendar() {
+    if (!calendarCommitment) return;
+    setCycleCalendarOpen((current) => !current);
+    void Haptics.selectionAsync();
+  }
+
   useEffect(() => {
-    setSelectedDate((current) =>
-      current === addDays(today, -1) ? today : current,
-    );
-  }, [today]);
+    if (selectedDate === addDays(today, -1)) {
+      setDateDirection(1);
+      setSelectedDate(today);
+    }
+  }, [selectedDate, today]);
 
   function handleSubmitContent(
     id: string,
@@ -554,102 +628,180 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.dateStrip}>
-            {dateStrip.map((date) => (
-              <TouchableOpacity
-                key={date}
-                onPress={() => showDate(date)}
-                activeOpacity={0.78}
-                style={styles.dateItem}
-                accessibilityRole="button"
-                accessibilityLabel={selectedDayAccessibilityLabel(date)}
-                accessibilityState={{ selected: date === selectedDate }}
-              >
-                <View style={[styles.dayCircle, selectedDayCircleStyle(date)]}>
-                  <Text
-                    style={[styles.dayInitial, selectedDayInitialStyle(date)]}
+          <View style={styles.dateStripWrap}>
+            <View style={styles.dateStrip}>
+              <SlidingIndicator
+                selectedKey={selectedDate}
+                layouts={dateLayouts}
+                frameForLayout={dateIndicatorFrame}
+                style={[
+                  styles.selectedDateIndicator,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.foreground,
+                  },
+                ]}
+              />
+              {dateStrip.map((date) => (
+                <MotionPressable
+                  key={date}
+                  onLayout={(event) =>
+                    updateDateLayout(date, event.nativeEvent.layout)
+                  }
+                  onPress={() => showDate(date)}
+                  pressedOpacity={0.9}
+                  style={styles.dateItem}
+                  accessibilityRole="button"
+                  accessibilityLabel={selectedDayAccessibilityLabel(date)}
+                  accessibilityState={{ selected: date === selectedDate }}
+                >
+                  <View
+                    style={[styles.dayCircle, selectedDayCircleStyle(date)]}
                   >
-                    {dayInitial(date)}
+                    <Text
+                      style={[
+                        styles.dayInitial,
+                        selectedDayInitialStyle(date),
+                      ]}
+                    >
+                      {dayInitial(date)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.dayNumber, selectedDayDateStyle(date)]}>
+                    {dayNumber(date)}
                   </Text>
-                </View>
-                <Text style={[styles.dayNumber, selectedDayDateStyle(date)]}>
-                  {dayNumber(date)}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                </MotionPressable>
+              ))}
+            </View>
+
+            {calendarCommitment && (
+              <MotionPressable
+                onPress={toggleCycleCalendar}
+                pressedOpacity={0.88}
+                style={[
+                  styles.calendarToggle,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: colors.border,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  cycleCalendarOpen
+                    ? "Hide cycle calendar"
+                    : "Show cycle calendar"
+                }
+                accessibilityState={{ expanded: cycleCalendarOpen }}
+              >
+                <Feather
+                  name={cycleCalendarOpen ? "chevron-up" : "chevron-down"}
+                  size={16}
+                  color={colors.mutedForeground}
+                />
+              </MotionPressable>
+            )}
+
+            <ExpandablePanel
+              expanded={cycleCalendarOpen && !!calendarCommitment}
+              style={styles.calendarPanel}
+            >
+              {calendarCommitment && (
+                <CompactCycleCalendar
+                  commitment={calendarCommitment}
+                  selectedDate={selectedDate}
+                  onSelectDate={showDate}
+                />
+              )}
+            </ExpandablePanel>
           </View>
         </View>
 
-        {hasSelectedDayView && (
-          <View style={styles.selectedDayHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              {selectedDayHeader()}
-            </Text>
-            <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-              {selectedDaySubhead()}
-            </Text>
-          </View>
-        )}
+        <DirectionalSwap
+          direction={dateDirection}
+          transitionKey={selectedDate}
+        >
+          {hasSelectedDayView && (
+            <View style={styles.selectedDayHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                {selectedDayHeader()}
+              </Text>
+              <Text
+                style={[styles.sectionSub, { color: colors.mutedForeground }]}
+              >
+                {selectedDaySubhead()}
+              </Text>
+            </View>
+          )}
 
-        {pendingPaymentCommitments.length > 0 && (
-          <View style={styles.section}>
-            {pendingPaymentCommitments.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                compact
-                status={pendingDraftStatus}
-                action={actionFor(c)}
-              />
-            ))}
-          </View>
-        )}
+          {pendingPaymentCommitments.length > 0 && (
+            <View style={styles.section}>
+              {pendingPaymentCommitments.map((c) => (
+                <CommitmentCard
+                  key={c.id}
+                  commitment={c}
+                  compact
+                  status={pendingDraftStatus}
+                  action={actionFor(c)}
+                />
+              ))}
+            </View>
+          )}
 
-        {featuredCommitment && (
-          <ActiveWidget
-            commitment={featuredCommitment}
-            selectedDate={selectedDate}
-            dayStatus={statusFor(featuredCommitment)}
-            countdown={countdown}
-            isUrgent={isUrgent}
-            colors={colors}
-            action={actionFor(featuredCommitment)}
-            onViewDetails={() => openDetails(featuredCommitment)}
-          />
-        )}
+          {featuredCommitment && (
+            <ActiveWidget
+              commitment={featuredCommitment}
+              selectedDate={selectedDate}
+              dayStatus={statusFor(featuredCommitment)}
+              countdown={countdown}
+              isUrgent={isUrgent}
+              colors={colors}
+              action={actionFor(featuredCommitment)}
+              onViewDetails={() => openDetails(featuredCommitment)}
+            />
+          )}
 
-        {secondarySelectedCommitments.length > 0 && (
-          <View style={styles.section}>
-            {secondarySelectedCommitments.map((c) => (
-              <CommitmentCard
-                key={c.id}
-                commitment={c}
-                compact
-                status={statusFor(c)}
-                action={actionFor(c)}
-              />
-            ))}
-          </View>
-        )}
+          {secondarySelectedCommitments.length > 0 && (
+            <View style={styles.section}>
+              {secondarySelectedCommitments.map((c) => (
+                <CommitmentCard
+                  key={c.id}
+                  commitment={c}
+                  compact
+                  status={statusFor(c)}
+                  action={actionFor(c)}
+                />
+              ))}
+            </View>
+          )}
 
-        {commitments.length > 0 && !hasSelectedDayView && (
-          <View
-            style={[
-              styles.selectedEmpty,
-              { backgroundColor: colors.card, borderColor: colors.border },
-            ]}
-          >
-            <Feather name="calendar" size={18} color={colors.mutedForeground} />
-            <Text style={[styles.emptyTitleSmall, { color: colors.foreground }]}>
-              {selectedDayEmptyTitle()}
-            </Text>
-            <Text
-              style={[styles.emptyTextSmall, { color: colors.mutedForeground }]}
+          {commitments.length > 0 && !hasSelectedDayView && (
+            <View
+              style={[
+                styles.selectedEmpty,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
             >
-              {selectedDayEmptyBody()}
-            </Text>
-          </View>
-        )}
+              <Feather
+                name="calendar"
+                size={18}
+                color={colors.mutedForeground}
+              />
+              <Text
+                style={[styles.emptyTitleSmall, { color: colors.foreground }]}
+              >
+                {selectedDayEmptyTitle()}
+              </Text>
+              <Text
+                style={[
+                  styles.emptyTextSmall,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                {selectedDayEmptyBody()}
+              </Text>
+            </View>
+          )}
+        </DirectionalSwap>
 
         {commitments.length === 0 && (
           <View style={styles.empty}>
@@ -1044,11 +1196,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
+    position: "relative",
+  },
+  dateStripWrap: {
+    gap: 4,
   },
   dateItem: {
     width: 42,
     alignItems: "center",
     gap: 5,
+    zIndex: 1,
+  },
+  selectedDateIndicator: {
+    borderRadius: 17,
+    borderWidth: 1.5,
+    zIndex: 0,
   },
   dayCircle: {
     width: 34,
@@ -1065,6 +1227,19 @@ const styles = StyleSheet.create({
   dayNumber: {
     fontSize: 15,
     fontFamily: "Inter_500Medium",
+  },
+  calendarToggle: {
+    alignSelf: "center",
+    width: 34,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  calendarPanel: {
+    marginTop: 4,
   },
   selectedDayHeader: {
     marginBottom: 10,
