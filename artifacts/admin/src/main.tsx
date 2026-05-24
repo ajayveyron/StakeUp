@@ -11,6 +11,7 @@ import React, { useCallback, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App";
+import { AdminBrand } from "./Brand";
 import "./styles.css";
 
 const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -23,7 +24,7 @@ function MissingSetup() {
   return (
     <main className="setup-screen">
       <section className="setup-panel">
-        <p className="eyebrow">Pact Raven Admin</p>
+        <AdminBrand />
         <h1>Environment required</h1>
         <p>
           Add <code>VITE_CLERK_PUBLISHABLE_KEY</code> and{" "}
@@ -49,7 +50,7 @@ function Root() {
       <SignedOut>
         <main className="setup-screen">
           <section className="setup-panel">
-            <p className="eyebrow">Pact Raven Admin</p>
+            <AdminBrand />
             <h1>Sign in</h1>
             <SignInButton
               fallbackRedirectUrl={adminRedirectUrl}

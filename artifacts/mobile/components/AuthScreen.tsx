@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BrutalistBackdrop } from "@/components/BrutalistBackdrop";
+import { RavenMark } from "@/components/RavenMark";
 import { LEGAL_URLS } from "@/constants/links";
 import { useColors } from "@/hooks/useColors";
 
@@ -443,7 +444,7 @@ export function AuthScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.logo}
           >
-            <Feather name="target" size={28} color={colors.primaryForeground} />
+            <RavenMark size={44} color={colors.primaryForeground} />
           </LinearGradient>
           <Text style={[styles.brand, { color: colors.foreground }]}>
             Pact Raven

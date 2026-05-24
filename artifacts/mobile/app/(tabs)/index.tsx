@@ -32,6 +32,7 @@ import {
 } from "@/components/motion/DirectionalSwap";
 import { ExpandablePanel } from "@/components/motion/ExpandablePanel";
 import { MotionPressable } from "@/components/motion/MotionPressable";
+import { RavenMark } from "@/components/RavenMark";
 import { SlidingIndicator } from "@/components/motion/SlidingIndicator";
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
@@ -601,11 +602,7 @@ export default function HomeScreen() {
                 end={{ x: 1, y: 1 }}
                 style={styles.brandMark}
               >
-                <Feather
-                  name="target"
-                  size={18}
-                  color={colors.primaryForeground}
-                />
+                <RavenMark size={23} color={colors.primaryForeground} />
               </LinearGradient>
               <Text style={[styles.brandName, { color: colors.foreground }]}>
                 Pact Raven

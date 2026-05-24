@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 
+import { AdminBrand } from "./Brand";
+
 const api = anyApi;
 type Id<TableName extends string> = string & { readonly __tableName?: TableName };
 
@@ -349,6 +351,7 @@ function LoadingScreen({
     <main className="setup-screen">
       <section className="setup-panel compact">
         {userButton ? <div className="top-user">{userButton}</div> : null}
+        <AdminBrand />
         <Loader2 className="spin" size={24} />
         <p>{label}</p>
         {showSessionActions ? <SessionActions /> : null}
@@ -363,7 +366,7 @@ function AccessBlocked({ userButton }: AppProps) {
       <section className="setup-panel compact">
         <div className="top-user">{userButton}</div>
         <LockKeyhole size={26} />
-        <p className="eyebrow">Pact Raven Admin</p>
+        <AdminBrand />
         <h1>Admin access required</h1>
         <p>The signed-in account is not listed in Convex ADMIN_EMAILS.</p>
       </section>
@@ -382,7 +385,7 @@ function AuthIssue({
       <section className="setup-panel compact">
         <div className="top-user">{userButton}</div>
         <AlertTriangle size={26} />
-        <p className="eyebrow">Pact Raven Admin</p>
+        <AdminBrand />
         <h1>Session did not finish</h1>
         <p>{detail}</p>
         <SessionActions />
@@ -737,7 +740,7 @@ export function App({ userButton }: AppProps) {
     <main className="app-shell">
       <header className="app-header">
         <div>
-          <p className="eyebrow">Pact Raven Admin</p>
+          <AdminBrand />
           <h1>Ops</h1>
         </div>
         <div className="header-actions">

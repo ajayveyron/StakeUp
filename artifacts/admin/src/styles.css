@@ -91,6 +91,27 @@ a {
   text-transform: uppercase;
 }
 
+.admin-brand {
+  align-items: center;
+  display: inline-flex;
+  gap: 9px;
+  margin: 0 0 6px;
+}
+
+.admin-brand .eyebrow {
+  margin: 0;
+}
+
+.admin-brand-mark {
+  background: var(--foreground);
+  display: inline-block;
+  flex: 0 0 30px;
+  height: 30px;
+  mask: url("/favicon.svg") center / contain no-repeat;
+  -webkit-mask: url("/favicon.svg") center / contain no-repeat;
+  width: 30px;
+}
+
 .app-shell {
   margin: 0 auto;
   max-width: 1120px;

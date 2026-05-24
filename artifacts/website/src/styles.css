@@ -79,11 +79,24 @@ main {
 .brand {
   display: inline-flex;
   align-items: center;
+  gap: 9px;
   min-height: 40px;
   color: var(--ink);
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0;
+  text-decoration: none;
+}
+
+.brand::before {
+  content: "";
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  background: currentColor;
+  mask: url("/favicon.svg") center / contain no-repeat;
+  -webkit-mask: url("/favicon.svg") center / contain no-repeat;
 }
 
 .nav-links,
@@ -393,6 +406,23 @@ footer > div {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+footer strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+footer strong::before {
+  content: "";
+  display: inline-block;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  background: currentColor;
+  mask: url("/favicon.svg") center / contain no-repeat;
+  -webkit-mask: url("/favicon.svg") center / contain no-repeat;
 }
 
 footer span {
