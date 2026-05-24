@@ -5,6 +5,14 @@ const title = "Pact Raven App";
 const description = "Lock money. Show proof daily. Missed days go to charity.";
 const appUrl = "https://app.pactraven.com";
 const ogImageUrl = `${appUrl}/api/og?surface=app`;
+const themeColor = "#191919";
+const registerServiceWorker = `
+if ("serviceWorker" in navigator && location.protocol !== "file:") {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/pwa-sw.js").catch(function () {});
+  });
+}
+`;
 
 export default function Root({ children }: PropsWithChildren) {
   return (
@@ -18,6 +26,14 @@ export default function Root({ children }: PropsWithChildren) {
         />
         <title>{title}</title>
         <meta name="description" content={description} />
+        <meta name="theme-color" content={themeColor} />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Pact Raven" />
+        <meta
+          name="apple-mobile-web-app-status-bar-style"
+          content="black-translucent"
+        />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Pact Raven" />
         <meta property="og:title" content={title} />
@@ -28,6 +44,10 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={ogImageUrl} />
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
+        <link rel="apple-touch-icon" href="/pwa-icon-192.png" />
+        <script dangerouslySetInnerHTML={{ __html: registerServiceWorker }} />
         <ScrollViewStyleReset />
       </head>
       <body>{children}</body>
