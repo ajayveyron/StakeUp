@@ -323,6 +323,30 @@ function isImageUrl(value?: string) {
   return /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(value) || value.includes("convex.cloud");
 }
 
+function safeExternalUrl(value?: string) {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" ? parsed.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function adminActionErrorMessage(error: unknown) {
+  if (!(error instanceof Error) || !error.message.trim()) return "Action failed";
+  const message = error.message.trim();
+  if (
+    message.includes("\n") ||
+    message.includes("Stack Trace") ||
+    message.includes("Razorpay request") ||
+    message.includes("RAZORPAY_")
+  ) {
+    return "Action failed. Check server logs.";
+  }
+  return message;
+}
+
 function SessionActions() {
   return (
     <div className="auth-actions">
@@ -506,19 +530,22 @@ function ProofBlock({
     submissionStatement,
     stepCount,
   });
+  const safeProofUrl = safeExternalUrl(proofUrl);
 
   return (
     <div className="proof-block">
-      {proofUrl ? (
-        isImageUrl(proofUrl) ? (
-          <a href={proofUrl} rel="noreferrer" target="_blank">
-            <img alt="Submitted proof" src={proofUrl} />
+      {safeProofUrl ? (
+        isImageUrl(safeProofUrl) ? (
+          <a href={safeProofUrl} rel="noreferrer" target="_blank">
+            <img alt="Submitted proof" src={safeProofUrl} />
           </a>
         ) : (
-          <a href={proofUrl} rel="noreferrer" target="_blank">
-            {proofUrl}
+          <a href={safeProofUrl} rel="noreferrer" target="_blank">
+            {safeProofUrl}
           </a>
         )
+      ) : proofUrl ? (
+        <span>Proof link is not a valid https URL</span>
       ) : (
         <span>{goalType === "workout" ? "Waiting for camera proof" : "Waiting for post link"}</span>
       )}
@@ -667,7 +694,7 @@ export function App({ userButton }: AppProps) {
       await action();
       setNotice("Saved");
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Action failed");
+      setNotice(adminActionErrorMessage(error));
     } finally {
       setBusyId(null);
     }

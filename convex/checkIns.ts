@@ -9,6 +9,7 @@ import {
   isScheduledDate,
   todayInTimeZone,
 } from "./lib/dates";
+import { normalizeContentProofUrl } from "./lib/proofUrls";
 
 const proofLocation = v.object({
   latitude: v.number(),
@@ -178,10 +179,7 @@ export const submitContent = mutation({
     submissionStatement: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const proofUrl = args.proofUrl.trim();
-    if (!proofUrl.startsWith("http")) {
-      throw new Error("Proof URL must start with http");
-    }
+    const proofUrl = normalizeContentProofUrl(args.proofUrl);
     const checkInId = await replaceOrCreateUnderReview(ctx, {
       ...args,
       expectedGoalType: "content",

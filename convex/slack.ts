@@ -21,6 +21,7 @@ import {
 } from "./lib/notifications";
 import { consumeSlotForCommitment } from "./lib/pactPasses";
 import { approveCheckInForReview, rejectCheckInForReview } from "./lib/review";
+import { escapeSlackMrkdwn } from "./lib/slackText";
 
 type ReviewNotificationData = {
   checkInId: Id<"checkIns">;
@@ -89,12 +90,12 @@ function userLabel(args: {
   userPhone?: string;
   userWhatsAppNumber?: string;
 }) {
-  return (
+  return escapeSlackMrkdwn(
     args.userName ||
-    args.userEmail ||
-    args.userWhatsAppNumber ||
-    args.userPhone ||
-    "Unknown user"
+      args.userEmail ||
+      args.userWhatsAppNumber ||
+      args.userPhone ||
+      "Unknown user",
   );
 }
 
@@ -103,10 +104,10 @@ function contactLabel(args: {
   userWhatsAppNumber?: string;
   userPhone?: string;
 }) {
-  return (
+  return escapeSlackMrkdwn(
     [args.userEmail, args.userWhatsAppNumber, args.userPhone]
       .filter(Boolean)
-      .join("\n") || "No contact"
+      .join("\n") || "No contact",
   );
 }
 
@@ -120,7 +121,7 @@ function goalLabel(args: {
 }
 
 function forfeitLabel(args: { forfeitDestination: CharityDestination }) {
-  return charityName(args.forfeitDestination);
+  return escapeSlackMrkdwn(charityName(args.forfeitDestination));
 }
 
 function locationLabel(location?: ProofLocation) {
@@ -237,16 +238,18 @@ export const sendReviewNotification = internalAction({
 
     const proofText =
       data.goalType === "content"
-        ? (data.proofUrl ?? "No URL")
+        ? escapeSlackMrkdwn(data.proofUrl ?? "No URL")
         : [
-            data.proofUrl ?? "No camera upload",
-            data.proofPrompt ? `Prompt: ${data.proofPrompt}` : undefined,
+            escapeSlackMrkdwn(data.proofUrl ?? "No camera upload"),
+            data.proofPrompt
+              ? `Prompt: ${escapeSlackMrkdwn(data.proofPrompt)}`
+              : undefined,
             locationLabel(data.proofLocation),
           ]
             .filter(Boolean)
             .join("\n");
     const signedStatement = data.submissionStatement
-      ? `\n\n*Signed statement*\n${data.submissionStatement}`
+      ? `\n\n*Signed statement*\n${escapeSlackMrkdwn(data.submissionStatement)}`
       : "";
     const user = userLabel(data);
     const contact = contactLabel(data);
@@ -254,7 +257,7 @@ export const sendReviewNotification = internalAction({
 
     return await callSlack("chat.postMessage", {
       channel,
-      text: `Proof review pending: ${data.commitmentName}`,
+      text: `Proof review pending: ${escapeSlackMrkdwn(data.commitmentName)}`,
       unfurl_links: false,
       blocks: [
         {
@@ -278,7 +281,7 @@ export const sendReviewNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Pact*\n${data.commitmentName}`,
+              text: `*Pact*\n${escapeSlackMrkdwn(data.commitmentName)}`,
             },
             {
               type: "mrkdwn",
@@ -372,7 +375,7 @@ export const sendPaymentNotification = internalAction({
 
     return await callSlack("chat.postMessage", {
       channel,
-      text: `Deposit pending: ${data.commitmentName}`,
+      text: `Deposit pending: ${escapeSlackMrkdwn(data.commitmentName)}`,
       unfurl_links: false,
       blocks: [
         {
@@ -396,7 +399,7 @@ export const sendPaymentNotification = internalAction({
             },
             {
               type: "mrkdwn",
-              text: `*Pact*\n${data.commitmentName}`,
+              text: `*Pact*\n${escapeSlackMrkdwn(data.commitmentName)}`,
             },
             {
               type: "mrkdwn",

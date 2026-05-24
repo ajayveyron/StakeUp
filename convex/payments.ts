@@ -6,7 +6,11 @@ import { action, mutation, query } from "./_generated/server";
 import { requireUser } from "./lib/auth";
 import { notifyManualPayoutRequested } from "./lib/notifications";
 import { summarizePactPassEntries } from "./lib/pactPasses";
-import { toRazorpayMinorUnits } from "./lib/payments";
+import {
+  isLocalRazorpayOrderId,
+  PAYMENT_PROVIDER_UNAVAILABLE_MESSAGE,
+  toRazorpayMinorUnits,
+} from "./lib/payments";
 
 type RazorpayOrderResponse = {
   id: string;
@@ -26,6 +30,7 @@ type CheckoutOrderData = {
   userEmail?: string;
   userPhone?: string;
   userWhatsAppNumber?: string;
+  razorpayOrderId?: string;
   amount: number;
   currency: string;
   receipt: string;
@@ -67,12 +72,27 @@ function basicAuthHeader() {
   return `Basic ${btoa(`${requiredEnv("RAZORPAY_KEY_ID")}:${requiredEnv("RAZORPAY_KEY_SECRET")}`)}`;
 }
 
-function jsonResponseError(prefix: string, status: number, payload: unknown) {
-  const body =
+class PaymentProviderError extends Error {
+  constructor() {
+    super(PAYMENT_PROVIDER_UNAVAILABLE_MESSAGE);
+    this.name = "PaymentProviderError";
+  }
+}
+
+function logRazorpayFailure(
+  path: string,
+  status: number | undefined,
+  payload: unknown,
+) {
+  const error =
     payload && typeof payload === "object" && "error" in payload
-      ? JSON.stringify(payload)
-      : String(payload);
-  return new Error(`${prefix} failed (${status}): ${body}`);
+      ? (payload as { error?: unknown }).error
+      : payload;
+  console.error("Razorpay request failed", {
+    path,
+    status,
+    error,
+  });
 }
 
 async function hmacSha256Hex(secret: string, message: string) {
@@ -104,19 +124,30 @@ function timingSafeEqual(a: string, b: string) {
 }
 
 async function razorpayPost<T>(path: string, body: Record<string, unknown>) {
-  const response = await fetch(`https://api.razorpay.com/v1${path}`, {
-    method: "POST",
-    headers: {
-      authorization: basicAuthHeader(),
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
-  const payload = (await response.json()) as T;
-  if (!response.ok) {
-    throw jsonResponseError("Razorpay request", response.status, payload);
+  try {
+    const response = await fetch(`https://api.razorpay.com/v1${path}`, {
+      method: "POST",
+      headers: {
+        authorization: basicAuthHeader(),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = (await response.json()) as T;
+    if (!response.ok) {
+      logRazorpayFailure(path, response.status, payload);
+      throw new PaymentProviderError();
+    }
+    return payload;
+  } catch (error) {
+    if (error instanceof PaymentProviderError) throw error;
+    logRazorpayFailure(
+      path,
+      undefined,
+      error instanceof Error ? error.message : error,
+    );
+    throw new PaymentProviderError();
   }
-  return payload;
 }
 
 async function createRazorpayOrder(
@@ -167,6 +198,27 @@ function orderResult(
       contact: data.userWhatsAppNumber ?? data.userPhone,
     },
   };
+}
+
+function existingRazorpayOrderResult(
+  data: CheckoutOrderData,
+  description: string,
+) {
+  if (!data.razorpayOrderId || isLocalRazorpayOrderId(data.razorpayOrderId)) {
+    return null;
+  }
+
+  return orderResult(
+    data,
+    {
+      id: data.razorpayOrderId,
+      amount: toRazorpayMinorUnits(data.amount),
+      currency: data.currency,
+      receipt: data.receipt,
+      status: "created",
+    },
+    description,
+  );
 }
 
 export const slotSummary = query({
@@ -226,6 +278,8 @@ export const createSlotCheckoutOrder = action({
       internal.paymentsInternal.prepareSlotCheckoutOrder,
       {},
     )) as CheckoutOrderData;
+    const existing = existingRazorpayOrderResult(data, "One Pact Pass");
+    if (existing) return existing;
 
     const razorpayOrder = await createRazorpayOrder(data, "slot_fee");
     await attachOrder(ctx, data, razorpayOrder);
@@ -240,14 +294,13 @@ export const createDepositCheckoutOrder = action({
       internal.paymentsInternal.prepareDepositCheckoutOrder,
       { commitmentId: args.commitmentId },
     )) as CheckoutOrderData;
+    const description = data.commitmentName ?? "Refundable pact deposit";
+    const existing = existingRazorpayOrderResult(data, description);
+    if (existing) return existing;
 
     const razorpayOrder = await createRazorpayOrder(data, "pact_deposit");
     await attachOrder(ctx, data, razorpayOrder);
-    return orderResult(
-      data,
-      razorpayOrder,
-      data.commitmentName ?? "Refundable pact deposit",
-    );
+    return orderResult(data, razorpayOrder, description);
   },
 });
 

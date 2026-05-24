@@ -16,6 +16,7 @@ const path = require("path");
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+const DEFAULT_HOST = "localhost:3000";
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -45,6 +46,57 @@ function getAppName() {
   }
 }
 
+function firstHeaderValue(value) {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function normalizeHeaderValue(value) {
+  return firstHeaderValue(value)?.split(",")[0]?.trim();
+}
+
+function normalizeRequestProtocol(req) {
+  const protocol = normalizeHeaderValue(req.headers["x-forwarded-proto"]);
+  return protocol === "http" || protocol === "https" ? protocol : "https";
+}
+
+function normalizeRequestHost(req) {
+  const configuredHost = process.env.PUBLIC_HOST;
+  const host =
+    configuredHost ||
+    normalizeHeaderValue(req.headers["x-forwarded-host"]) ||
+    normalizeHeaderValue(req.headers.host) ||
+    DEFAULT_HOST;
+  const normalized = host.toLowerCase();
+  if (
+    !/^(localhost|([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(:\d{1,5})?$/.test(
+      normalized,
+    )
+  ) {
+    throw new Error("Invalid host header");
+  }
+  return normalized;
+}
+
+function escapeHtml(value) {
+  return value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      case "'":
+        return "&#39;";
+      default:
+        return char;
+    }
+  });
+}
+
 function serveManifest(platform, res) {
   const manifestPath = path.join(STATIC_ROOT, platform, "manifest.json");
 
@@ -66,16 +118,24 @@ function serveManifest(platform, res) {
 }
 
 function serveLandingPage(req, res, landingPageTemplate, appName) {
-  const forwardedProto = req.headers["x-forwarded-proto"];
-  const protocol = forwardedProto || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers["host"];
+  let protocol;
+  let host;
+  try {
+    protocol = normalizeRequestProtocol(req);
+    host = normalizeRequestHost(req);
+  } catch {
+    res.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
+    res.end("Invalid host header");
+    return;
+  }
+
   const baseUrl = `${protocol}://${host}`;
-  const expsUrl = `${host}`;
+  const expsUrl = host;
 
   const html = landingPageTemplate
-    .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
-    .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
-    .replace(/APP_NAME_PLACEHOLDER/g, appName);
+    .replace(/BASE_URL_PLACEHOLDER/g, escapeHtml(baseUrl))
+    .replace(/EXPS_URL_PLACEHOLDER/g, escapeHtml(expsUrl))
+    .replace(/APP_NAME_PLACEHOLDER/g, escapeHtml(appName));
 
   res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
   res.end(html);
@@ -104,32 +164,43 @@ function serveStaticFile(urlPath, res) {
   res.end(content);
 }
 
-const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
-const appName = getAppName();
+function createServer() {
+  const landingPageTemplate = fs.readFileSync(TEMPLATE_PATH, "utf-8");
+  const appName = getAppName();
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url || "/", `http://${req.headers.host}`);
-  let pathname = url.pathname;
+  return http.createServer((req, res) => {
+    const url = new URL(req.url || "/", "http://localhost");
+    let pathname = url.pathname;
 
-  if (basePath && pathname.startsWith(basePath)) {
-    pathname = pathname.slice(basePath.length) || "/";
-  }
-
-  if (pathname === "/" || pathname === "/manifest") {
-    const platform = req.headers["expo-platform"];
-    if (platform === "ios" || platform === "android") {
-      return serveManifest(platform, res);
+    if (basePath && pathname.startsWith(basePath)) {
+      pathname = pathname.slice(basePath.length) || "/";
     }
 
-    if (pathname === "/") {
-      return serveLandingPage(req, res, landingPageTemplate, appName);
-    }
-  }
+    if (pathname === "/" || pathname === "/manifest") {
+      const platform = req.headers["expo-platform"];
+      if (platform === "ios" || platform === "android") {
+        return serveManifest(platform, res);
+      }
 
-  serveStaticFile(pathname, res);
-});
+      if (pathname === "/") {
+        return serveLandingPage(req, res, landingPageTemplate, appName);
+      }
+    }
+
+    serveStaticFile(pathname, res);
+  });
+}
 
 const port = parseInt(process.env.PORT || "3000", 10);
-server.listen(port, "0.0.0.0", () => {
-  console.log(`Serving static Expo build on port ${port}`);
-});
+if (require.main === module) {
+  createServer().listen(port, "0.0.0.0", () => {
+    console.log(`Serving static Expo build on port ${port}`);
+  });
+}
+
+module.exports = {
+  createServer,
+  escapeHtml,
+  normalizeRequestHost,
+  normalizeRequestProtocol,
+};

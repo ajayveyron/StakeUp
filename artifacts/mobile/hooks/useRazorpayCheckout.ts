@@ -69,14 +69,36 @@ function paymentIssueMessage(args: {
   commitmentId?: Id<"commitments">;
   error: Error;
 }) {
+  const issue = safePaymentErrorMessage(args.error);
   return [
     `Hi, Pact Raven is showing a payment service issue while trying to ${args.action}.`,
     args.commitmentId ? `Pact ID: ${args.commitmentId}` : undefined,
-    `Error: ${args.error.message}`,
+    `Issue: ${issue}`,
     "Please check the app status.",
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+function safePaymentErrorMessage(error: Error) {
+  const message = error.message.trim();
+  if (
+    message === "Buy a Pact Pass before starting" ||
+    message === "This pact deposit is already paid" ||
+    message ===
+      "Payment checkout is already being prepared. Please try again in a moment." ||
+    message === "Could not load payment checkout" ||
+    message === "Payment could not start. Please try again."
+  ) {
+    return message;
+  }
+  return "Payment could not start. Please try again.";
+}
+
+function safePaymentVerificationMessage(error: Error) {
+  const message = error.message.trim();
+  if (message === "Payment verification failed") return message;
+  return "Payment verification failed. Please contact admin if money was debited.";
 }
 
 function showPaymentIssueAlert(args: {
@@ -144,13 +166,14 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
               error instanceof Error
                 ? error
                 : new Error("Payment verification failed");
+            const body = safePaymentVerificationMessage(err);
             showPaymentIssueAlert({
               title: "Payment verification failed",
-              body: err.message || "Please contact support.",
+              body,
               supportMessage: paymentIssueMessage({
                 action: "verify a payment",
                 commitmentId: args.commitmentId,
-                error: err,
+                error: new Error(body),
               }),
             });
             callbacks.onError?.(args.commitmentId, err);
@@ -186,12 +209,13 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
     } catch (error) {
       const err =
         error instanceof Error ? error : new Error("Could not start payment");
+      const body = safePaymentErrorMessage(err);
       showPaymentIssueAlert({
         title: "Could not start payment",
-        body: err.message || "Please try again.",
+        body,
         supportMessage: paymentIssueMessage({
           action: "buy a Pact Pass",
-          error: err,
+          error: new Error(body),
         }),
       });
       callbacks.onError?.(undefined, err);
@@ -226,13 +250,14 @@ export function useRazorpayCheckout(callbacks: PayCallbacks = {}) {
     } catch (error) {
       const err =
         error instanceof Error ? error : new Error("Could not start payment");
+      const body = safePaymentErrorMessage(err);
       showPaymentIssueAlert({
         title: "Could not start payment",
-        body: err.message || "Please try again.",
+        body,
         supportMessage: paymentIssueMessage({
           action: "lock a pact deposit",
           commitmentId,
-          error: err,
+          error: new Error(body),
         }),
       });
       callbacks.onError?.(commitmentId, err);

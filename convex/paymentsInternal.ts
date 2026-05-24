@@ -10,7 +10,12 @@ import {
   notifySlotConfirmed,
 } from "./lib/notifications";
 import { consumeSlotForCommitment, slotBalance } from "./lib/pactPasses";
-import { PACT_SLOT_AMOUNT } from "./lib/payments";
+import {
+  isFreshCheckoutPreparation,
+  isLocalRazorpayOrderId,
+  PACT_SLOT_AMOUNT,
+  PAYMENT_CHECKOUT_PREPARING_MESSAGE,
+} from "./lib/payments";
 
 type PaymentPurpose = "slot_fee" | "pact_deposit";
 const LEGAL_ACCEPTANCE_NOTE =
@@ -30,6 +35,67 @@ async function existingPaidOrderForPurpose(
       ),
     )
     .first();
+}
+
+async function reuseOrBlockPreparingOrder(
+  ctx: MutationCtx,
+  order: Doc<"paymentOrders">,
+  now: string,
+) {
+  if (!isLocalRazorpayOrderId(order.razorpayOrderId)) return order;
+  if (isFreshCheckoutPreparation(order.updatedAt)) {
+    throw new Error(PAYMENT_CHECKOUT_PREPARING_MESSAGE);
+  }
+
+  await ctx.db.patch(order._id, { updatedAt: now });
+  return { ...order, updatedAt: now };
+}
+
+async function existingCreatedSlotOrder(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  now: string,
+) {
+  const order = await ctx.db
+    .query("paymentOrders")
+    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("status"), "created"),
+        q.eq(q.field("purpose"), "slot_fee"),
+      ),
+    )
+    .order("desc")
+    .first();
+  if (!order?.slotPurchaseId) return null;
+
+  const slotPurchase = await ctx.db.get(order.slotPurchaseId);
+  if (!slotPurchase || slotPurchase.status !== "pending_payment") return null;
+
+  return {
+    order: await reuseOrBlockPreparingOrder(ctx, order, now),
+    slotPurchase,
+  };
+}
+
+async function existingCreatedDepositOrder(
+  ctx: MutationCtx,
+  args: { commitmentId: Id<"commitments">; now: string },
+) {
+  const order = await ctx.db
+    .query("paymentOrders")
+    .withIndex("by_commitment", (q) => q.eq("commitmentId", args.commitmentId))
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("status"), "created"),
+        q.eq(q.field("purpose"), "pact_deposit"),
+      ),
+    )
+    .order("desc")
+    .first();
+  if (!order) return null;
+
+  return await reuseOrBlockPreparingOrder(ctx, order, args.now);
 }
 
 function shiftCommitmentDates(commitment: Doc<"commitments">) {
@@ -54,6 +120,23 @@ export const prepareSlotCheckoutOrder = internalMutation({
   handler: async (ctx) => {
     const user = await requireUser(ctx);
     const now = new Date().toISOString();
+    const existing = await existingCreatedSlotOrder(ctx, user._id, now);
+    if (existing) {
+      return {
+        paymentOrderId: existing.order._id,
+        slotPurchaseId: existing.slotPurchase._id,
+        razorpayOrderId: existing.order.razorpayOrderId,
+        userId: user._id,
+        userName: user.displayName,
+        userEmail: user.email,
+        userPhone: user.phone,
+        userWhatsAppNumber: user.whatsappNumber,
+        amount: existing.order.amount,
+        currency: existing.order.currency,
+        receipt: existing.order.receipt,
+      };
+    }
+
     const receipt = `slot_${user._id.slice(-12)}_${Date.now()}`;
     const slotPurchaseId = await ctx.db.insert("pactSlotPurchases", {
       userId: user._id,
@@ -87,6 +170,7 @@ export const prepareSlotCheckoutOrder = internalMutation({
     return {
       paymentOrderId,
       slotPurchaseId,
+      razorpayOrderId: `pending:${receipt}`,
       userId: user._id,
       userName: user.displayName,
       userEmail: user.email,
@@ -126,6 +210,27 @@ export const prepareDepositCheckoutOrder = internalMutation({
     }
 
     const now = new Date().toISOString();
+    const existing = await existingCreatedDepositOrder(ctx, {
+      commitmentId: commitment._id,
+      now,
+    });
+    if (existing) {
+      return {
+        paymentOrderId: existing._id,
+        commitmentId: commitment._id,
+        commitmentName: commitment.name,
+        razorpayOrderId: existing.razorpayOrderId,
+        userId: user._id,
+        userName: user.displayName,
+        userEmail: user.email,
+        userPhone: user.phone,
+        userWhatsAppNumber: user.whatsappNumber,
+        amount: existing.amount,
+        currency: existing.currency,
+        receipt: existing.receipt,
+      };
+    }
+
     const receipt = `deposit_${commitment._id.slice(-12)}_${Date.now()}`;
     const paymentOrderId = await ctx.db.insert("paymentOrders", {
       userId: user._id,
@@ -156,6 +261,7 @@ export const prepareDepositCheckoutOrder = internalMutation({
       paymentOrderId,
       commitmentId: commitment._id,
       commitmentName: commitment.name,
+      razorpayOrderId: `pending:${receipt}`,
       userId: user._id,
       userName: user.displayName,
       userEmail: user.email,
