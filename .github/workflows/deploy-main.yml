@@ -46,7 +46,11 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile || {
+            echo "::error::Lockfile/config mismatch. Run 'pnpm install --no-frozen-lockfile' locally and commit pnpm-lock.yaml."
+            exit 1
+          }
 
       - name: Typecheck
         run: pnpm typecheck
@@ -75,7 +79,11 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile || {
+            echo "::error::Lockfile/config mismatch. Run 'pnpm install --no-frozen-lockfile' locally and commit pnpm-lock.yaml."
+            exit 1
+          }
 
       - name: Deploy Convex (production)
         env:
