@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -42,15 +42,13 @@ const proofTypes = [
   {
     icon: Camera,
     title: "Workout pact",
-    goalType: "workout",
-    cta: "Start workout pact",
+    cta: "Join waitlist",
     body: "Camera, location, daily pose.",
   },
   {
     icon: Link2,
     title: "Content pact",
-    goalType: "content",
-    cta: "Start content pact",
+    cta: "Join waitlist",
     body: "Public post link before deadline.",
   },
 ];
@@ -172,11 +170,37 @@ const workoutFaqs = [
 ] as const;
 
 const lastUpdated = "May 22, 2026";
-const appUrl = "https://app.pactraven.com";
-const appCreateUrl = `${appUrl}/commitment/new`;
-const pactIntentUrl = (goalType: string) =>
-  `${appCreateUrl}?type=${goalType}&step=name`;
+const waitlistJoinUrl =
+  "https://chat.whatsapp.com/DfI1Q1AR6e9HZy4ZWaQSBT?mode=gi_t";
 const siteOrigin = "https://pactraven.com";
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type WaitlistFormProps = {
+  idPrefix?: string;
+  className?: string;
+};
+
+async function saveWaitlistSignup(email: string) {
+  const response = await fetch("/api/waitlist", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      source: "website",
+      pagePath: window.location.pathname,
+      referrer: document.referrer || undefined,
+    }),
+  });
+  const result = (await response.json().catch(() => ({}))) as {
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(result.error ?? "Could not save waitlist signup.");
+  }
+}
 
 const routeMeta: Record<string, { title: string; description: string }> = {
   "/": {
@@ -529,6 +553,108 @@ function normalizedPathname(pathname: string) {
   return withoutHtml.replace(/\/$/, "") || "/";
 }
 
+function WaitlistForm({ idPrefix, className }: WaitlistFormProps) {
+  const generatedId = useId();
+  const inputId = `${idPrefix ?? "waitlist"}-${generatedId}`;
+  const messageId = `${inputId}-message`;
+  const redirectTimerRef = useRef<number | null>(null);
+  const [email, setEmail] = useState("");
+  const [message, setMessage] = useState(
+    "Join the waitlist. Then join the launch group.",
+  );
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "error" | "success"
+  >("idle");
+
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        window.clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!emailPattern.test(normalizedEmail)) {
+      setStatus("error");
+      setMessage("Enter a valid email.");
+      return;
+    }
+
+    try {
+      setStatus("submitting");
+      setMessage("Saving your email.");
+      await saveWaitlistSignup(normalizedEmail);
+    } catch (error) {
+      setStatus("error");
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not save waitlist signup.",
+      );
+      return;
+    }
+
+    setEmail(normalizedEmail);
+    setStatus("success");
+    setMessage("You are on the waitlist. Opening WhatsApp.");
+
+    if (redirectTimerRef.current !== null) {
+      window.clearTimeout(redirectTimerRef.current);
+    }
+    redirectTimerRef.current = window.setTimeout(() => {
+      window.location.assign(waitlistJoinUrl);
+    }, 850);
+  }
+
+  return (
+    <form
+      className={["waitlist-form", className].filter(Boolean).join(" ")}
+      id="waitlist"
+      onSubmit={handleSubmit}
+      noValidate
+      aria-busy={status === "submitting"}
+    >
+      <label htmlFor={inputId}>Email</label>
+      <div className="waitlist-row">
+        <input
+          id={inputId}
+          name="email"
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (status !== "idle") {
+              setStatus("idle");
+              setMessage("Join the waitlist. Then join the launch group.");
+            }
+          }}
+          aria-describedby={messageId}
+          aria-invalid={status === "error"}
+          disabled={status === "submitting"}
+        />
+        <button
+          className="button primary"
+          type="submit"
+          disabled={status === "submitting"}
+        >
+          {status === "submitting" ? "Saving" : "Join waitlist"}
+          <ArrowRight size={20} />
+        </button>
+      </div>
+      <p className={`waitlist-message ${status}`} id={messageId} role="status">
+        {message}
+      </p>
+    </form>
+  );
+}
+
 function App() {
   const pathname = normalizedPathname(window.location.pathname);
   useEffect(() => {
@@ -589,19 +715,7 @@ function App() {
             <p className="lede">
               Approved days create refund credit. Missed days go to charity.
             </p>
-            <div className="hero-actions">
-              <a
-                className="button primary"
-                href={pactIntentUrl("workout")}
-                aria-label="Start a workout pact"
-              >
-                Start workout pact
-                <ArrowRight size={20} />
-              </a>
-              <a className="button secondary" href={pactIntentUrl("content")}>
-                Start content pact
-              </a>
-            </div>
+            <WaitlistForm className="hero-waitlist" idPrefix="hero" />
           </div>
 
           <div className="promise-panel" aria-label="Pact summary">
@@ -651,7 +765,7 @@ function App() {
                 <Icon size={34} />
                 <h3>{item.title}</h3>
                 <p>{item.body}</p>
-                <a href={pactIntentUrl(item.goalType)}>
+                <a href="#waitlist">
                   {item.cta}
                   <ArrowRight size={18} />
                 </a>
@@ -710,8 +824,8 @@ function App() {
           ))}
         </div>
         <div className="policy-cta">
-          <a className="button primary" href={pactIntentUrl("workout")}>
-            Start workout pact
+          <a className="button primary" href="#waitlist">
+            Join waitlist
             <ArrowRight size={20} />
           </a>
           <a className="button dark" href="/refund-cancellation">
@@ -758,10 +872,7 @@ function WorkoutAccountabilityPage() {
         <p className="legal-intro">{workoutAnswer}</p>
 
         <div className="answer-actions">
-          <a className="button primary" href={pactIntentUrl("workout")}>
-            Start workout pact
-            <ArrowRight size={20} />
-          </a>
+          <WaitlistForm className="answer-waitlist" idPrefix="workout" />
           <a className="button secondary" href="/proof-rules">
             Read proof rules
           </a>
@@ -788,15 +899,15 @@ function WorkoutAccountabilityPage() {
           </div>
         </section>
 
-        <section className="answer-final-cta" aria-label="Start a workout pact">
+        <section className="answer-final-cta" aria-label="Join the waitlist">
           <h2>Start with the proof you can show.</h2>
           <p>
             The workout pact begins after an unused Pact Pass is available and
             the separate deposit is confirmed.
           </p>
           <div className="answer-actions">
-            <a className="button primary" href={pactIntentUrl("workout")}>
-              Start workout pact
+            <a className="button primary" href="#waitlist">
+              Join waitlist
               <ArrowRight size={20} />
             </a>
             <a className="button dark" href="/refund-cancellation">

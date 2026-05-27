@@ -21,13 +21,16 @@ import type * as lib_ledger from "../lib/ledger.js";
 import type * as lib_notifications from "../lib/notifications.js";
 import type * as lib_pactPasses from "../lib/pactPasses.js";
 import type * as lib_payments from "../lib/payments.js";
+import type * as lib_proofUrls from "../lib/proofUrls.js";
 import type * as lib_review from "../lib/review.js";
+import type * as lib_slackText from "../lib/slackText.js";
 import type * as notifications from "../notifications.js";
 import type * as payments from "../payments.js";
 import type * as paymentsInternal from "../paymentsInternal.js";
 import type * as reviews from "../reviews.js";
 import type * as slack from "../slack.js";
 import type * as users from "../users.js";
+import type * as waitlist from "../waitlist.js";
 import type * as wallet from "../wallet.js";
 
 import type {
@@ -50,13 +53,16 @@ declare const fullApi: ApiFromModules<{
   "lib/notifications": typeof lib_notifications;
   "lib/pactPasses": typeof lib_pactPasses;
   "lib/payments": typeof lib_payments;
+  "lib/proofUrls": typeof lib_proofUrls;
   "lib/review": typeof lib_review;
+  "lib/slackText": typeof lib_slackText;
   notifications: typeof notifications;
   payments: typeof payments;
   paymentsInternal: typeof paymentsInternal;
   reviews: typeof reviews;
   slack: typeof slack;
   users: typeof users;
+  waitlist: typeof waitlist;
   wallet: typeof wallet;
 }>;
 

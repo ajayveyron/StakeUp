@@ -4,7 +4,7 @@ Last updated: May 22, 2026
 
 Pact Raven is a workout accountability app for India-based users who want a 30-day pact with a real record. You create a workout pact, lock a refundable deposit, show fresh camera, location, and pose proof, receive refund credit when proof is approved, and forfeit missed or rejected days to your chosen charity.
 
-[Start workout pact](https://app.pactraven.com/commitment/new?type=workout&step=name)
+[Join the waitlist](https://pactraven.com/#waitlist)
 
 [Read proof rules](https://pactraven.com/proof-rules)
 

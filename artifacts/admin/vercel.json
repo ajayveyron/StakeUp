@@ -1,4 +1,7 @@
 {
+  "git": {
+    "deploymentEnabled": false
+  },
   "installCommand": "corepack pnpm install --no-frozen-lockfile --ignore-scripts",
   "buildCommand": "corepack pnpm run build",
   "outputDirectory": "dist",

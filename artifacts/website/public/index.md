@@ -18,7 +18,7 @@ Lock money. Show proof daily. Missed days go to charity. Pact Raven starts with 
 
 Workout pacts use fresh in-app camera proof, captured device location, and the daily physical prompt shown in the app. The requested person, place, pose, equipment, or gesture should be visible enough for manual review.
 
-[Start a workout pact](https://app.pactraven.com/commitment/new?type=workout&step=name)
+[Join the waitlist](https://pactraven.com/#waitlist)
 
 [Workout accountability app for 30-day pacts](https://pactraven.com/workout-accountability)
 
@@ -26,7 +26,7 @@ Workout pacts use fresh in-app camera proof, captured device location, and the d
 
 Content pacts use a public post link before the deadline. The linked post must match the pact rules, remain public enough for review, and be tied to the user's commitment.
 
-[Start a content pact](https://app.pactraven.com/commitment/new?type=content&step=name)
+[Join the waitlist](https://pactraven.com/#waitlist)
 
 ## Money rules
 

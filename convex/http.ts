@@ -272,6 +272,62 @@ function rejectionReason(view: SlackView | undefined) {
 
 const http = httpRouter();
 
+const waitlistEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function json(payload: unknown, init?: ResponseInit) {
+  return new Response(JSON.stringify(payload), {
+    ...init,
+    headers: {
+      "content-type": "application/json",
+      ...init?.headers,
+    },
+  });
+}
+
+function clientIp(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    undefined
+  );
+}
+
+http.route({
+  path: "/waitlist/signup",
+  method: "POST",
+  handler: httpAction(async (ctx, request) => {
+    let payload: {
+      email?: unknown;
+      source?: unknown;
+      pagePath?: unknown;
+      referrer?: unknown;
+    };
+
+    try {
+      payload = (await request.json()) as typeof payload;
+    } catch {
+      return json({ error: "Invalid JSON." }, { status: 400 });
+    }
+
+    const email =
+      typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+    if (!waitlistEmailPattern.test(email)) {
+      return json({ error: "Enter a valid email." }, { status: 400 });
+    }
+
+    const result = await ctx.runMutation(internal.waitlist.capture, {
+      email,
+      source: typeof payload.source === "string" ? payload.source : "website",
+      pagePath: typeof payload.pagePath === "string" ? payload.pagePath : undefined,
+      referrer: typeof payload.referrer === "string" ? payload.referrer : undefined,
+      userAgent: request.headers.get("user-agent") ?? undefined,
+      ipAddress: clientIp(request),
+    });
+
+    return json({ ok: true, created: result.created });
+  }),
+});
+
 http.route({
   path: "/slack/interactions",
   method: "POST",

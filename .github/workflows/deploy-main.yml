@@ -1,0 +1,119 @@
+# Production pipeline for main.
+#
+# Pull requests: typecheck + mobile logic tests only.
+# Push to main: verify, deploy Convex, then trigger Vercel production builds.
+#
+# Required GitHub repository secrets:
+#   CONVEX_DEPLOY_KEY          — Convex dashboard → Project Settings → Deploy Key (production)
+#   VERCEL_DEPLOY_HOOK_APP     — Vercel project (repo root / webapp) → Settings → Git → Deploy Hook
+#   VERCEL_DEPLOY_HOOK_WEBSITE — Vercel project (artifacts/website) → Deploy Hook
+#   VERCEL_DEPLOY_HOOK_ADMIN   — Vercel project (artifacts/admin) → Deploy Hook
+#
+# Vercel: disable automatic production deploys on Git push if you want this workflow
+# to be the only production trigger; keep preview deploys on PRs if useful.
+
+name: Main
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: main-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Mobile logic tests
+        run: pnpm test:mobile
+
+  deploy-convex:
+    name: Deploy Convex
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy Convex (production)
+        env:
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_DEPLOY_KEY }}
+        run: pnpm exec convex deploy
+
+  deploy-frontends:
+    name: Deploy frontends
+    needs: deploy-convex
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy webapp (app.pactraven.com)
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_APP }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "Missing secret VERCEL_DEPLOY_HOOK_APP" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
+
+      - name: Deploy website (pactraven.com)
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_WEBSITE }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "Missing secret VERCEL_DEPLOY_HOOK_WEBSITE" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"
+
+      - name: Deploy admin (admin.pactraven.com)
+        env:
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_ADMIN }}
+        run: |
+          if [ -z "$DEPLOY_HOOK" ]; then
+            echo "Missing secret VERCEL_DEPLOY_HOOK_ADMIN" >&2
+            exit 1
+          fi
+          curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"

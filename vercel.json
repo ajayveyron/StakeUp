@@ -1,4 +1,7 @@
 {
+  "git": {
+    "deploymentEnabled": false
+  },
   "installCommand": "corepack pnpm install --frozen-lockfile --ignore-scripts",
   "buildCommand": "EXPO_PUBLIC_DOMAIN=app.pactraven.com corepack pnpm --filter @workspace/mobile run build:web",
   "outputDirectory": "artifacts/mobile/dist",

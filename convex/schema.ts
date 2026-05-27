@@ -100,6 +100,11 @@ const betaLedgerEntryType = v.union(
   v.literal("forfeited"),
   v.literal("adjustment"),
 );
+const waitlistStatus = v.union(
+  v.literal("active"),
+  v.literal("contacted"),
+  v.literal("unsubscribed"),
+);
 
 export default defineSchema({
   users: defineTable({
@@ -408,6 +413,23 @@ export default defineSchema({
     .index("by_commitment", ["commitmentId"])
     .index("by_submission", ["submissionId"])
     .index("by_created_at", ["createdAt"]),
+
+  waitlistSignups: defineTable({
+    email: v.string(),
+    source: v.optional(v.string()),
+    pagePath: v.optional(v.string()),
+    referrer: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    ipAddress: v.optional(v.string()),
+    status: waitlistStatus,
+    submissionCount: v.number(),
+    createdAt: v.string(),
+    updatedAt: v.string(),
+    lastSubmittedAt: v.string(),
+  })
+    .index("by_email", ["email"])
+    .index("by_created_at", ["createdAt"])
+    .index("by_status_created_at", ["status", "createdAt"]),
 
   notifications: defineTable({
     userId: v.id("users"),
