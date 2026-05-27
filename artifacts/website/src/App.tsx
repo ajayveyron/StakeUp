@@ -207,8 +207,9 @@ async function saveWaitlistSignup(email: string) {
 
 const routeMeta: Record<string, { title: string; description: string }> = {
   "/": {
-    title: "Pact Raven - Workout and content pacts",
-    description: "Lock money. Show proof daily. Missed days go to charity.",
+    title: "Pact Raven — Your willpower has receipts now.",
+    description:
+      "Lock a deposit. Every approved day credits your UPI. Every missed day goes to the charity you picked. 30-day pact, India beta.",
   },
   "/workout-accountability": {
     title: "Workout Accountability App For 30-Day Pacts - Pact Raven",
@@ -699,6 +700,9 @@ function App() {
   }
   if (pathname === "/404") {
     return <NotFoundPage />;
+  }
+  if (pathname === "/") {
+    return <StickerCobalt />;
   }
   if (pathname !== "/") {
     return <NotFoundPage />;
