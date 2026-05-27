@@ -129,6 +129,7 @@ export default defineConfig({
         proofRules: resolve(__dirname, "proof-rules.html"),
         support: resolve(__dirname, "support.html"),
         notFound: resolve(__dirname, "404.html"),
+        stickerCobalt: resolve(__dirname, "sticker-cobalt.html"),
       },
     },
   },

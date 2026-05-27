@@ -9,6 +9,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import StickerCobalt from "./variants/sticker-cobalt";
+
+
 const charities = [
   "Akshaya Patra",
   "Goonj",
@@ -240,6 +243,11 @@ const routeMeta: Record<string, { title: string; description: string }> = {
   "/404": {
     title: "Page Not Found - Pact Raven",
     description: "The requested Pact Raven page was not found.",
+  },
+  "/sticker-cobalt": {
+    title: "Pact Raven — Your willpower has receipts now.",
+    description:
+      "Lock a deposit. Every approved day credits your UPI. Every missed day goes to the charity you picked. 30-day pact, India beta.",
   },
 };
 
@@ -685,6 +693,9 @@ function App() {
   }
   if (pathname === "/workout-accountability") {
     return <WorkoutAccountabilityPage />;
+  }
+  if (pathname === "/sticker-cobalt") {
+    return <StickerCobalt />;
   }
   if (pathname === "/404") {
     return <NotFoundPage />;
