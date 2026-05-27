@@ -51,7 +51,7 @@ function slackAdminUserIds() {
       ""
     )
       .split(",")
-      .map((id) => id.trim())
+      .map((id: string) => id.trim())
       .filter(Boolean),
   );
 }

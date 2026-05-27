@@ -16,7 +16,7 @@ export function adminEmails(): Set<string> {
   return new Set(
     (process.env.ADMIN_EMAILS ?? "")
       .split(",")
-      .map((email) => email.trim().toLowerCase())
+      .map((email: string) => email.trim().toLowerCase())
       .filter(Boolean),
   );
 }
