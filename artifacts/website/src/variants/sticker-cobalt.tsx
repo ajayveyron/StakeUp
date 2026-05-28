@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
 
 const waitlistJoinUrl =
   "https://chat.whatsapp.com/DfI1Q1AR6e9HZy4ZWaQSBT?mode=gi_t";
@@ -271,6 +271,226 @@ function LedgerRow({
   );
 }
 
+const EXPLAINER_TOTAL_DAYS = 30;
+const EXPLAINER_PER_DAY = 66;
+const EXPLAINER_MISSED_DAYS = new Set([3, 8, 14, 19, 24, 28]);
+const EXPLAINER_TICK_MS = 220;
+
+type ExplainerPhase = "filling" | "complete" | "transfer" | "rest";
+
+function PactExplainer() {
+  const containerRef = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  const [day, setDay] = useState(0);
+  const [phase, setPhase] = useState<ExplainerPhase>("filling");
+  const [runId, setRunId] = useState(0);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduceMotion(mq.matches);
+    const onChange = () => setReduceMotion(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActive(true);
+            obs.disconnect();
+          }
+        }
+      },
+      { threshold: 0.2 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!active) return;
+    if (reduceMotion) {
+      setDay(EXPLAINER_TOTAL_DAYS);
+      setPhase("transfer");
+      return;
+    }
+    let timer: number | undefined;
+    if (phase === "filling") {
+      if (day < EXPLAINER_TOTAL_DAYS) {
+        timer = window.setTimeout(() => setDay((d) => d + 1), EXPLAINER_TICK_MS);
+      } else {
+        timer = window.setTimeout(() => setPhase("complete"), 700);
+      }
+    } else if (phase === "complete") {
+      timer = window.setTimeout(() => setPhase("transfer"), 1500);
+    } else if (phase === "transfer") {
+      timer = window.setTimeout(() => setPhase("rest"), 2600);
+    } else if (phase === "rest") {
+      timer = window.setTimeout(() => {
+        setDay(0);
+        setPhase("filling");
+      }, 3200);
+    }
+    return () => {
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [active, phase, day, reduceMotion, runId]);
+
+  const { completedSoFar, missedSoFar } = useMemo(() => {
+    let ok = 0;
+    let miss = 0;
+    for (let i = 1; i <= day; i++) {
+      if (EXPLAINER_MISSED_DAYS.has(i)) miss++;
+      else ok++;
+    }
+    return { completedSoFar: ok, missedSoFar: miss };
+  }, [day]);
+
+  const refundAmt = completedSoFar * EXPLAINER_PER_DAY;
+  const forfeitAmt = missedSoFar * EXPLAINER_PER_DAY;
+  const transferring = phase === "transfer" || phase === "rest";
+
+  function replay() {
+    setDay(0);
+    setPhase("filling");
+    setRunId((r) => r + 1);
+  }
+
+  return (
+    <section ref={containerRef} className="sc-section" id="explainer">
+      <div className="sc-section-head">
+        <h2 className="sc-h2">Watch a pact play out.</h2>
+        <span className="sc-section-aside">30 days, every box decides where the money lands</span>
+      </div>
+      <div className="sc-explainer">
+        <div className="sc-explainer-cal">
+          <div className="sc-cal-header">
+            <span className="sc-cal-title">YOUR PACT · 30 DAYS</span>
+            <span className="sc-cal-day">
+              Day {Math.min(day, EXPLAINER_TOTAL_DAYS)} / {EXPLAINER_TOTAL_DAYS}
+            </span>
+          </div>
+          <div className="sc-cal-grid" role="img" aria-label="30-day pact progress">
+            {Array.from({ length: EXPLAINER_TOTAL_DAYS }).map((_, i) => {
+              const n = i + 1;
+              const filled = n <= day;
+              const isMiss = EXPLAINER_MISSED_DAYS.has(n);
+              const cellClass = filled
+                ? isMiss
+                  ? "sc-cal-cell sc-cal-cell-miss"
+                  : "sc-cal-cell sc-cal-cell-ok"
+                : "sc-cal-cell";
+              return (
+                <div key={n} className={cellClass}>
+                  <span className="sc-cal-num">{n}</span>
+                  {filled ? (
+                    <svg
+                      className="sc-cal-mark"
+                      width="22"
+                      height="22"
+                      viewBox="0 0 22 22"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      {isMiss ? (
+                        <path
+                          d="M5 5 L 17 17 M 17 5 L 5 17"
+                          stroke="#C2002A"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+                      ) : (
+                        <path
+                          d="M4 11 L 9 16 L 18 6"
+                          stroke="#1A4DFF"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          fill="none"
+                        />
+                      )}
+                    </svg>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+          <div className="sc-cal-legend">
+            <span className="sc-cal-legend-item">
+              <span className="sc-cal-dot sc-cal-dot-ok" /> Approved
+            </span>
+            <span className="sc-cal-legend-item">
+              <span className="sc-cal-dot sc-cal-dot-miss" /> Missed
+            </span>
+            <button
+              type="button"
+              className="sc-cal-replay"
+              onClick={replay}
+              aria-label="Replay animation"
+            >
+              ↻ Replay
+            </button>
+          </div>
+          {phase === "complete" || phase === "transfer" || phase === "rest" ? (
+            <span className="sc-cal-stamp" aria-hidden="true">
+              PACT COMPLETE
+            </span>
+          ) : null}
+        </div>
+
+        <div className="sc-explainer-pots">
+          <article className={`sc-pot sc-pot-refund${transferring ? " sc-pot-sent" : ""}`}>
+            <div className="sc-pot-top">
+              <span className="sc-pot-label">REFUND POT</span>
+              <span className="sc-pot-rate">+₹{EXPLAINER_PER_DAY}/day</span>
+            </div>
+            <span className="sc-pot-amt sc-pot-amt-accent">
+              ₹{refundAmt.toLocaleString("en-IN")}
+            </span>
+            <span className="sc-pot-meta">{completedSoFar} approved days</span>
+            <div className="sc-pot-bar">
+              <div
+                className="sc-pot-bar-fill sc-pot-bar-fill-ok"
+                style={{
+                  width: `${(completedSoFar / EXPLAINER_TOTAL_DAYS) * 100}%`,
+                }}
+              />
+            </div>
+            <div className={`sc-pot-arrow sc-pot-arrow-up${transferring ? " sc-pot-arrow-on" : ""}`}>
+              <span>→ YOUR UPI</span>
+            </div>
+          </article>
+
+          <article className={`sc-pot sc-pot-forfeit${transferring ? " sc-pot-sent" : ""}`}>
+            <div className="sc-pot-top">
+              <span className="sc-pot-label">FORFEIT POT</span>
+              <span className="sc-pot-rate">→₹{EXPLAINER_PER_DAY}/miss</span>
+            </div>
+            <span className="sc-pot-amt">₹{forfeitAmt.toLocaleString("en-IN")}</span>
+            <span className="sc-pot-meta">{missedSoFar} missed days</span>
+            <div className="sc-pot-bar">
+              <div
+                className="sc-pot-bar-fill sc-pot-bar-fill-miss"
+                style={{
+                  width: `${(missedSoFar / EXPLAINER_TOTAL_DAYS) * 100}%`,
+                }}
+              />
+            </div>
+            <div className={`sc-pot-arrow sc-pot-arrow-down${transferring ? " sc-pot-arrow-on" : ""}`}>
+              <span>→ CHARITY</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const steps = [
   {
     n: "01",
@@ -393,6 +613,8 @@ export default function StickerCobalt() {
         </div>
       </section>
 
+      <PactExplainer />
+
       <section className="sc-section sc-section-quiet" id="proof">
         <div className="sc-section-head">
           <h2 className="sc-h2">What counts as proof.</h2>
@@ -401,11 +623,33 @@ export default function StickerCobalt() {
         <div className="sc-proof-grid">
           <article className="sc-proof-card">
             <div className="sc-proof-icon">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <rect x="3" y="9" width="26" height="18" rx="2" stroke="#0A0A0A" strokeWidth="2.2" fill="#FFFFFF" />
-                <circle cx="16" cy="19" r="6" stroke="#0A0A0A" strokeWidth="2.2" fill="#1A4DFF" />
-                <circle cx="16" cy="19" r="2" fill="#FFFFFF" />
-                <rect x="11" y="5" width="10" height="4" rx="1" stroke="#0A0A0A" strokeWidth="2.2" fill="#FFFFFF" />
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+                <path
+                  d="M5 27 Q 5 17, 11 15 Q 13 8, 19 9 L 26 12 L 30 12 a 3.5 3.5 0 0 1 3.5 3.5 v 1 a 3.5 3.5 0 0 1 -3.5 3.5 H 26 L 23 28 Z"
+                  fill="#1A4DFF"
+                  stroke="#0A0A0A"
+                  strokeWidth="2.4"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M 11 15 Q 15 13, 19 15"
+                  stroke="#0A0A0A"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <path
+                  d="M 28 14.5 H 31"
+                  stroke="#0A0A0A"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M 28 17.5 H 31"
+                  stroke="#0A0A0A"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
               </svg>
             </div>
             <h3>Workout pact</h3>
@@ -422,9 +666,12 @@ export default function StickerCobalt() {
           </article>
           <article className="sc-proof-card">
             <div className="sc-proof-icon">
-              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                <path d="M9 13 a 6 6 0 0 1 8.5 0 l 4 4 a 6 6 0 0 1 0 8.5 a 6 6 0 0 1 -8.5 0 l -1 -1" stroke="#0A0A0A" strokeWidth="2.2" strokeLinecap="round" fill="#FFFFFF" />
-                <path d="M23 19 a 6 6 0 0 1 -8.5 0 l -4 -4 a 6 6 0 0 1 0 -8.5 a 6 6 0 0 1 8.5 0 l 1 1" stroke="#0A0A0A" strokeWidth="2.2" strokeLinecap="round" fill="#1A4DFF" />
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+                <rect x="3" y="10" width="30" height="20" rx="2.5" stroke="#0A0A0A" strokeWidth="2.4" fill="#FFFFFF" />
+                <circle cx="18" cy="21" r="6.5" stroke="#0A0A0A" strokeWidth="2.4" fill="#1A4DFF" />
+                <circle cx="18" cy="21" r="2.4" fill="#FFFFFF" />
+                <rect x="12" y="5" width="12" height="5" rx="1.4" stroke="#0A0A0A" strokeWidth="2.4" fill="#FFFFFF" />
+                <circle cx="28" cy="14" r="1.6" fill="#0A0A0A" />
               </svg>
             </div>
             <h3>Content pact</h3>
@@ -1116,13 +1363,21 @@ const stickerCobaltCss = `
   line-height: 1.05;
   letter-spacing: -0.02em;
   margin: 0;
+  color: inherit;
 }
+.sc-step-ink .sc-step-title { color: #F5F5F2; }
+.sc-step-cobalt .sc-step-title { color: #FFFFFF; }
+.sc-step-neutral .sc-step-title { color: #0A0A0A; }
 .sc-step-body {
   font-weight: 500;
   font-size: 16px;
   line-height: 1.4;
   margin: 0;
+  color: inherit;
 }
+.sc-step-ink .sc-step-body { color: #C4CCD6; }
+.sc-step-cobalt .sc-step-body { color: rgba(255, 255, 255, 0.92); }
+.sc-step-neutral .sc-step-body { color: #2A2D36; }
 
 /* proof */
 .sc-proof-grid {
@@ -1155,6 +1410,7 @@ const stickerCobaltCss = `
   font-size: 28px;
   letter-spacing: -0.02em;
   margin: 0;
+  color: #0A0A0A;
 }
 .sc-proof-card p {
   font-weight: 500;
@@ -1422,5 +1678,291 @@ const stickerCobaltCss = `
   .sc-charity-strip { flex-direction: column; align-items: flex-start; }
   .sc-final-card { padding: 48px 24px; }
   .sc-footer { flex-direction: column; align-items: flex-start; }
+}
+
+/* explainer */
+.sc-explainer {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: stretch;
+}
+.sc-explainer-cal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 28px;
+  background: #FFFFFF;
+  border: 3px solid #0A0A0A;
+  border-radius: 24px;
+  box-shadow: 8px 8px 0 #0A0A0A;
+  transform: rotate(-0.4deg);
+}
+.sc-cal-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.sc-cal-title {
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: #0A0A0A;
+}
+.sc-cal-day {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #0A0A0A;
+  color: #F5F5F2;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.sc-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+.sc-cal-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #F5F5F2;
+  border: 2.5px solid #0A0A0A;
+  border-radius: 12px;
+  transition: background 180ms ease, transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sc-cal-cell-ok {
+  background: #E3EBFF;
+  animation: sc-cell-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sc-cal-cell-miss {
+  background: #FBE3E8;
+  animation: sc-cell-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.sc-cal-num {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-weight: 800;
+  font-size: 10px;
+  color: #9CA0A8;
+  letter-spacing: 0.04em;
+}
+.sc-cal-cell-ok .sc-cal-num { color: #1A4DFF; }
+.sc-cal-cell-miss .sc-cal-num { color: #C2002A; }
+.sc-cal-mark { display: block; }
+@keyframes sc-cell-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.sc-cal-legend {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.sc-cal-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: #5A5C66;
+}
+.sc-cal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  border: 2px solid #0A0A0A;
+}
+.sc-cal-dot-ok { background: #E3EBFF; }
+.sc-cal-dot-miss { background: #FBE3E8; }
+.sc-cal-replay {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  color: #0A0A0A;
+  border: 2.5px solid #0A0A0A;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #0A0A0A;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+.sc-cal-replay:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #0A0A0A;
+}
+.sc-cal-replay:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #0A0A0A;
+}
+.sc-cal-stamp {
+  position: absolute;
+  top: 36%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-8deg);
+  padding: 14px 28px;
+  background: #1A4DFF;
+  color: #FFFFFF;
+  border: 3px solid #0A0A0A;
+  border-radius: 14px;
+  box-shadow: 6px 6px 0 #0A0A0A;
+  font-weight: 900;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+  animation: sc-stamp-in 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes sc-stamp-in {
+  0% { transform: translate(-50%, -50%) rotate(-22deg) scale(2); opacity: 0; }
+  60% { transform: translate(-50%, -50%) rotate(-4deg) scale(1.08); opacity: 1; }
+  100% { transform: translate(-50%, -50%) rotate(-8deg) scale(1); opacity: 1; }
+}
+
+.sc-explainer-pots {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.sc-pot {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  border: 3px solid #0A0A0A;
+  border-radius: 20px;
+  box-shadow: 8px 8px 0 #0A0A0A;
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 420ms ease;
+}
+.sc-pot-refund {
+  background: #FFFFFF;
+  transform: rotate(0.6deg);
+}
+.sc-pot-forfeit {
+  background: #0A0A0A;
+  color: #F5F5F2;
+  transform: rotate(-0.6deg);
+}
+.sc-pot-top {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.sc-pot-label {
+  font-weight: 900;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.sc-pot-refund .sc-pot-label { color: #0A0A0A; }
+.sc-pot-forfeit .sc-pot-label { color: #F5F5F2; }
+.sc-pot-rate {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.sc-pot-refund .sc-pot-rate { background: #E3EBFF; color: #1A4DFF; }
+.sc-pot-forfeit .sc-pot-rate { background: rgba(255,255,255,0.12); color: #F5F5F2; }
+.sc-pot-amt {
+  font-weight: 900;
+  font-size: clamp(36px, 4.4vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+}
+.sc-pot-refund .sc-pot-amt { color: #0A0A0A; }
+.sc-pot-amt-accent { color: #1A4DFF !important; }
+.sc-pot-forfeit .sc-pot-amt { color: #FFFFFF; }
+.sc-pot-meta {
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+.sc-pot-refund .sc-pot-meta { color: #5A5C66; }
+.sc-pot-forfeit .sc-pot-meta { color: #B5B7BD; }
+.sc-pot-bar {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  margin-top: 4px;
+  background: #F5F5F2;
+  border: 2px solid #0A0A0A;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.sc-pot-forfeit .sc-pot-bar { background: #1F2026; border-color: #F5F5F2; }
+.sc-pot-bar-fill {
+  height: 100%;
+  width: 0%;
+  transition: width 220ms ease-out;
+}
+.sc-pot-bar-fill-ok { background: #1A4DFF; }
+.sc-pot-bar-fill-miss { background: #C2002A; }
+.sc-pot-arrow {
+  position: absolute;
+  right: -10px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  color: #0A0A0A;
+  border: 2.5px solid #0A0A0A;
+  border-radius: 999px;
+  box-shadow: 3px 3px 0 #0A0A0A;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  transform: translateX(12px) scale(0.85);
+  transition: opacity 360ms ease, transform 480ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.sc-pot-arrow-up { top: 18px; background: #1A4DFF; color: #FFFFFF; }
+.sc-pot-arrow-down { bottom: 18px; background: #F5F5F2; color: #0A0A0A; }
+.sc-pot-arrow-on {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+}
+.sc-pot-sent { box-shadow: 4px 4px 0 #0A0A0A; }
+.sc-pot-refund.sc-pot-sent { transform: rotate(0.6deg) translateY(-2px); }
+.sc-pot-forfeit.sc-pot-sent { transform: rotate(-0.6deg) translateY(2px); }
+
+@media (max-width: 1080px) {
+  .sc-explainer { grid-template-columns: 1fr; }
+  .sc-cal-stamp { font-size: 18px; padding: 10px 22px; }
+}
+@media (max-width: 720px) {
+  .sc-explainer-cal { padding: 20px; }
+  .sc-cal-grid { gap: 6px; }
+  .sc-cal-num { font-size: 9px; top: 3px; left: 4px; }
+  .sc-pot { padding: 20px; }
+  .sc-pot-arrow { font-size: 10px; padding: 6px 10px; right: -6px; }
 }
 `;
