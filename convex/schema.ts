@@ -431,6 +431,12 @@ export default defineSchema({
     .index("by_created_at", ["createdAt"])
     .index("by_status_created_at", ["status", "createdAt"]),
 
+  waitlistRateLimits: defineTable({
+    key: v.string(),
+    count: v.number(),
+    windowStartedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   notifications: defineTable({
     userId: v.id("users"),
     type: notificationType,

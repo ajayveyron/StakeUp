@@ -46,10 +46,10 @@ export default function handler(request: Request) {
   const pactType = getPactType(url.searchParams.get("type"));
   const title = pactType
     ? pactCopy[pactType].title
-    : "Lock money. Show proof.";
+    : "Commit to your habit, financially.";
   const proof = pactType
     ? pactCopy[pactType].proof
-    : "Missed days go to charity.";
+    : "Missed days fund Akshaya Patra.";
 
   return new ImageResponse(
     React.createElement(
@@ -97,7 +97,7 @@ export default function handler(request: Request) {
         React.createElement(
           "div",
           { style: { color: "#737985" } },
-          "RS 249 PASS",
+          "FREE PASS",
         ),
       ),
       React.createElement(

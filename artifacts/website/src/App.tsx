@@ -12,13 +12,7 @@ import {
 import StickerCobalt from "./variants/sticker-cobalt";
 
 
-const charities = [
-  "Akshaya Patra",
-  "Goonj",
-  "CRY",
-  "HelpAge India",
-  "Wildlife SOS",
-];
+const charityName = "Akshaya Patra";
 
 const operatorName = "Pact Raven";
 const registeredAddress =
@@ -31,11 +25,9 @@ const grievanceOfficer = "Ajay Pawriya";
 const gstStatus =
   "GSTIN has not been provided yet and will be added if applicable before issuing GST invoices or collecting GST.";
 const launchScope =
-  "Pact Raven is currently a paid beta for India-based users who are at least 18 years old.";
-const charityDestinationStatus =
-  "The listed charities are user-selected charity destinations, not formal Pact Raven charity partners unless Pact Raven states otherwise in writing.";
-const charityTransferCadence =
-  "Forfeited amounts are recorded internally and transferred to the selected charity destination in monthly batches.";
+  "Pact Raven is currently a beta for India-based users who are at least 18 years old.";
+const charityDestinationStatus = `${charityName} is the charity destination for forfeited amounts. It is not a formal Pact Raven charity partner unless Pact Raven states otherwise in writing.`;
+const charityTransferCadence = `Forfeited amounts are recorded internally and transferred to ${charityName} in monthly batches.`;
 const payoutTiming =
   "Approved proof creates refund credit immediately in the app. Approved credit is available for manual UPI payout after approval, and users may submit up to two manual withdrawal requests per week.";
 const payoutLimits =
@@ -74,8 +66,8 @@ const steps = [
 const moneyRules = [
   {
     icon: BadgeIndianRupee,
-    title: "First pass covered",
-    body: "Next Pact Pass is Rs 249.",
+    title: "Passes are free",
+    body: "Every Pact Pass is free. Your deposit is separate.",
   },
   {
     icon: ShieldCheck,
@@ -91,12 +83,12 @@ const moneyRules = [
 
 const faqs = [
   {
-    title: "What does Rs 249 pay for?",
-    body: "One Pact Pass after your covered first pass.",
+    title: "What does a Pact Pass cost?",
+    body: "Nothing. Every Pact Pass is free.",
   },
   {
     title: "Can I draft before paying?",
-    body: "Yes. Payment starts the pact.",
+    body: "Yes. The deposit starts the pact.",
   },
   {
     title: "Is the deposit a prize pool?",
@@ -104,22 +96,22 @@ const faqs = [
   },
   {
     title: "What proof counts?",
-    body: "Workout: camera, location, pose. Content: public link.",
+    body: "Camera proof: photo or video, location, pose. Text proof: public link.",
   },
   {
     title: "Where does missed-day money go?",
-    body: "To the charity you chose. Not Pact Raven.",
+    body: `To ${charityName}. Not Pact Raven.`,
   },
 ];
 
 const workoutAnswer =
-  "Pact Raven is a workout accountability app for India-based users who want a 30-day pact with a real record. You create a workout pact, lock a refundable deposit, show fresh camera, location, and pose proof, receive refund credit when proof is approved, and forfeit missed or rejected days to your chosen charity.";
+  "Pact Raven is a workout accountability app for India-based users who want a daily pact with a real record. You create a workout pact, choose your own length and deposit, lock that refundable deposit, show fresh camera, location, and pose proof, receive refund credit when proof is approved, and forfeit missed or rejected days to Akshaya Patra.";
 
 const workoutSections = [
   {
     title: "How workout pacts work",
     body: [
-      "Choose a workout pact, set the days and deadline, use a Pact Pass, and lock the separate refundable deposit before the pact starts.",
+      "Choose a workout pact, set your own number of days and the deadline, use a free Pact Pass, and lock the separate refundable deposit before the pact starts.",
       "On each scheduled day, show proof before the deadline. The Raven records whether the day is under review, approved, missed, or rejected.",
       "Manual review keeps the first version strict enough for trust while the product stays web-first and operationally simple.",
     ],
@@ -135,9 +127,9 @@ const workoutSections = [
   {
     title: "What happens to the money",
     body: [
-      "Every account gets the first Pact Pass covered once. After that, each Pact Pass is Rs 249.",
-      "The pact deposit is separate from the Pact Pass fee. Approved workout proof creates refund credit for manual UPI payout.",
-      "Missed or rejected workout days forfeit that day's deposit credit to the charity selected before starting. Forfeits are not Pact Raven revenue.",
+      "Every Pact Pass is free. The pact deposit is separate, and you choose how much to put on the line.",
+      "Approved workout proof creates refund credit for manual UPI payout.",
+      "Missed or rejected workout days forfeit that day's deposit credit to Akshaya Patra. Forfeits are not Pact Raven revenue.",
     ],
   },
   {
@@ -152,7 +144,7 @@ const workoutSections = [
 const workoutFaqs = [
   {
     title: "What is a workout accountability app?",
-    body: "A workout accountability app helps a user turn a fitness intention into a tracked commitment. Pact Raven does this with a 30-day pact, daily proof, manual review, refund credit for approved days, and charity forfeits for missed or rejected days.",
+    body: "A workout accountability app helps a user turn a fitness intention into a tracked commitment. Pact Raven does this with a daily-proof pact you size yourself, manual review, refund credit for approved days, and charity forfeits to Akshaya Patra for missed or rejected days.",
   },
   {
     title: "What proof counts in Pact Raven?",
@@ -160,15 +152,15 @@ const workoutFaqs = [
   },
   {
     title: "What happens if I miss a workout day?",
-    body: "A missed or rejected workout day can forfeit that day's deposit credit to the charity you selected before the pact started.",
+    body: "A missed or rejected workout day can forfeit that day's deposit credit to Akshaya Patra.",
   },
   {
     title: "Is the deposit a prize pool?",
-    body: "No. Users do not win another user's money. The deposit is recorded as a refundable pact deposit liability until it is refunded, forfeited to charity, or settled by admin.",
+    body: "No. Users do not win another user's money. The deposit is recorded as a refundable pact deposit until it is refunded, forfeited to charity, or settled by admin.",
   },
   {
     title: "What does Pact Raven cost?",
-    body: "The first Pact Pass is covered once per account. After that, each Pact Pass is Rs 249. The separate workout pact deposit is locked only when the pact starts.",
+    body: "Every Pact Pass is free. The separate workout pact deposit is set by you and locked only when the pact starts.",
   },
 ] as const;
 
@@ -207,14 +199,14 @@ async function saveWaitlistSignup(email: string) {
 
 const routeMeta: Record<string, { title: string; description: string }> = {
   "/": {
-    title: "Pact Raven — Your willpower has receipts now.",
+    title: "Pact Raven — Commit to your habit, financially.",
     description:
-      "Lock a deposit. Every approved day credits your UPI. Every missed day goes to the charity you picked. 30-day pact, India beta.",
+      "Put money on the line for your habit. Every approved day credits your UPI. Every missed day funds Akshaya Patra. You pick the amount and the days. India beta.",
   },
   "/workout-accountability": {
-    title: "Workout Accountability App For 30-Day Pacts - Pact Raven",
+    title: "Workout Accountability App With Daily Proof Pacts - Pact Raven",
     description:
-      "Pact Raven turns workout consistency into a 30-day pact with refundable deposit, fresh proof, manual review, refund credit, and charity forfeits.",
+      "Pact Raven turns workout consistency into a daily-proof pact you size yourself, with a refundable deposit, fresh proof, manual review, refund credit, and charity forfeits.",
   },
   "/terms": {
     title: "Terms of Use - Pact Raven",
@@ -246,9 +238,9 @@ const routeMeta: Record<string, { title: string; description: string }> = {
     description: "The requested Pact Raven page was not found.",
   },
   "/sticker-cobalt": {
-    title: "Pact Raven — Your willpower has receipts now.",
+    title: "Pact Raven — Commit to your habit, financially.",
     description:
-      "Lock a deposit. Every approved day credits your UPI. Every missed day goes to the charity you picked. 30-day pact, India beta.",
+      "Put money on the line for your habit. Every approved day credits your UPI. Every missed day funds Akshaya Patra. You pick the amount and the days. India beta.",
   },
 };
 
@@ -270,8 +262,8 @@ const legalPages = {
       {
         title: "Pact Passes And Deposits",
         body: [
-          "A Pact Pass unlocks one pact. Every account gets the first Pact Pass covered once; after that, each Pact Pass is Rs 249.",
-          "A pact deposit is separate from the Pact Pass fee. The deposit is recorded internally as a refundable pact deposit liability until it is refunded, forfeited, or transferred to charity.",
+          "A Pact Pass unlocks one pact. Every Pact Pass is free.",
+          "A pact deposit is separate from the Pact Pass. The deposit is recorded internally as a refundable pact deposit until it is refunded, forfeited, or transferred to charity. The user chooses the deposit amount and pact length.",
           "Pact Raven is not a bank, prepaid wallet, stored-value account, escrow service, trustee, investment product, lottery, or money-transfer service. Users do not earn interest on deposits or refund credit.",
           "A draft pact does not consume a pass. A pass is consumed only when the pact starts after deposit confirmation. If a started pact ends early, the pass remains used.",
         ],
@@ -280,7 +272,7 @@ const legalPages = {
         title: "Proof Review",
         body: [
           "Proof is reviewed manually. Pact Raven may approve, reject, or ask for clarification depending on the pact rules and the proof shown.",
-          "Approved proof creates refund credit. Missed, late, unclear, deleted, private, or rejected proof may forfeit the relevant deposit amount to the user's selected charity.",
+          "Approved proof creates refund credit. Missed, late, unclear, deleted, private, or rejected proof may forfeit the relevant deposit amount to Akshaya Patra.",
           "Review decisions are based on the rules visible before the pact starts. Pact Raven may correct an obvious error, but approval is not automatic.",
           "Users grant Pact Raven permission to store and review submitted proof for pact operation, dispute handling, fraud prevention, and legal/accounting records.",
         ],
@@ -299,7 +291,7 @@ const legalPages = {
         body: [
           "Pact Raven is not medical, fitness, legal, tax, financial, or mental health advice.",
           "Pact Raven is not a gambling, betting, jackpot, pooled-prize, or winner-takes-all product. Users do not win other users' money.",
-          "Forfeited deposit amounts are not Pact Raven revenue. Pact Raven's clean revenue line is the Pact Pass fee after the covered first pass.",
+          "Forfeited deposit amounts are not Pact Raven revenue and are not retained by Pact Raven.",
           "Pact Raven may pause, reject, refund, settle, suspend, or close pacts where payment-provider rules, fraud risk, legal requirements, unsafe activity, or abusive behavior require it.",
         ],
       },
@@ -309,6 +301,14 @@ const legalPages = {
           `Support email: ${supportEmail}. Legal and policy email: ${legalEmail}. Privacy and grievance email: ${grievanceEmail}.`,
           `Grievance officer: ${grievanceOfficer}. Business phone: ${businessPhone}. Registered address: ${registeredAddress}.`,
           "Consumer, payment, privacy, and legal grievances should be acknowledged within 48 hours where practical and resolved within one month where required by applicable law, subject to user cooperation, bank/provider delays, disputes, and legal constraints.",
+        ],
+      },
+      {
+        title: "Governing Law And Disputes",
+        body: [
+          "These terms are governed by and construed in accordance with the laws of India.",
+          "Subject to the grievance process below, the courts at Bengaluru, Karnataka have exclusive jurisdiction over any dispute arising out of or in connection with these terms or a user's use of Pact Raven.",
+          "Before raising a formal dispute, users agree to first contact the grievance officer so Pact Raven has a fair chance to resolve the issue. Nothing in these terms limits any right a user has under applicable consumer-protection law.",
         ],
       },
       {
@@ -327,19 +327,19 @@ const legalPages = {
       "This policy separates the Pact Pass fee from the refundable pact deposit. It also covers cancellations, manual UPI payouts, and digital service delivery.",
     sections: [
       {
-        title: "Pact Pass Fee",
+        title: "Pact Pass",
         body: [
-          "Every account gets the first Pact Pass covered once. After that, each Pact Pass is Rs 249 unless a specific offer says otherwise.",
-          "The Pact Pass fee is non-refundable once bought. It pays for access to one pact and Pact Raven's accountability, review, reminders, operations, and support.",
-          "A Pact Pass unlocks one pact. Buying or receiving a pass does not start a pact by itself. The user may draft a pact before or after owning a pass.",
-          "If a payment fails, is reversed, or is disputed, the related pass or pact may stay pending until the payment record is resolved.",
+          "Every Pact Pass is free. There is no pass fee to pay or refund.",
+          "A Pact Pass simply unlocks access to one pact and Pact Raven's accountability, review, reminders, operations, and support.",
+          "A Pact Pass unlocks one pact. Receiving a pass does not start a pact by itself. The user may draft a pact before or after holding a pass.",
+          "If a deposit payment fails, is reversed, or is disputed, the related pact may stay pending until the payment record is resolved.",
         ],
       },
       {
         title: "Pact Deposit",
         body: [
-          "The pact deposit is a separate payment collected when the user chooses to start a pact.",
-          "The deposit is not treated as Pact Raven revenue while it is refundable. It is recorded as a refundable pact deposit liability in Pact Raven's internal ledger.",
+          "The pact deposit is a separate payment collected when the user chooses to start a pact. The user chooses how much to deposit and how long the pact runs.",
+          "The deposit is not treated as Pact Raven revenue while it is refundable. It is recorded internally as a refundable pact deposit.",
           "The pact becomes active only after the user has an unused pass and the deposit payment is confirmed.",
           "The deposit is not a wallet balance, investment, prize pool, or interest-bearing account. It is settled only as refund credit, charity payable, returned amount, or another manual settlement outcome recorded by admin.",
         ],
@@ -366,7 +366,7 @@ const legalPages = {
         body: [
           "Content pacts require the public post link described in the pact rules. Workout pacts require fresh proof matching the prompt and commitment.",
           "Proof may be rejected if it is late, unclear, private, deleted, inaccessible, edited, copied, from another person, or does not match the pact.",
-          `Forfeited amounts are recorded as charity payable to the user's selected charity. Current choices are ${charities.join(", ")}.`,
+          `Forfeited amounts are recorded as charity payable to ${charityName}.`,
           `${charityDestinationStatus} ${charityTransferCadence}`,
           "Forfeited amounts are not Pact Raven revenue. Users should not assume they will receive a donation receipt, 80G certificate, or tax deduction unless Pact Raven explicitly confirms that arrangement in writing.",
         ],
@@ -384,15 +384,15 @@ const legalPages = {
       {
         title: "Early End",
         body: [
-          "A user may end a pact early, but the consumed Pact Pass remains used and any paid pass fee remains non-refundable.",
-          "If the user ends a pact early, the remaining unsettled deposit is forfeited to the user's selected charity destination. Any already-approved refund credit remains subject to the manual payout policy unless fraud, dispute, or legal review requires a different settlement.",
+          "A user may end a pact early, but the consumed Pact Pass remains used.",
+          "If the user ends a pact early, the remaining unsettled deposit is forfeited to Akshaya Patra. Any already-approved refund credit remains subject to the manual payout policy unless fraud, dispute, or legal review requires a different settlement.",
         ],
       },
       {
         title: "Cancellations",
         body: [
           "A draft pact may be abandoned before it starts. Abandoning a draft does not consume a pass.",
-          "A paid Pact Pass is not cancelled or refunded. It remains available until it is used for a pact, unless the account is closed for fraud, abuse, or legal reasons.",
+          "A Pact Pass is free and is not refunded. It remains available until it is used for a pact, unless the account is closed for fraud, abuse, or legal reasons.",
           "A deposit payment that has not been matched to an active pact should be reviewed manually and either applied to the pact or returned according to the support record.",
           "Cancellation charges, if any are introduced later, must be disclosed before payment and must not be one-sided.",
         ],
@@ -425,7 +425,7 @@ const legalPages = {
         title: "Information We Collect",
         body: [
           "Account data such as name, email, phone number, WhatsApp number, sign-in identifiers, and profile details.",
-          "Pact data such as goals, schedule, deadline, deposit amount, selected charity, proof prompts, proof submissions, workout proof location, review decisions, payout requests, and support notes.",
+          "Pact data such as goals, schedule, deadline, deposit amount, proof prompts, proof submissions, workout proof location, review decisions, payout requests, and support notes.",
           "Payment metadata such as Razorpay order IDs, payment IDs, payment purpose, amount, currency, status, and timestamps. Pact Raven should not store card numbers, UPI PINs, CVV, or payment instrument credentials.",
           "Manual payout data such as UPI IDs, payee names, UPI reference IDs, payout notes, amount, currency, and payout status.",
           "Device, browser, security, and audit data such as timestamps, IP-derived metadata, logs, fraud signals, and app diagnostics where needed to operate and protect the service.",
@@ -452,7 +452,7 @@ const legalPages = {
       {
         title: "Consent, Rights, And Grievances",
         body: [
-          "Pact, payment, ledger, proof review, payout, tax, and dispute records may be retained as long as needed for operations, legal compliance, accounting, fraud prevention, and dispute handling.",
+          "Pact, payment, proof review, payout, tax, and dispute records may be retained as long as needed for operations, legal compliance, accounting, fraud prevention, and dispute handling.",
           "Users may request access, correction, updating, deletion of eligible personal data, withdrawal of consent, and nomination rights where applicable. Some records may need to be retained where law, accounting, payment reconciliation, fraud prevention, or dispute handling requires it.",
           "By using Pact Raven, users consent to the collection and use of data needed to provide the service, process payments, review proof, maintain records, and handle payouts.",
           `Privacy and grievance requests should be sent to ${grievanceEmail}. Grievance officer: ${grievanceOfficer}. Business phone: ${businessPhone}. Registered address: ${registeredAddress}. ${gstStatus}`,
@@ -508,7 +508,7 @@ const legalPages = {
         title: "Review Outcome",
         body: [
           "Approved proof creates refund credit according to the pact's refund schedule.",
-          "Missed, late, unclear, private, deleted, or rejected proof may forfeit that day's deposit credit to the selected charity.",
+          "Missed, late, unclear, private, deleted, or rejected proof may forfeit that day's deposit credit to Akshaya Patra.",
         ],
       },
     ],
@@ -725,8 +725,8 @@ function App() {
 
         <div className="hero-grid" id="top">
           <div className="hero-copy">
-            <p className="stamp">30-day pact / daily proof</p>
-            <h1>Lock money. Show proof. Build refund credit.</h1>
+            <p className="stamp">your pact / daily proof</p>
+            <h1>Commit to your habit, financially.</h1>
             <p className="lede">
               Approved days create refund credit. Missed days go to charity.
             </p>
@@ -812,16 +812,14 @@ function App() {
       <section className="charity-band" id="charity">
         <div className="section-heading">
           <p className="stamp">If a day is missed or rejected</p>
-          <h2>Missed days go where you chose.</h2>
+          <h2>Missed days fund Akshaya Patra.</h2>
         </div>
         <p className="charity-note">
           Forfeited deposit money is recorded for charity, not Pact Raven
           revenue.
         </p>
         <div className="charity-strip">
-          {charities.map((charity) => (
-            <span key={charity}>{charity}</span>
-          ))}
+          <span>{charityName}</span>
         </div>
       </section>
 
@@ -882,7 +880,7 @@ function WorkoutAccountabilityPage() {
 
       <article className="legal-page answer-page">
         <p className="stamp">Workout accountability</p>
-        <h1>Workout accountability app for 30-day pacts</h1>
+        <h1>Workout accountability app with daily proof pacts</h1>
         <p className="legal-updated">Last updated: {lastUpdated}</p>
         <p className="legal-intro">{workoutAnswer}</p>
 
@@ -969,12 +967,6 @@ function LegalPage({ path }: { path: LegalPath }) {
         <h1>{page.title}</h1>
         <p className="legal-updated">Last updated: {lastUpdated}</p>
         <p className="legal-intro">{page.intro}</p>
-
-        <div className="legal-review-note">
-          This page is an operational draft for Pact Raven's current v1 flow. It
-          should be reviewed by a qualified lawyer and CA before wider public
-          launch or any material payment-policy change.
-        </div>
 
         {page.sections.map((section) => (
           <section className="legal-section" key={section.title}>

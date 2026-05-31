@@ -97,6 +97,13 @@ function waitlistApiPlugin(): Plugin {
             }),
           });
 
+          if (upstream.status === 429) {
+            json(response, 429, {
+              error: "Too many signups. Try again later.",
+            });
+            return;
+          }
+
           if (!upstream.ok) {
             json(response, 502, {
               error: "Could not save waitlist signup. Try again.",

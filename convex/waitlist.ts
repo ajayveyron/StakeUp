@@ -18,6 +18,41 @@ function optionalText(value: string | undefined) {
   return trimmed ? trimmed.slice(0, 1000) : undefined;
 }
 
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
+const RATE_LIMIT_MAX = 20;
+
+export const consumeRateLimit = internalMutation({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    const key = args.key.slice(0, 200);
+    const now = Date.now();
+    const existing = await ctx.db
+      .query("waitlistRateLimits")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+
+    if (!existing || now - existing.windowStartedAt >= RATE_LIMIT_WINDOW_MS) {
+      if (existing) {
+        await ctx.db.patch(existing._id, { count: 1, windowStartedAt: now });
+      } else {
+        await ctx.db.insert("waitlistRateLimits", {
+          key,
+          count: 1,
+          windowStartedAt: now,
+        });
+      }
+      return { allowed: true };
+    }
+
+    if (existing.count >= RATE_LIMIT_MAX) {
+      return { allowed: false };
+    }
+
+    await ctx.db.patch(existing._id, { count: existing.count + 1 });
+    return { allowed: true };
+  },
+});
+
 export const capture = internalMutation({
   args: {
     email: v.string(),

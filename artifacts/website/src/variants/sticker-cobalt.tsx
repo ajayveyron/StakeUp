@@ -4,14 +4,6 @@ const waitlistJoinUrl =
   "https://chat.whatsapp.com/DfI1Q1AR6e9HZy4ZWaQSBT?mode=gi_t";
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const charities = [
-  "Akshaya Patra",
-  "Goonj",
-  "CRY",
-  "HelpAge India",
-  "Wildlife SOS",
-];
-
 type WaitlistFormProps = {
   idPrefix: string;
   variant: "primary" | "secondary";
@@ -124,7 +116,7 @@ function WaitlistForm({ idPrefix, variant }: WaitlistFormProps) {
         disabled={status === "submitting"}
         className="sc-submit"
       >
-        <span>{status === "submitting" ? "Saving…" : variant === "primary" ? "Open ledger" : "Lock me in"}</span>
+        <span>{status === "submitting" ? "Saving…" : "Join waitlist"}</span>
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
           <path
             d="M4 10 L 16 10 M 11 5 L 16 10 L 11 15"
@@ -141,7 +133,7 @@ function WaitlistForm({ idPrefix, variant }: WaitlistFormProps) {
         id={messageId}
         role="status"
       >
-        {message || "First Pact Pass free · WhatsApp launch group on signup"}
+        {message || "Pact Passes are free · WhatsApp launch group on signup"}
       </p>
     </form>
   );
@@ -202,16 +194,17 @@ function PhoneMockup() {
           </div>
 
           <div className="sc-withdraw">
-            <span>Withdraw ₹792 to UPI</span>
-            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-              <path d="M3 9 L 15 9 M 10 4 L 15 9 L 10 14" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 8 H 7 L 9 5 H 15 L 17 8 H 20 a 1.5 1.5 0 0 1 1.5 1.5 V 18 a 1.5 1.5 0 0 1 -1.5 1.5 H 4 a 1.5 1.5 0 0 1 -1.5 -1.5 V 9.5 A 1.5 1.5 0 0 1 4 8 Z" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" fill="none" />
+              <circle cx="12" cy="13.5" r="3.5" stroke="#FFFFFF" strokeWidth="2" fill="none" />
             </svg>
+            <span>Submit photo proof</span>
           </div>
         </div>
       </div>
       <div className="sc-phone-sticker">
-        <span>YOUR</span>
-        <span>LEDGER</span>
+        <span>SHOW</span>
+        <span>PROOF</span>
       </div>
     </div>
   );
@@ -365,17 +358,17 @@ function PactExplainer() {
     <section ref={containerRef} className="sc-section" id="explainer">
       <div className="sc-section-head">
         <h2 className="sc-h2">Watch a pact play out.</h2>
-        <span className="sc-section-aside">30 days, every box decides where the money lands</span>
+        <span className="sc-section-aside">every day decides where the money lands</span>
       </div>
       <div className="sc-explainer">
         <div className="sc-explainer-cal">
           <div className="sc-cal-header">
-            <span className="sc-cal-title">YOUR PACT · 30 DAYS</span>
+            <span className="sc-cal-title">EXAMPLE PACT</span>
             <span className="sc-cal-day">
               Day {Math.min(day, EXPLAINER_TOTAL_DAYS)} / {EXPLAINER_TOTAL_DAYS}
             </span>
           </div>
-          <div className="sc-cal-grid" role="img" aria-label="30-day pact progress">
+          <div className="sc-cal-grid" role="img" aria-label="Example pact progress">
             {Array.from({ length: EXPLAINER_TOTAL_DAYS }).map((_, i) => {
               const n = i + 1;
               const filled = n <= day;
@@ -482,7 +475,7 @@ function PactExplainer() {
               />
             </div>
             <div className={`sc-pot-arrow sc-pot-arrow-down${transferring ? " sc-pot-arrow-on" : ""}`}>
-              <span>→ CHARITY</span>
+              <span>→ AKSHAYA PATRA</span>
             </div>
           </article>
         </div>
@@ -494,8 +487,8 @@ function PactExplainer() {
 const steps = [
   {
     n: "01",
-    title: "Lock a deposit.",
-    body: "Pick ₹1k–₹5k. Sits in escrow. Refundable on proof.",
+    title: "Put money on the line.",
+    body: "You choose the amount and how many days. Refundable on proof.",
     tone: "ink" as const,
   },
   {
@@ -507,31 +500,39 @@ const steps = [
   {
     n: "03",
     title: "Get your money back.",
-    body: "Approved days credit your UPI twice a week. Missed days fund charity.",
+    body: "Approved days credit your UPI. Missed days fund Akshaya Patra.",
     tone: "neutral" as const,
   },
 ];
 
 const faqs = [
   {
-    q: "Is this gambling?",
-    a: "No. You only lose your own deposit. No one wins anyone else's money. The deposit is yours or your chosen charity's, never Pact Raven's.",
+    q: "How much do I deposit and for how long?",
+    a: "You decide. Pick any amount and any number of days when you set up your pact. Bigger stakes and longer streaks are entirely your call.",
   },
   {
-    q: "What does the ₹249 Pact Pass cover?",
-    a: "Your first pass is free. After that, ₹249 buys you one 30-day pact: proof review, reminders, manual UPI payouts, and support. The deposit is separate.",
+    q: "Is this gambling?",
+    a: "No. You only ever put your own money on the line. No one wins anyone else's money. The deposit is yours or Akshaya Patra's, never Pact Raven's.",
+  },
+  {
+    q: "What does a Pact Pass cost?",
+    a: "Nothing. Every Pact Pass is free. A pass unlocks one pact: proof review, reminders, manual UPI payouts, and support. Your deposit is separate and refundable on proof.",
   },
   {
     q: "What if my proof gets rejected?",
-    a: "Each day is reviewed by a human within 24 hours. You'll see the reason on the ledger and can request a re-review. Honest mistakes don't forfeit.",
+    a: "Each day is reviewed by a human within 24 hours. You'll see the reason and can request a re-review. Honest mistakes don't forfeit.",
+  },
+  {
+    q: "Where does missed-day money go?",
+    a: "To Akshaya Patra, a children's nutrition charity. Forfeited money is never Pact Raven revenue.",
   },
   {
     q: "When do approved days hit my UPI?",
-    a: "Refund credit shows up in the app immediately. Withdrawals are manual UPI transfers — up to two requests a week.",
+    a: "Refund credit shows up in the app right away. Withdrawals are manual UPI transfers — up to two requests a week.",
   },
   {
     q: "Can I quit early?",
-    a: "Yes. Any unsettled deposit goes to your charity. Already-approved credit is still yours to withdraw.",
+    a: "Yes. Any unsettled deposit goes to Akshaya Patra. Already-approved credit is still yours to withdraw.",
   },
 ];
 
@@ -557,7 +558,7 @@ export default function StickerCobalt() {
         </a>
         <div className="sc-nav-links">
           <a href="#how">How</a>
-          <a href="#ledger">Ledger</a>
+          <a href="#proof">Proof</a>
           <a href="#faq">FAQ</a>
           <a href="#waitlist" className="sc-nav-cta">
             Join waitlist
@@ -568,25 +569,24 @@ export default function StickerCobalt() {
         </div>
       </nav>
 
-      <section className="sc-hero" id="ledger">
+      <section className="sc-hero" id="top">
         <PhoneMockup />
         <div className="sc-hero-copy">
           <div className="sc-eyebrow">
             <span className="sc-eyebrow-dot" />
-            <span>30-DAY PACT · INDIA BETA</span>
+            <span>YOUR PACT · INDIA BETA</span>
           </div>
           <h1 className="sc-h1">
-            <span>Your willpower</span>
+            <span>Commit to your</span>
             <span className="sc-h1-row">
-              <span>has</span>
-              <span className="sc-h1-accent">receipts</span>
+              <span className="sc-h1-accent">habit,</span>
             </span>
-            <span>now.</span>
+            <span>financially.</span>
           </h1>
           <p className="sc-lede">
-            Lock a deposit. Every approved day credits your UPI. Every missed
-            day goes to the charity you picked. Audited, on the ledger, in your
-            phone.
+            Put money on the line for the habit you keep putting off. Show proof
+            each day and it comes back to your UPI. Miss a day and it goes to
+            Akshaya Patra. The stakes keep you honest with yourself.
           </p>
           <div id="waitlist">
             <WaitlistForm idPrefix="hero" variant="primary" />
@@ -597,7 +597,7 @@ export default function StickerCobalt() {
       <section className="sc-section" id="how">
         <div className="sc-section-head">
           <h2 className="sc-h2">How it works.</h2>
-          <span className="sc-section-aside">three steps, then thirty days</span>
+          <span className="sc-section-aside">three steps, then you just show up</span>
         </div>
         <div className="sc-steps">
           {steps.map((step) => (
@@ -652,16 +652,16 @@ export default function StickerCobalt() {
                 />
               </svg>
             </div>
-            <h3>Workout pact</h3>
+            <h3>Camera proof</h3>
             <p>
-              Fresh in-app camera capture, with your location and the day's
-              prompt visible. Old photos, gallery uploads, or proof from someone
-              else can be rejected.
+              A live in-app photo or video, with your location and the day's
+              pose. Best for workout or running pacts. Old photos, gallery
+              uploads, or proof from someone else can be rejected.
             </p>
             <ul className="sc-proof-list">
-              <li>Live camera only</li>
-              <li>GPS + timestamp recorded</li>
-              <li>Daily physical prompt</li>
+              <li>Live camera photo or video</li>
+              <li>Geo-location + timestamp</li>
+              <li>Daily pose prompt</li>
             </ul>
           </article>
           <article className="sc-proof-card">
@@ -674,14 +674,15 @@ export default function StickerCobalt() {
                 <circle cx="28" cy="14" r="1.6" fill="#0A0A0A" />
               </svg>
             </div>
-            <h3>Content pact</h3>
+            <h3>Text proof</h3>
             <p>
-              A public post link before the deadline. Twitter, Instagram,
-              LinkedIn, Substack, your own blog. Private posts and edited
-              timestamps don't count.
+              A public link to what you posted, before the deadline. Best for
+              content pacts — share proof of the work you published. Twitter,
+              Instagram, LinkedIn, Substack, your own blog. Private posts don't
+              count.
             </p>
             <ul className="sc-proof-list">
-              <li>Public URL submitted in-app</li>
+              <li>Public post link submitted in-app</li>
               <li>Stays live until reviewed</li>
               <li>Matches your declared topic</li>
             </ul>
@@ -696,30 +697,20 @@ export default function StickerCobalt() {
         </div>
         <div className="sc-money-grid">
           <article className="sc-stat-card sc-stat-card-ink">
-            <span className="sc-stat-label">DEPOSIT</span>
-            <span className="sc-stat-num">₹2,000</span>
-            <span className="sc-stat-meta">Held in escrow. Yours, refundable.</span>
+            <span className="sc-stat-label">ON THE LINE</span>
+            <span className="sc-stat-num">Yours</span>
+            <span className="sc-stat-meta">Your own money, behind your own word. That's what makes you show up.</span>
           </article>
           <article className="sc-stat-card">
-            <span className="sc-stat-label">REFUND / APPROVED DAY</span>
-            <span className="sc-stat-num sc-stat-num-accent">+ ₹66</span>
-            <span className="sc-stat-meta">Credits your UPI. Twice-a-week withdraw.</span>
+            <span className="sc-stat-label">YOU SHOW UP</span>
+            <span className="sc-stat-num sc-stat-num-accent">Back</span>
+            <span className="sc-stat-meta">Approved days credit straight back to your UPI.</span>
           </article>
           <article className="sc-stat-card">
-            <span className="sc-stat-label">FORFEIT / MISSED DAY</span>
-            <span className="sc-stat-num">→ ₹66</span>
-            <span className="sc-stat-meta">Goes to the charity you picked. Not us.</span>
+            <span className="sc-stat-label">YOU SLIP</span>
+            <span className="sc-stat-num">Gone</span>
+            <span className="sc-stat-meta">Missed days fund Akshaya Patra. Never us.</span>
           </article>
-        </div>
-        <div className="sc-charity-strip" aria-label="Charity destinations">
-          <span className="sc-charity-label">DESTINATIONS</span>
-          <div className="sc-charity-chips">
-            {charities.map((c) => (
-              <span key={c} className="sc-charity-chip">
-                {c}
-              </span>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -751,7 +742,7 @@ export default function StickerCobalt() {
             </span>
           </h2>
           <p className="sc-final-lede">
-            Lock the deposit. Let the ledger do the talking.
+            Put your money where your habit is. Then just show up.
           </p>
           <WaitlistForm idPrefix="final" variant="secondary" />
         </div>

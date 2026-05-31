@@ -1,8 +1,8 @@
-# Workout accountability app for 30-day pacts
+# Workout accountability app with daily proof pacts
 
 Last updated: May 22, 2026
 
-Pact Raven is a workout accountability app for India-based users who want a 30-day pact with a real record. You create a workout pact, lock a refundable deposit, show fresh camera, location, and pose proof, receive refund credit when proof is approved, and forfeit missed or rejected days to your chosen charity.
+Pact Raven is a workout accountability app for India-based users who want a daily pact with a real record. You create a workout pact, choose your own length and deposit, lock that refundable deposit, show fresh camera, location, and pose proof, receive refund credit when proof is approved, and forfeit missed or rejected days to Akshaya Patra.
 
 [Join the waitlist](https://pactraven.com/#waitlist)
 
@@ -10,7 +10,7 @@ Pact Raven is a workout accountability app for India-based users who want a 30-d
 
 ## How workout pacts work
 
-Choose a workout pact, set the days and deadline, use a Pact Pass, and lock the separate refundable deposit before the pact starts.
+Choose a workout pact, set your own number of days and the deadline, use a free Pact Pass, and lock the separate refundable deposit before the pact starts.
 
 On each scheduled day, show proof before the deadline. The Raven records whether the day is under review, approved, missed, or rejected.
 
@@ -28,11 +28,11 @@ Workout proof links, gallery uploads, old photos, edited proof, vague proof, cop
 
 ## What happens to the money
 
-Every account gets the first Pact Pass covered once. After that, each Pact Pass is Rs 249.
+Every Pact Pass is free. The pact deposit is separate, and you choose how much to put on the line.
 
-The pact deposit is separate from the Pact Pass fee. Approved workout proof creates refund credit for manual UPI payout.
+Approved workout proof creates refund credit for manual UPI payout.
 
-Missed or rejected workout days forfeit that day's deposit credit to the charity selected before starting. Forfeits are not Pact Raven revenue.
+Missed or rejected workout days forfeit that day's deposit credit to Akshaya Patra. Forfeits are not Pact Raven revenue.
 
 [Read payment, cancellation, refund, and delivery policy](https://pactraven.com/refund-cancellation)
 
@@ -46,7 +46,7 @@ It is not medical, fitness, legal, tax, financial, or mental health advice. User
 
 ### What is a workout accountability app?
 
-A workout accountability app helps a user turn a fitness intention into a tracked commitment. Pact Raven does this with a 30-day pact, daily proof, manual review, refund credit for approved days, and charity forfeits for missed or rejected days.
+A workout accountability app helps a user turn a fitness intention into a tracked commitment. Pact Raven does this with a daily-proof pact you size yourself, manual review, refund credit for approved days, and charity forfeits to Akshaya Patra for missed or rejected days.
 
 ### What proof counts in Pact Raven?
 
@@ -54,12 +54,12 @@ Workout proof should be a fresh in-app camera capture with captured location and
 
 ### What happens if I miss a workout day?
 
-A missed or rejected workout day can forfeit that day's deposit credit to the charity you selected before the pact started.
+A missed or rejected workout day can forfeit that day's deposit credit to Akshaya Patra.
 
 ### Is the deposit a prize pool?
 
-No. Users do not win another user's money. The deposit is recorded as a refundable pact deposit liability until it is refunded, forfeited to charity, or settled by admin.
+No. Users do not win another user's money. The deposit is recorded as a refundable pact deposit until it is refunded, forfeited to charity, or settled by admin.
 
 ### What does Pact Raven cost?
 
-The first Pact Pass is covered once per account. After that, each Pact Pass is Rs 249. The separate workout pact deposit is locked only when the pact starts.
+Every Pact Pass is free. The separate workout pact deposit is set by you and locked only when the pact starts.

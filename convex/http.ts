@@ -315,6 +315,18 @@ http.route({
       return json({ error: "Enter a valid email." }, { status: 400 });
     }
 
+    const ip = clientIp(request);
+    const { allowed } = await ctx.runMutation(
+      internal.waitlist.consumeRateLimit,
+      { key: ip ?? "unknown" },
+    );
+    if (!allowed) {
+      return json(
+        { error: "Too many signups. Try again later." },
+        { status: 429 },
+      );
+    }
+
     const result = await ctx.runMutation(internal.waitlist.capture, {
       email,
       source: typeof payload.source === "string" ? payload.source : "website",

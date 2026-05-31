@@ -75,6 +75,13 @@ export default async function handler(request: Request) {
     }),
   });
 
+  if (response.status === 429) {
+    return json(
+      { error: "Too many signups. Try again later." },
+      { status: 429 },
+    );
+  }
+
   if (!response.ok) {
     return json(
       { error: "Could not save waitlist signup. Try again." },
