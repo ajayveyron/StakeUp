@@ -8,7 +8,6 @@ import {
   Link2,
   ShieldCheck,
 } from "lucide-react";
-import { Analytics } from "@vercel/analytics/react";
 
 import StickerCobalt from "./variants/sticker-cobalt";
 
@@ -691,57 +690,26 @@ function App() {
   }, [pathname]);
 
   if (isLegalPath(pathname)) {
-    return (
-      <>
-        <LegalPage path={pathname} />
-        <Analytics />
-      </>
-    );
+    return <LegalPage path={pathname} />;
   }
   if (pathname === "/workout-accountability") {
-    return (
-      <>
-        <WorkoutAccountabilityPage />
-        <Analytics />
-      </>
-    );
+    return <WorkoutAccountabilityPage />;
   }
   if (pathname === "/sticker-cobalt") {
-    return (
-      <>
-        <StickerCobalt />
-        <Analytics />
-      </>
-    );
+    return <StickerCobalt />;
   }
   if (pathname === "/404") {
-    return (
-      <>
-        <NotFoundPage />
-        <Analytics />
-      </>
-    );
+    return <NotFoundPage />;
   }
   if (pathname === "/") {
-    return (
-      <>
-        <StickerCobalt />
-        <Analytics />
-      </>
-    );
+    return <StickerCobalt />;
   }
   if (pathname !== "/") {
-    return (
-      <>
-        <NotFoundPage />
-        <Analytics />
-      </>
-    );
+    return <NotFoundPage />;
   }
 
   return (
-    <>
-      <main>
+    <main>
       <section className="hero">
         <nav className="nav" aria-label="Main navigation">
           <a className="brand" href="#top" aria-label="Pact Raven home">
@@ -894,8 +862,6 @@ function App() {
         </nav>
       </footer>
     </main>
-      <Analytics />
-    </>
   );
 }
 
