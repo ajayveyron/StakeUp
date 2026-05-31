@@ -570,6 +570,12 @@ export default function StickerCobalt() {
       </nav>
 
       <section className="sc-hero" id="top">
+        <div className="sc-sil-layer" aria-hidden="true">
+          <div className="sc-sil sc-sil-1" />
+          <div className="sc-sil sc-sil-2" />
+          <div className="sc-sil sc-sil-3" />
+          <div className="sc-sil sc-sil-4" />
+        </div>
         <PhoneMockup />
         <div className="sc-hero-copy">
           <div className="sc-eyebrow">
@@ -577,11 +583,10 @@ export default function StickerCobalt() {
             <span>YOUR PACT · INDIA BETA</span>
           </div>
           <h1 className="sc-h1">
-            <span>Commit to your</span>
+            <span>Commit to your habit,</span>
             <span className="sc-h1-row">
-              <span className="sc-h1-accent">habit,</span>
+              <span className="sc-hl">financially.</span>
             </span>
-            <span>financially.</span>
           </h1>
           <p className="sc-lede">
             Put money on the line for the habit you keep putting off. Show proof
@@ -738,7 +743,7 @@ export default function StickerCobalt() {
           <h2 className="sc-final-h2">
             <span>Stop arguing with</span>
             <span>
-              <span className="sc-h1-accent">your future self.</span>
+              <span className="sc-hl">your future self.</span>
             </span>
           </h2>
           <p className="sc-final-lede">
@@ -797,12 +802,63 @@ function StepIcon({ n, tone }: { n: string; tone: "ink" | "cobalt" | "neutral" }
 
 const stickerCobaltCss = `
 .sc-root {
-  background: #F5F5F2;
+  background: #F0F3FF;
   color: #0A0A0A;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sc-display: "Anton", "Impact", "Haettenschweiler", "Arial Narrow", sans-serif;
   font-feature-settings: "ss01" on, "cv11" on;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* mobile-style highlight box on accent words */
+.sc-hl {
+  display: inline-block;
+  background: #1B4DFF;
+  color: #FFFFFF;
+  padding: 0.02em 0.22em 0.1em;
+  transform: skewX(-7deg);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* faint cobalt workout-silhouette wash (Figma mask technique) */
+.sc-sil-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.sc-sil {
+  position: absolute;
+  background: radial-gradient(circle at 50% 38%, rgba(27, 77, 255, 0.22), rgba(27, 77, 255, 0) 70%);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+.sc-sil-1 {
+  width: 360px; height: 440px;
+  left: 4%; bottom: 0;
+  -webkit-mask-image: url("/hero-art/sil2.png"); mask-image: url("/hero-art/sil2.png");
+}
+.sc-sil-2 {
+  width: 300px; height: 360px;
+  left: 30%; bottom: 6%;
+  -webkit-mask-image: url("/hero-art/sil1.png"); mask-image: url("/hero-art/sil1.png");
+}
+.sc-sil-3 {
+  width: 340px; height: 360px;
+  right: 6%; top: 8%;
+  -webkit-mask-image: url("/hero-art/sil3.png"); mask-image: url("/hero-art/sil3.png");
+}
+.sc-sil-4 {
+  width: 280px; height: 320px;
+  right: 26%; bottom: 4%;
+  -webkit-mask-image: url("/hero-art/sil4.png"); mask-image: url("/hero-art/sil4.png");
 }
 .sc-sr-only {
   position: absolute;
@@ -843,9 +899,10 @@ const stickerCobaltCss = `
   transform: rotate(-6deg);
 }
 .sc-brand-name {
-  font-weight: 900;
+  font-family: var(--sc-display);
+  font-weight: 400;
   font-size: 18px;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   color: #0A0A0A;
 }
 .sc-nav-links {
@@ -883,13 +940,19 @@ const stickerCobaltCss = `
 
 /* hero */
 .sc-hero {
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: stretch;
   padding: 32px clamp(20px, 4vw, 64px) 80px;
   gap: 56px;
-  max-width: 1440px;
+  max-width: 1040px;
   margin: 0 auto;
+}
+.sc-hero > .sc-phone-stage,
+.sc-hero > .sc-hero-copy {
+  position: relative;
+  z-index: 1;
 }
 .sc-hero-copy {
   display: flex;
@@ -926,11 +989,13 @@ const stickerCobaltCss = `
 .sc-h1 {
   display: flex;
   flex-direction: column;
-  gap: 0;
-  font-weight: 900;
-  font-size: clamp(56px, 8vw, 124px);
-  line-height: 0.88;
-  letter-spacing: -0.045em;
+  gap: 8px;
+  align-items: flex-start;
+  font-family: var(--sc-display);
+  font-weight: 400;
+  font-size: clamp(34px, 4.4vw, 66px);
+  line-height: 0.94;
+  letter-spacing: 0;
   color: #0A0A0A;
   margin: 0;
 }
@@ -1268,7 +1333,7 @@ const stickerCobaltCss = `
 /* sections */
 .sc-section {
   padding: 96px clamp(20px, 4vw, 64px);
-  max-width: 1440px;
+  max-width: 1040px;
   margin: 0 auto;
 }
 .sc-section-quiet { background: transparent; }
@@ -1282,10 +1347,11 @@ const stickerCobaltCss = `
   flex-wrap: wrap;
 }
 .sc-h2 {
-  font-weight: 900;
-  font-size: clamp(40px, 5vw, 72px);
-  line-height: 1;
-  letter-spacing: -0.035em;
+  font-family: var(--sc-display);
+  font-weight: 400;
+  font-size: clamp(25px, 3vw, 42px);
+  line-height: 1.04;
+  letter-spacing: 0;
   color: #0A0A0A;
   margin: 0;
 }
@@ -1349,10 +1415,11 @@ const stickerCobaltCss = `
 .sc-step-cobalt .sc-step-num { background: #FFFFFF; color: #1A4DFF; }
 .sc-step-neutral .sc-step-num { background: #0A0A0A; color: #FFFFFF; }
 .sc-step-title {
-  font-weight: 900;
-  font-size: 30px;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-family: var(--sc-display);
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
   margin: 0;
   color: inherit;
 }
@@ -1397,9 +1464,10 @@ const stickerCobaltCss = `
   border-radius: 14px;
 }
 .sc-proof-card h3 {
-  font-weight: 900;
-  font-size: 28px;
-  letter-spacing: -0.02em;
+  font-family: var(--sc-display);
+  font-weight: 400;
+  font-size: 19px;
+  letter-spacing: 0.01em;
   margin: 0;
   color: #0A0A0A;
 }
@@ -1531,9 +1599,10 @@ const stickerCobaltCss = `
   gap: 12px;
 }
 .sc-faq h3 {
-  font-weight: 900;
-  font-size: 22px;
-  letter-spacing: -0.015em;
+  font-family: var(--sc-display);
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0.01em;
   color: #0A0A0A;
   margin: 0;
 }
@@ -1548,7 +1617,7 @@ const stickerCobaltCss = `
 /* final cta */
 .sc-final {
   padding: 80px clamp(20px, 4vw, 64px) 96px;
-  max-width: 1440px;
+  max-width: 1040px;
   margin: 0 auto;
 }
 .sc-final-card {
@@ -1573,10 +1642,13 @@ const stickerCobaltCss = `
 .sc-final-h2 {
   display: flex;
   flex-direction: column;
-  font-weight: 900;
-  font-size: clamp(40px, 6vw, 92px);
-  line-height: 0.95;
-  letter-spacing: -0.035em;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--sc-display);
+  font-weight: 400;
+  font-size: clamp(28px, 3.4vw, 48px);
+  line-height: 1.02;
+  letter-spacing: 0;
   color: #F5F5F2;
   margin: 0;
 }
@@ -1655,7 +1727,7 @@ const stickerCobaltCss = `
   .sc-nav-links { gap: 16px; }
   .sc-nav-links a:not(.sc-nav-cta) { display: none; }
   .sc-hero { padding: 24px 20px 48px; gap: 32px; }
-  .sc-h1 { font-size: clamp(48px, 12vw, 72px); }
+  .sc-h1 { font-size: clamp(34px, 9vw, 56px); }
   .sc-form-row {
     display: flex;
     flex-direction: column;
@@ -1665,7 +1737,7 @@ const stickerCobaltCss = `
   .sc-submit { justify-content: center; }
   .sc-section { padding: 56px 20px; }
   .sc-section-head { flex-direction: column; align-items: flex-start; }
-  .sc-h2 { font-size: clamp(36px, 9vw, 56px); }
+  .sc-h2 { font-size: clamp(26px, 7vw, 42px); }
   .sc-charity-strip { flex-direction: column; align-items: flex-start; }
   .sc-final-card { padding: 48px 24px; }
   .sc-footer { flex-direction: column; align-items: flex-start; }
